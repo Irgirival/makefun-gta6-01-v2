@@ -211,7 +211,10 @@ export function nearestCharter(G) {
   const c = G.airport && G.airport.charter;
   if (!c || c.state !== 'parked') return null;
   const p = G.player.pos;
-  return Math.hypot(c.group.position.x - p.x, c.group.position.z - p.z) < 7 ? c : null;
+  // 12 units, not 7: the apron's parked-plane colliders push Mara out to
+  // about 11 units from the fuselage, and the boarding radius has to reach
+  // past that push-out or the plane can never be boarded from the front.
+  return Math.hypot(c.group.position.x - p.x, c.group.position.z - p.z) < 12 ? c : null;
 }
 
 export function boardCharter(G) {

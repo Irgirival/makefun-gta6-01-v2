@@ -619,8 +619,12 @@ function frame() {
         const heli = nearestFlyHeli(G);
         const ski = nearestJetSki(G);
         const car = nearestEnterableCar(G);
+        // v6: the charter flight gets its own prompt — otherwise nobody
+        // would guess E boards a parked plane on the apron.
+        const charter = nearestCharter(G);
         if (heli) G.hud.setInteract(`<b>E</b> — fly the ${heli.name}`);
         else if (ski) G.hud.setInteract(`<b>E</b> — ride the ${ski.name}`);
+        else if (charter) G.hud.setInteract('<b>E</b> — board the charter flight (free bay tour)');
         else if (casinoNearDoor(G)) G.hud.setInteract('<b>E</b> — enter the Verde Casino');
         else G.hud.setInteract(car ? `<b>E</b> — take the ${car.spec.name}` : null);
       } else {
