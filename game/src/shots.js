@@ -54,8 +54,9 @@ export function applyShot(G, name) {
     t2.speed = 11; t2.route = { axis: 'z', dir: 1, nextTurn: 200 }; t2.cruiseSpeed = 11;
     const t3 = createVehicle(G, 'van', 3.4, 20, Math.PI, { driver: 'traffic', occupied: true });
     t3.speed = 10; t3.route = { axis: 'z', dir: -1, nextTurn: 200 }; t3.cruiseSpeed = 10;
-    // A Comet 900 parked in the left lane, so the bike reads in the shot.
-    createMotorcycle(G, -6.5, 70, 0, { parked: true });
+    // A yellow Comet 900 in the left lane ahead of the car, so the bike
+    // reads clearly against the asphalt without blocking the drive.
+    createMotorcycle(G, -6, 55, 0, { parked: true, color: 0xffd23e });
   } else if (name === 'chase') {
     // Four stars on the westbound avenue: two cruisers on Mara's tail and
     // the PD air unit holding ahead-left in the searchlight.
