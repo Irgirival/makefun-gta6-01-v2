@@ -102,7 +102,10 @@ export function updatePolice(G, dt) {
   // Heat decay: only while no police unit is close and no crime just happened.
   const nearestCop = nearestPoliceDistance(G);
   if (w.stars > 0 && G.elapsed - w.lastCrimeAt > 8 && nearestCop > 55) {
-    w.heat = Math.max(0, w.heat - cfg.heatDecayPerSec * dt);
+    // v5: the Night Stalker outfit cools the heat 50% faster — the PD
+    // loses a quiet woman in dark clothes much sooner.
+    const decayMult = w.heatDecayMult || 1;
+    w.heat = Math.max(0, w.heat - cfg.heatDecayPerSec * decayMult * dt);
     w.stars = Math.floor(w.heat / cfg.heatPerStar);
     if (w.stars === 0) {
       G.hud.toast('You lost them. The heat is off — for now.');
@@ -216,4 +219,31 @@ export function nearestPoliceDistance(G) {
 // Police attention after a crime: peds flee, sirens, HUD label.
 export function onCrime(G) {
   G.pedestrians.scarePeds(G, playerPos(G).x, playerPos(G).z, 30);
+}
+
+// v5 — the Mission 10 surge: when Mara lifts the sunset crate, the whole
+// PD answers at once. Two extra cruisers roll in from the nearest roads
+// and the heat jumps a star, so the "lose the police" step of The Last
+// Sunset is a real chase and not a stroll. Called once per mission start.
+export function policeSurge(G) {
+  const w = G.wanted;
+  const target = G.driving ? G.driving.pos : G.player.pos;
+  w.addHeat(G.config.heatPerStar, 'the sunset crate');
+  let spawned = 0;
+  for (let i = 0; i < 2 && spawned < 2; i++) {
+    const a = (i / 2) * Math.PI * 2 + 0.6;
+    const dist = 70 + i * 15;
+    let x = target.x + Math.sin(a) * dist;
+    let z = target.z + Math.cos(a) * dist;
+    const roadX = G.city.nearestRoadLine(x, z, 'x');
+    const roadZ = G.city.nearestRoadLine(x, z, 'z');
+    if (Math.abs(x - roadX) < Math.abs(z - roadZ)) x = roadX; else z = roadZ;
+    const v = createVehicle(G, 'police', x, z, 0, { driver: 'police', occupied: true });
+    v.speed = 14;
+    G.policeCars.push(v);
+    spawned++;
+  }
+  G.hud.toast('The whole PD is coming — lose them before the plaza!');
+  G.audio.sirenBurst();
+  return spawned;
 }

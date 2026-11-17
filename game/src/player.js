@@ -86,7 +86,9 @@ export function updatePlayer(G, dt) {
   const fwd = input.down('forward') ? 1 : input.down('back') ? -1 : 0;
   const strafe = input.down('right') ? 1 : input.down('left') ? -1 : 0;
   const sprint = input.down('sprint') && fwd > 0;
-  const speed = sprint ? cfg.sprintSpeed : cfg.walkSpeed;
+  // v5: the Harbor Runner outfit adds 15% to the sprint — the jacket earns it.
+  const sprintMult = sprint ? (p.sprintBoost || 1) : 1;
+  const speed = (sprint ? cfg.sprintSpeed : cfg.walkSpeed) * sprintMult;
   p.moving = fwd !== 0 || strafe !== 0;
 
   // Movement is relative to the camera yaw.

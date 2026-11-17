@@ -205,7 +205,8 @@ export function updateVehicle(G, v, dt, input) {
   const grip = G.weather ? G.weather.grip : 1;
   const steerRate = 4.5;
   v.steer += (steerTarget - v.steer) * Math.min(1, dt * steerRate);
-  const steerEffect = v.steer * spec.turn * (0.65 + 0.35 * grip) * Math.min(1, Math.abs(v.speed) / 8 + 0.15);
+  // v5: sport suspension answers the wheel faster — Vic's tune, if fitted.
+  const steerEffect = v.steer * spec.turn * (v.handlingBoost || 1) * (0.65 + 0.35 * grip) * Math.min(1, Math.abs(v.speed) / 8 + 0.15);
   // Turn rate scales with speed; reverse flips the steering.
   if (v.speed !== 0) v.heading += steerEffect * dt * (v.speed > 0 ? 1 : -1);
 

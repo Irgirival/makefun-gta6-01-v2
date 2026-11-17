@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { MISSIONS, placeMarker, hideMarker } from './missions.js';
 import { range } from './random.js';
+import { policeSurge } from './police.js';
 
 const AIRPORT = { terminal: { x: -235, z: -276 }, hangar: { x: -312, z: -276 }, runwayEast: { x: -201, z: -260 } };
 const PLAZA = { x: 20, z: 20 };
@@ -261,6 +262,17 @@ export function updateSideMissions(G, dt) {
   }
   if (G.side.courier.active) updateCourier(G, dt);
   updateStunts(G, dt);
+  // v5: Mission 10's surge — the moment Mara reaches the "lose the
+  // police" step with the sunset crate, the whole PD answers at once.
+  const m = G.missions;
+  if (m.active && MISSIONS[m.index] && MISSIONS[m.index].id === 'last-sunset') {
+    if (m.step === 3 && !G.side.surgeDone) {
+      G.side.surgeDone = true;
+      policeSurge(G);
+    }
+  } else if (G.side.surgeDone) {
+    G.side.surgeDone = false;
+  }
 }
 
 // v5 — Mission 10, "The Last Sunset": the story coda after "King of

@@ -38,6 +38,8 @@ export function createInput(canvas) {
     KeyY: 'neon',          // v3: garage neon underglow
     KeyB: 'photo',         // v5: photo mode (free camera + filters + snapshot)
     KeyL: 'locker',        // v5: safehouse outfit shop + weapon locker
+    KeyH: 'suspension',    // v5: garage sport suspension (better handling)
+    KeyK: 'nitrotank',     // v5: garage nitro tank (bigger bottle, instant fill)
     KeyT: 'weather',
     KeyM: 'mute',
     KeyP: 'pause', Escape: 'pause',

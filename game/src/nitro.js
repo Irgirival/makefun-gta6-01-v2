@@ -16,7 +16,8 @@ function nitroMax(G) {
   // The tank grows with the engine: Lv1 100, Lv2 150, Lv3 200. Vic fits a
   // bigger bottle every time he rebuilds the motor.
   const lvl = G.garage?.engineLevel || 0;
-  return 100 + 50 * Math.max(0, lvl - 1);
+  // v5: each nitro tank Vic fits adds 25 to the bottle.
+  return 100 + 50 * Math.max(0, lvl - 1) + 25 * (G.nitro?.tankLevel || 0);
 }
 
 export function createNitro(G) {
@@ -25,6 +26,17 @@ export function createNitro(G) {
     burning: false,
     flame: null,
     emptyToastAt: 0,
+    tankLevel: 0, // v5: 0-2 extra bottles fitted at the garage
+    // v5: fit a bigger bottle — max two, filled on the spot.
+    buyTank() {
+      if ((this.tankLevel || 0) >= 2) {
+        G.hud.toast('The nitro bottle is already as big as Vic can fit.');
+        return false;
+      }
+      this.tankLevel = (this.tankLevel || 0) + 1;
+      this.meter = nitroMax(G);
+      return true;
+    },
   };
   G.nitro = nitro;
   return nitro;

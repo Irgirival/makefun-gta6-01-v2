@@ -216,3 +216,52 @@ export function restockAmmo(G) {
   G.combat.ammo = G.config.pistolMag;
   G.combat.reserve = G.config.pistolReserve;
 }
+
+// v5 — the weapon locker: cash for kit. Each buy checks the wallet first,
+// applies at once, and tells Mara what changed. The safehouse shop calls
+// these; nothing else spends cash on ammo, armor or medkits.
+const LOCKER_PRICES = { ammo: 80, vest: 200, medkit: 150 };
+
+export function buyAmmoPack(G) {
+  if (G.cash < LOCKER_PRICES.ammo) {
+    G.hud.toast(`Ammo box is $${LOCKER_PRICES.ammo} — you have $${Math.floor(G.cash)}.`);
+    G.audio.emptyClick();
+    return false;
+  }
+  G.cash -= LOCKER_PRICES.ammo;
+  G.combat.reserve += 60;
+  G.hud.toast(`Ammo box — +60 reserve rounds (now ${G.combat.reserve}).`);
+  return true;
+}
+
+export function buyArmorVest(G) {
+  if (G.cash < LOCKER_PRICES.vest) {
+    G.hud.toast(`Armor vest is $${LOCKER_PRICES.vest} — you have $${Math.floor(G.cash)}.`);
+    G.audio.emptyClick();
+    return false;
+  }
+  if (G.armor >= 100) {
+    G.hud.toast('Armor is already full — save the $200 for later.');
+    return false;
+  }
+  G.cash -= LOCKER_PRICES.vest;
+  G.armor = Math.min(100, G.armor + 50);
+  G.hud.toast(`Armor vest fitted — armor ${Math.round(G.armor)}.`);
+  return true;
+}
+
+export function buyMedkit(G) {
+  if (G.cash < LOCKER_PRICES.medkit) {
+    G.hud.toast(`Medkit is $${LOCKER_PRICES.medkit} — you have $${Math.floor(G.cash)}.`);
+    G.audio.emptyClick();
+    return false;
+  }
+  if (G.health >= G.config.playerHealth) {
+    G.hud.toast('Health is already full — no medkit needed.');
+    return false;
+  }
+  G.cash -= LOCKER_PRICES.medkit;
+  healPlayer(G, 50);
+  G.hud.toast(`Medkit used — health ${Math.round(G.health)}.`);
+  return true;
+}

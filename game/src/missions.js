@@ -161,6 +161,8 @@ export function startMission(G, index) {
   if (def.id === 'heat-rising') G.wanted.addHeat(45, 'mission heat');
   // v3: the Verde Heist starts warm — the casino's lookouts are already out.
   if (def.id === 'verde-heist') G.wanted.addHeat(20, 'heist heat');
+  // v5: The Last Sunset starts warm too — the PD heard about the crate.
+  if (def.id === 'last-sunset') G.wanted.addHeat(40, 'sunset heat');
   if (def.steps[0].type === 'timed') { m.timer = def.steps[0].seconds; m.timerTotal = def.steps[0].seconds; }
 }
 

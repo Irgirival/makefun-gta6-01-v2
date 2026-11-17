@@ -6,7 +6,7 @@
 // Upgrades bite through the driving model via the boost the vehicle carries.
 
 import * as THREE from 'three';
-import { refillNitro } from './nitro.js';
+import { refillNitro, nitroStatusText } from './nitro.js';
 
 export const GARAGE_POS = { x: -20, z: -100 };
 
@@ -27,6 +27,11 @@ const ARMOR_PRICE = 400;
 const NEON_PRICE = 300;
 const ENGINE_MAX = 3;
 const ARMOR_MAX = 2;
+// v5: sport suspension (sharper steering, 2 levels) and the nitro tank
+// (a bigger bottle, filled on the spot) — both sold at Vic's garage.
+const SUSPENSION_PRICE = 350;
+const SUSPENSION_MAX = 2;
+const NITRO_TANK_PRICE = 250;
 
 // Neon underglow colours, cycled with the paint rack's spirit: one colour
 // per buy, glowing from beneath the car at night and in the shade.
@@ -43,6 +48,8 @@ export function createGarage(G) {
     ownedId: null,
     ownedType: null,
     hintCooldown: 0,
+    // v5: sport suspension level (0-2) — sharper steering on Mara's car.
+    suspensionLevel: 0,
   };
   // A roller door, a neon sign post and a pair of tool crates mark the shop.
   const group = new THREE.Group();
@@ -113,6 +120,8 @@ export function applyGarageToCar(G, car) {
     repaint(G, car, PAINTS[G.garage.paintIndex % PAINTS.length]);
     applyBoost(car, G.garage.engineLevel);
     applyNeon(G, car);
+    // v5: the suspension tune rides with the car too.
+    car.handlingBoost = 1 + 0.12 * (G.garage.suspensionLevel || 0);
   }
 }
 
@@ -154,8 +163,38 @@ export function garageStatusText(G) {
   const g = G.garage;
   const paint = PAINTS[g.paintIndex % PAINTS.length];
   return `Garage — ${paint.name} · Engine Lv${g.engineLevel}/${ENGINE_MAX} · Armor Lv${g.armorLevel}/${ARMOR_MAX}` +
+    (g.suspensionLevel ? ` · Suspension Lv${g.suspensionLevel}` : '') +
     (g.neon ? ' · Neon on' : '') +
     (g.ownedType ? ` · your ${g.ownedType}` : ' · no car tuned yet');
+}
+
+// v5: sport suspension — Vic stiffens the chassis so the car answers the
+// wheel faster. Two levels, each +12% steering response on Mara's car.
+function trySuspension(G) {
+  const car = ownedCar(G);
+  if (!car) { G.hud.toast('Get in a car and bring it to Vic\'s garage first.'); return; }
+  if (G.garage.suspensionLevel >= SUSPENSION_MAX) { G.hud.toast('Suspension is already maxed — it corners like it is on rails.'); return; }
+  if (G.cash < SUSPENSION_PRICE) { G.hud.toast(`Sport suspension is $${SUSPENSION_PRICE} — you're short.`); return; }
+  G.cash -= SUSPENSION_PRICE;
+  G.garage.suspensionLevel++;
+  car.handlingBoost = 1 + 0.12 * G.garage.suspensionLevel;
+  G.audio.missionSting();
+  G.hud.toast(`Sport suspension Lv${G.garage.suspensionLevel} — sharper steering, flatter corners. ${garageStatusText(G)}`);
+  G.save.save(G);
+}
+
+// v5: the nitro tank — a bigger bottle for the burn, fitted and filled on
+// the spot. Sold here so the garage is the one place that tops everything up.
+function tryNitroTank(G) {
+  const car = ownedCar(G);
+  if (!car) { G.hud.toast('Get in a car and bring it to Vic\'s garage first.'); return; }
+  if (G.cash < NITRO_TANK_PRICE) { G.hud.toast(`A nitro tank is $${NITRO_TANK_PRICE} — you're short.`); return; }
+  if (!G.nitro || !G.nitro.buyTank) { G.hud.toast('No nitro rig on this car yet — Vic needs an engine to bolt it to.'); return; }
+  if (!G.nitro.buyTank(G)) return;
+  G.cash -= NITRO_TANK_PRICE;
+  G.audio.missionSting();
+  G.hud.toast(`Nitro tank fitted and filled — bigger bottle, longer burn. ${nitroStatusText(G)}`);
+  G.save.save(G);
 }
 
 function tryPaint(G) {
@@ -208,10 +247,12 @@ export function updateGarage(G, dt) {
   else if (G.input.pressed('engine')) tryEngine(G);
   else if (G.input.pressed('armor')) tryArmor(G);
   else if (G.input.pressed('neon')) buyNeon(G);
+  else if (G.input.pressed('suspension')) trySuspension(G);
+  else if (G.input.pressed('nitrotank')) tryNitroTank(G);
   else if (g.hintCooldown <= 0) {
     g.hintCooldown = 6;
     G.hud.setInteract(
-      `<b>U</b> paint $${PAINT_PRICE} · <b>I</b> engine $${ENGINE_PRICE} · <b>O</b> armor $${ARMOR_PRICE} · <b>Y</b> neon $${NEON_PRICE} — ${garageStatusText(G)}`);
+      `<b>U</b> paint $${PAINT_PRICE} · <b>I</b> engine $${ENGINE_PRICE} · <b>O</b> armor $${ARMOR_PRICE} · <b>Y</b> neon $${NEON_PRICE} · <b>H</b> suspension $${SUSPENSION_PRICE} · <b>K</b> nitro tank $${NITRO_TANK_PRICE} — ${garageStatusText(G)}`);
   }
   if (g.hintCooldown > 0) g.hintCooldown -= dt;
 }
