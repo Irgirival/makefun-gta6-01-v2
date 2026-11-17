@@ -1,7 +1,7 @@
-// races.js — Solmar street racing: three checkpoint circuits (Downtown,
-// Harbor, Airfield), three AI rivals with rubber-banding, a 3-2-1-GO
-// countdown, live positions, cash prizes and a season ladder that persists
-// in the save. Press G at the plaza start line while driving to race the
+// races.js — Solmar street racing: four checkpoint circuits (Downtown,
+// Harbor, Airfield, Isla Verde), three AI rivals with rubber-banding, a
+// 3-2-1-GO countdown, live positions, cash prizes, fastest times per
+// circuit, and a season ladder that persists in the save. Press G at the
 // next circuit in the ladder. Rivals are real traffic-driven cars whose
 // throttle and steering targets this module sets each frame, so they obey
 // the same arcade physics, wall collisions and car-vs-car bumps as Mara.
@@ -43,6 +43,22 @@ export const RACE_CIRCUITS = [
     points: [
       { x: -260, z: -180 }, { x: -340, z: -180 }, { x: -340, z: -260 },
       { x: -260, z: -260 }, { x: -180, z: -260 }, { x: -180, z: -180 },
+    ],
+  },
+  {
+    id: 'verde',
+    name: 'Isla Verde GP',
+    laps: 2,
+    prize: [2500, 1200, 600, 300],
+    // Out-and-back with a loop on the island: west along 60th, north up
+    // 100th, down the causeway (x -160), a lap of the island streets and
+    // sand, then back up the causeway and home. Every leg follows a road,
+    // the causeway or open sand — no buildings, no boardwalk shops, no
+    // hotel. The lighthouse watches the whole thing.
+    points: [
+      { x: -100, z: 60 }, { x: -100, z: 300 }, { x: -160, z: 300 }, { x: -160, z: 450 },
+      { x: -160, z: 540 }, { x: -230, z: 540 }, { x: -230, z: 600 }, { x: -110, z: 600 },
+      { x: -110, z: 540 }, { x: -160, z: 540 }, { x: -160, z: 300 }, { x: -100, z: 300 },
     ],
   },
 ];

@@ -92,6 +92,18 @@ export function createMinimap(G) {
             ctx.closePath(); ctx.fill();
           }
         }
+        // v3: the next marina-tour buoy, as a gold diamond.
+        const marina = G.boats.marina;
+        if (marina && marina.cooldown <= 0) {
+          const buoy = marina.buoys[marina.next];
+          if (buoy) {
+            const [x, y] = toMap(buoy.x, buoy.z);
+            ctx.fillStyle = '#ffd23e';
+            ctx.beginPath();
+            ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 6, y);
+            ctx.closePath(); ctx.fill();
+          }
+        }
       }
 
       // Buildings as faint blocks (only those in view).

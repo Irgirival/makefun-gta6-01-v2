@@ -12,9 +12,16 @@ const NITRO_REFILL = 6;       // points per second while not burning
 const NITRO_BOOST = 1.35;     // top-speed multiplier while burning
 const NITRO_MIN_TO_FIRE = 12; // need at least this much meter to light it
 
+function nitroMax(G) {
+  // The tank grows with the engine: Lv1 100, Lv2 150, Lv3 200. Vic fits a
+  // bigger bottle every time he rebuilds the motor.
+  const lvl = G.garage?.engineLevel || 0;
+  return 100 + 50 * Math.max(0, lvl - 1);
+}
+
 export function createNitro(G) {
   const nitro = {
-    meter: 100,
+    meter: nitroMax(G),
     burning: false,
     flame: null,
     emptyToastAt: 0,
@@ -47,13 +54,14 @@ export function nitroStatusText(G) {
   const n = G.nitro;
   if (!n) return 'Nitro: not fitted.';
   if (!carCanNitro(G)) return 'Nitro: needs Vic\'s engine Lv1 on your own car.';
-  const bars = Math.round(n.meter / 10);
-  return `Nitro ${'▮'.repeat(bars)}${'▯'.repeat(10 - bars)} ${Math.round(n.meter)}%` +
+  const max = nitroMax(G);
+  const bars = Math.round((n.meter / max) * 10);
+  return `Nitro ${'▮'.repeat(bars)}${'▯'.repeat(10 - bars)} ${Math.round((n.meter / max) * 100)}%` +
     (n.burning ? ' — BURNING!' : ' — hold Shift to burn');
 }
 
 export function refillNitro(G) {
-  if (G.nitro) G.nitro.meter = 100;
+  if (G.nitro) G.nitro.meter = nitroMax(G);
 }
 
 export function updateNitro(G, dt) {
@@ -93,7 +101,7 @@ export function updateNitro(G, dt) {
   if (!n.burning) {
     // The tank refills on its own, faster when parked.
     const rate = NITRO_REFILL * (car ? 1 : 2.5);
-    n.meter = Math.min(100, n.meter + rate * dt);
+    n.meter = Math.min(nitroMax(G), n.meter + rate * dt);
     if (car) car.nitroBoost = 1;
   }
   // The flame belongs to one car: if Mara swapped cars, hide the old flame.

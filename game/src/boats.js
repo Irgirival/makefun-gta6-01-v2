@@ -15,8 +15,9 @@ const BOAT_SPOTS = [
   { x: -101, z: 571, heading: 0, name: 'Verde Voyager' },
 ];
 
-// The harbor tour: five orange buoys ring the channel. Sail through them in
-// order while aboard a boat and the harbor master pays $500. Repeatable.
+// Two tour rings: the harbor ring (orange buoys, $500) and the marina ring
+// in the bay south of Isla Verde (gold buoys, $750). Sail each ring's five
+// buoys in order while aboard a boat and the harbor master pays. Repeatable.
 const TOUR_BUOYS = [
   { x: 352, z: -120 },
   { x: 390, z: -40 },
@@ -24,7 +25,15 @@ const TOUR_BUOYS = [
   { x: 352, z: 180 },
   { x: 330, z: 40 },
 ];
+const MARINA_BUOYS = [
+  { x: -240, z: 620 },
+  { x: -80, z: 620 },
+  { x: -80, z: 690 },
+  { x: -240, z: 690 },
+  { x: -160, z: 660 },
+];
 const TOUR_PRIZE = 500;
+const MARINA_PRIZE = 750;
 
 const BOAT_TOP_SPEED = 26;
 const BOAT_ACCEL = 12;
@@ -67,7 +76,11 @@ function buildBoatMesh(color) {
 }
 
 export function createBoats(G) {
-  const boats = { list: [], boarded: null, wakeTimer: 0, tour: { next: 0, done: 0, earned: 0, cooldown: 0 } };
+  const boats = {
+    list: [], boarded: null, wakeTimer: 0,
+    tour: { next: 0, done: 0, earned: 0, cooldown: 0 },
+    marina: { next: 0, done: 0, earned: 0, cooldown: 0 },
+  };
   const colors = [0xd81a2a, 0x1a6ad8, 0xf0f0f0, 0xd8a03a, 0x2a7a3a];
   BOAT_SPOTS.forEach((spot, i) => {
     const mesh = buildBoatMesh(colors[i % colors.length]);
@@ -85,15 +98,24 @@ export function createBoats(G) {
       wake: [],
     });
   });
-  // The tour buoys: orange spheres on striped posts, bobbing in the channel.
-  boats.tour.buoys = TOUR_BUOYS.map((spot, i) => {
+  // Two tour rings, one builder: colored spheres on striped posts, bobbing.
+  boats.tour.buoys = buildBuoyRing(G, TOUR_BUOYS, 0xff5a2a);
+  boats.marina.buoys = buildBuoyRing(G, MARINA_BUOYS, 0xffd23e);
+  G.boats = boats;
+  return boats;
+}
+
+function buildBuoyRing(G, spots, color) {
+  // One ring of tour buoys: a ball on a post with a floating ring, bobbing
+  // on the swell. Returns the buoy records with their scene groups.
+  return spots.map((spot, i) => {
     const group = new THREE.Group();
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 2.6, 6),
       new THREE.MeshLambertMaterial({ color: 0xf0f0f0 }));
     post.position.y = 1.3;
     group.add(post);
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 8),
-      new THREE.MeshLambertMaterial({ color: 0xff5a2a, emissive: 0x661100 }));
+      new THREE.MeshLambertMaterial({ color, emissive: 0x442200 }));
     ball.position.y = 2.9;
     group.add(ball);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.18, 6, 12),
@@ -105,8 +127,6 @@ export function createBoats(G) {
     G.scene.add(group);
     return { ...spot, group, ball, index: i };
   });
-  G.boats = boats;
-  return boats;
 }
 
 export function nearestBoat(G) {
@@ -191,48 +211,55 @@ function clampToWater(G, boat) {
   G.audio.crash();
 }
 
-function updateTour(G, boat, dt) {
-  // Sail the buoys in order: 1 → 5 around the harbor channel.
-  const tour = G.boats.tour;
-  if (tour.cooldown > 0) {
-    tour.cooldown -= dt;
-    if (tour.cooldown <= 0) {
-      tour.next = 0;
-      G.hud.toast('The harbor tour buoys are set again — sail the ring for $500.');
+function updateTourRing(G, boat, ring, label, prize, dt) {
+  // Sail the ring's buoys in order: 1 → 5. Each ring keeps its own
+  // progress, payout and reset timer.
+  if (ring.cooldown > 0) {
+    ring.cooldown -= dt;
+    if (ring.cooldown <= 0) {
+      ring.next = 0;
+      G.hud.toast(`The ${label} buoys are set again — sail the ring for $${prize}.`);
     }
     return;
   }
-  const buoy = tour.buoys[tour.next];
+  const buoy = ring.buoys[ring.next];
   if (!buoy) return;
   const d = Math.hypot(buoy.x - boat.pos.x, buoy.z - boat.pos.z);
   if (d < 7) {
-    tour.next++;
+    ring.next++;
     G.audio.pickup();
-    if (tour.next >= tour.buoys.length) {
-      tour.done++;
-      tour.earned += TOUR_PRIZE;
-      G.cash += TOUR_PRIZE;
-      tour.cooldown = 30;
+    if (ring.next >= ring.buoys.length) {
+      ring.done++;
+      ring.earned += prize;
+      G.cash += prize;
+      ring.cooldown = 30;
       G.hud.showDialogue([
-        `HARBOR TOUR COMPLETE — all five buoys, one clean ring around the channel!`,
-        `The harbor master pays $${TOUR_PRIZE}. Tours completed: ${tour.done} ($${tour.earned} total).`,
+        `${label.toUpperCase()} COMPLETE — all five buoys, one clean ring!`,
+        `The harbor master pays $${prize}. ${label} tours completed: ${ring.done} ($${ring.earned} total).`,
         'The buoys reset in 30 seconds — the ring is there whenever you want it.',
       ]);
       G.audio.missionComplete();
       G.save.save(G);
     } else {
-      G.hud.toast(`Tour buoy ${tour.next}/${tour.buoys.length} — next one is marked on the minimap.`);
+      G.hud.toast(`${label} buoy ${ring.next}/${ring.buoys.length} — next one is marked on the minimap.`);
     }
   }
+}
+
+function updateTour(G, boat, dt) {
+  updateTourRing(G, boat, G.boats.tour, 'Harbor tour', TOUR_PRIZE, dt);
+  updateTourRing(G, boat, G.boats.marina, 'Marina tour', MARINA_PRIZE, dt);
 }
 
 export function updateBoats(G, dt) {
   const boats = G.boats;
   if (!boats) return;
-  // The buoys bob on the swell even when nobody is sailing.
-  for (const buoy of boats.tour.buoys) {
-    buoy.group.position.y = Math.sin(G.elapsed * 1.3 + buoy.index * 1.1) * 0.15;
-    buoy.ball.rotation.y += dt * 0.8;
+  // Both rings' buoys bob on the swell even when nobody is sailing.
+  for (const ring of [boats.tour, boats.marina]) {
+    for (const buoy of ring.buoys) {
+      buoy.group.position.y = Math.sin(G.elapsed * 1.3 + buoy.index * 1.1) * 0.15;
+      buoy.ball.rotation.y += dt * 0.8;
+    }
   }
   // Boarding prompt when on foot near a moored boat.
   if (!G.boating && !G.driving && !G.shot) {
@@ -293,6 +320,8 @@ export function updateBoats(G, dt) {
 export function boatStatusText(G) {
   if (!G.boats) return 'No boats yet.';
   const t = G.boats.tour;
+  const m = G.boats.marina;
   return `${G.boats.list.length} boats — harbor (3) and Isla Verde marina (2) · ` +
-    `harbor tour ${t.next}/${t.buoys.length} buoys · ${t.done} tours ($${t.earned})`;
+    `harbor tour ${t.next}/${t.buoys.length} buoys · ${t.done} tours ($${t.earned}) · ` +
+    `marina tour ${m.next}/${m.buoys.length} buoys · ${m.done} tours ($${m.earned})`;
 }

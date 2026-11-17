@@ -48,6 +48,7 @@ import { createVigilante, updateVigilante } from './vigilante.js';
 import { registerFinale, updateFinale, EPILOGUE_TEXT } from './finale.js';
 // v3: nitro boost for Mara's tuned car, and the harbor boat tour.
 import { createNitro, updateNitro, refillNitro } from './nitro.js';
+import { createStats, updateStats } from './stats.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -154,6 +155,7 @@ createRadio(G);
 createVigilante(G);
 registerFinale(G);
 createNitro(G);
+createStats(G);
 
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
@@ -370,6 +372,7 @@ function frame() {
     if (G.input.pressed('pause')) {
       G.mode = 'paused';
       pauseEl.classList.remove('hidden');
+      updateStats(G); // the career scorecard is fresh every time you pause
       document.exitPointerLock?.();
     }
     if (G.input.pressed('mute')) {

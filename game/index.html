@@ -83,6 +83,12 @@
   .menu button.ghost { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.4); }
   .menu button:hover { filter: brightness(1.12); }
   .menu .keys { margin-top: 26px; font-size: 13px; color: #9fc3dd; line-height: 1.9; }
+  .statsPanel { width: 420px; max-width: 90vw; margin-top: 14px; background: rgba(8,20,32,.72);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: 10px 14px; text-align: left; }
+  .statRow { display: flex; justify-content: space-between; gap: 18px; font-size: 13px;
+    line-height: 1.7; color: #d7e9f7; }
+  .statKey { color: #9fc3dd; letter-spacing: 1px; text-transform: uppercase; font-size: 11px; padding-top: 2px; }
+  .statVal { font-weight: 600; text-align: right; }
   .menu .keys b { color: #fff; }
   .menu .foot { margin-top: 18px; font-size: 12px; color: #6f93ad; }
   #endTitle { font-size: 58px; }
@@ -141,7 +147,8 @@
     <b>R</b> reload &nbsp;·&nbsp; <b>J</b> taxi job &nbsp;·&nbsp; <b>C</b> courier run &nbsp;·&nbsp; <b>T</b> weather<br>
     <b>G</b> street race &nbsp;·&nbsp; <b>V</b> vigilante contract &nbsp;·&nbsp; <b>N</b> radio &nbsp;·&nbsp; <b>E</b> board a boat<br>
     <b>U / I / O</b> garage paint, engine, armor &nbsp;·&nbsp; <b>Y</b> neon underglow &nbsp;·&nbsp; <b>Shift</b> nitro (engine Lv1+)<br>
-    safehouse clears the heat &nbsp;·&nbsp; Isla Verde across the bridge &nbsp;·&nbsp; harbor tour buoys pay $500
+    safehouse clears the heat &nbsp;·&nbsp; Isla Verde across the bridge &nbsp;·&nbsp; harbor tour buoys pay $500, marina tour $750<br>
+    pause for Mara's career stats &nbsp;·&nbsp; Isla Verde GP is the richest race circuit
   </div>
   <div class="foot">An original game. Solmar City, Mara Solano and every character are invented here —
     no names, art or music from any other game. Progress saves automatically.</div>
@@ -150,6 +157,7 @@
 <div id="pause" class="menu hidden">
   <h1 style="font-size:44px">PAUSED</h1>
   <p class="sub">Solmar City waits for no one — except right now.</p>
+  <div id="statsPanel" class="statsPanel"></div>
   <div class="btns">
     <button id="btnResume">RESUME</button>
     <button id="btnSaveQuit" class="ghost">SAVE &amp; QUIT TO TITLE</button>
