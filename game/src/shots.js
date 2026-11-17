@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { createVehicle, enterCar } from './vehicles.js';
-import { startMission } from './missions.js';
+import { startMission, MISSIONS, placeMarker } from './missions.js';
 
 export const SHOT_NAMES = ['start', 'drive', 'chase', 'mission'];
 
@@ -22,8 +22,8 @@ export function applyShot(G, name) {
   G.audio.setMuted(true);
 
   if (name === 'start') {
-    // On foot in the plaza: fountain, pedestrians, downtown towers behind.
-    p.pos.set(8, 0, 34);
+    // On foot in the plaza: fountain ahead, pedestrians, downtown towers.
+    p.pos.set(20, 0, 40);
     p.heading = Math.PI;           // face the fountain / downtown
     p.camYaw = 0;
     p.camPitch = 0.3;
@@ -41,29 +41,34 @@ export function applyShot(G, name) {
     car.speed = 22;
     G.input.keys.add('forward');
     startMission(G, 0);
+    // Jump the mission to the driving step so the objective matches the shot.
+    const def = MISSIONS[0];
+    G.missions.step = 2;
+    G.hud.setMission(def.title, def.steps[2].text, def.steps[2].hint);
+    placeMarker(G, def.steps[2].target);
     // Traffic ahead in both lanes so the avenue feels alive.
     const t1 = createVehicle(G, 'sedan', 3.4, 60, Math.PI, { driver: 'traffic', occupied: true });
     t1.speed = 12; t1.route = { axis: 'z', dir: -1, nextTurn: 200 }; t1.cruiseSpeed = 12;
     const t2 = createVehicle(G, 'taxi', -3.4, 30, 0, { driver: 'traffic', occupied: true });
     t2.speed = 11; t2.route = { axis: 'z', dir: 1, nextTurn: 200 }; t2.cruiseSpeed = 11;
-    const t3 = createVehicle(G, 'van', 3.4, 90, Math.PI, { driver: 'traffic', occupied: true });
+    const t3 = createVehicle(G, 'van', 3.4, 20, Math.PI, { driver: 'traffic', occupied: true });
     t3.speed = 10; t3.route = { axis: 'z', dir: -1, nextTurn: 200 }; t3.cruiseSpeed = 10;
   } else if (name === 'chase') {
-    // Three stars, two cruisers on Mara's tail, downtown in the background.
-    const car = createVehicle(G, 'sports', 80, -40, -Math.PI / 2, { parked: false });
-    p.pos.set(80, 0, -40);
+    // Three stars on the westbound avenue: two cruisers on Mara's tail.
+    const car = createVehicle(G, 'sports', 180, -20, -Math.PI / 2, { parked: false });
+    p.pos.set(180, 0, -20);
     enterCar(G, car);
     car.speed = 26;
     G.input.keys.add('forward');
     G.wanted.addHeat(62, 'shot setup');
     startMission(G, 2);
-    const c1 = createVehicle(G, 'police', 104, -38, -Math.PI / 2, { driver: 'police', occupied: true });
+    const c1 = createVehicle(G, 'police', 205, -20, -Math.PI / 2, { driver: 'police', occupied: true });
     c1.speed = 30;
     G.policeCars.push(c1);
-    const c2 = createVehicle(G, 'police', 112, -46, -Math.PI / 2, { driver: 'police', occupied: true });
+    const c2 = createVehicle(G, 'police', 212, -26, -Math.PI / 2, { driver: 'police', occupied: true });
     c2.speed = 28;
     G.policeCars.push(c2);
-    const ct = createVehicle(G, 'sedan', 76, 10, -Math.PI / 2, { driver: 'traffic', occupied: true });
+    const ct = createVehicle(G, 'sedan', 60, -16.6, -Math.PI / 2, { driver: 'traffic', occupied: true });
     ct.speed = 12; ct.route = { axis: 'x', dir: -1, nextTurn: 200 }; ct.cruiseSpeed = 12;
   } else if (name === 'mission') {
     // Mission 3 at the harbor: Mara on foot, the gold marker, docks and water.
@@ -82,22 +87,23 @@ export function applyShot(G, name) {
 }
 
 // Fixed camera per shot, applied every frame so mouse input cannot move it.
+// The player (or her car) sits low in the frame, the city ahead fills the rest.
 export function poseShotCamera(G) {
   const p = G.player;
   const cam = G.camera;
   if (G.shot === 'start') {
-    cam.position.set(p.pos.x + 7, 4.6, p.pos.z + 10);
-    cam.lookAt(p.pos.x - 2, 1.6, p.pos.z - 18);
+    cam.position.set(p.pos.x + 3, 3.8, p.pos.z + 7.5);
+    cam.lookAt(p.pos.x - 1, 1.5, p.pos.z - 12);
   } else if (G.shot === 'drive') {
     const v = G.driving;
-    cam.position.set(v.pos.x + 9, 5.2, v.pos.z + 13);
-    cam.lookAt(v.pos.x, 1.4, v.pos.z - 30);
+    cam.position.set(v.pos.x + 8, 4.6, v.pos.z + 12);
+    cam.lookAt(v.pos.x, 1.4, v.pos.z - 28);
   } else if (G.shot === 'chase') {
     const v = G.driving;
-    cam.position.set(v.pos.x + 10, 6, v.pos.z + 15);
-    cam.lookAt(v.pos.x - 4, 1.4, v.pos.z - 26);
+    cam.position.set(v.pos.x + 11, 5.5, v.pos.z + 13);
+    cam.lookAt(v.pos.x - 6, 1.4, v.pos.z - 24);
   } else if (G.shot === 'mission') {
-    cam.position.set(p.pos.x - 11, 5.4, p.pos.z + 11);
-    cam.lookAt(p.pos.x + 8, 1.6, p.pos.z - 12);
+    cam.position.set(p.pos.x - 12, 4.6, p.pos.z + 12);
+    cam.lookAt(p.pos.x + 10, 1.4, p.pos.z - 14);
   }
 }

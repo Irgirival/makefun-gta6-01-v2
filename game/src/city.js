@@ -5,7 +5,7 @@
 // with. All placement is seeded, so the same seed builds the same city.
 
 import * as THREE from 'three';
-import { makeRng, pick, range, rangeInt, hash2 } from './random.js';
+import { makeRng, pick, range, rangeInt, chance, hash2 } from './random.js';
 
 const ROAD_COLORS = { asphalt: 0x2e3138, line: 0xd8d3c0, sidewalk: 0x9aa0a3, curb: 0x6e7276 };
 const BUILDING_PALETTE = [
@@ -149,10 +149,24 @@ export function buildCity(G) {
       const distCenter = Math.hypot(bx, bz);
       // Harbor strip: east edge blocks become docks, not buildings.
       if (bx >= cfg.harborX - cfg.blockSize) {
+        // Working docks: piers, sheds, stacked containers and a crane.
+        const hrng = makeRng(Math.floor(hash2(bx, bz) * 1e9) + G.seed + 5);
         if (bz % 160 === 0) {
           box(50, 1.2, 16, 0x8a7a5a, bx + 30, 0.6, bz); // pier
           box(10, 6, 8, 0x4a6a8a, bx + 46, 3, bz - 4);  // dock shed
-          box(14, 3, 6, 0xc9a03a, bx + 20, 1.5, bz + 6); // container
+        }
+        const contColors = [0xc9a03a, 0x3a7ad8, 0xd83a3a, 0x3a8a5a];
+        for (let i = 0; i < 3; i++) {
+          const cx = bx + range(hrng, -10, 30);
+          const cz = bz + range(hrng, -24, 24);
+          box(12, 3, 5, pick(hrng, contColors), cx, 1.5, cz);
+          if (chance(hrng, 0.5)) box(12, 3, 5, pick(hrng, contColors), cx, 4.5, cz);
+        }
+        // Dock crane on every other harbor block.
+        if (Math.abs(bz / 80) % 2 === 0) {
+          box(2, 22, 2, 0xd8a03a, bx + 24, 11, bz + 20);
+          box(2, 22, 2, 0xd8a03a, bx + 34, 11, bz + 20);
+          box(16, 2, 2, 0xd8a03a, bx + 29, 21, bz + 20);
         }
         continue;
       }

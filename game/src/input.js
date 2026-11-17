@@ -32,10 +32,18 @@ export function createInput(canvas) {
     KeyP: 'pause', Escape: 'pause',
   };
 
+  // Edge-triggered actions live in their own queue: a quick tap must still
+  // be seen by the next frame even if keyup already fired. The queue is
+  // cleared at the end of each frame (see endFrame), never by keyup.
+  const pressedQueue = new Set();
+
   window.addEventListener('keydown', (e) => {
     const action = KEYMAP[e.code];
     if (action) {
-      if (!e.repeat) input.keys.add(action);
+      if (!e.repeat) {
+        input.keys.add(action);
+        pressedQueue.add(action);
+      }
       if (action === 'jump' || action === 'pause') e.preventDefault();
     }
   });
@@ -80,20 +88,23 @@ export function createInput(canvas) {
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // Edge-triggered actions: true once on the frame the key went down.
+  // The first reader in a frame consumes the press.
   input.pressed = (action) => {
-    if (input.keys.has(action)) {
-      input.keys.delete(action);
+    if (pressedQueue.has(action)) {
+      pressedQueue.delete(action);
       return true;
     }
     return false;
   };
   input.down = (action) => input.keys.has(action);
 
-  // Called at the end of each frame: mouse deltas are per-frame.
+  // Called at the end of each frame: mouse deltas, clicks and the pressed
+  // queue are per-frame.
   input.endFrame = () => {
     input.mouseDX = 0;
     input.mouseDY = 0;
     input.mouseClicked = false;
+    pressedQueue.clear();
   };
 
   return input;

@@ -14,7 +14,7 @@ export function createWanted(G) {
     lastCrimeAt: -999,
     lastSeenAt: -999,
     arrestTimer: 0,
-    roadblockAt: -999,
+    roadblockAt: 0,        // first roadblock only after 45 s of play
     addHeat(amount, reason) {
       const was = this.stars;
       this.heat = Math.min(100, this.heat + amount);

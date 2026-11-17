@@ -285,12 +285,15 @@ function frame() {
       G.audio.engineStop();
     }
 
-    // Interact prompt when a car is in reach.
-    if (!G.driving) {
-      const car = nearestEnterableCar(G);
-      G.hud.setInteract(car ? `<b>E</b> — take the ${car.spec.name}` : null);
-    } else {
-      G.hud.setInteract(`<b>E</b> — get out of the ${G.driving.spec.name}`);
+    // Interact prompt when a car is in reach (hidden in shot mode: the
+    // prompt would overlap the mission dialogue in the screenshots).
+    if (!G.shot) {
+      if (!G.driving) {
+        const car = nearestEnterableCar(G);
+        G.hud.setInteract(car ? `<b>E</b> — take the ${car.spec.name}` : null);
+      } else {
+        G.hud.setInteract(`<b>E</b> — get out of the ${G.driving.spec.name}`);
+      }
     }
 
     stepWorld(dt);

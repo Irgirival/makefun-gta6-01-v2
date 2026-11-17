@@ -95,6 +95,7 @@ export function createVehicle(G, type, x, z, heading, opts = {}) {
     parked: opts.parked ?? false,
     radius: 2.2,
     brakeLights: false,
+    crashCooldown: 0,    // gates crash sound + heat so one smash counts once
     id: G.vehicles.length,
   };
   G.vehicles.push(v);
@@ -163,10 +164,14 @@ export function updateVehicle(G, v, dt, input) {
   const nz = v.pos.z + Math.cos(v.heading) * v.speed * dt;
   const before = v.pos.clone();
   v.pos.x = nx; v.pos.z = nz;
+  if (v.crashCooldown > 0) v.crashCooldown -= dt;
   const hitWall = G.city.collideCircle(v.pos, v.radius);
   if (hitWall) {
     v.speed *= 0.45; // scrape the wall, lose speed
-    if (isPlayer && Math.abs(v.speed) > 6) G.audio.crash();
+    if (isPlayer && Math.abs(v.speed) > 6 && v.crashCooldown <= 0) {
+      G.audio.crash();
+      v.crashCooldown = 1.5;
+    }
   }
   // Car-vs-car: push apart and trade a little speed.
   for (const other of G.vehicles) {
@@ -182,9 +187,18 @@ export function updateVehicle(G, v, dt, input) {
         if (!other.parked) { other.pos.x -= ux * push; other.pos.z -= uz * push; }
         const impact = Math.abs(v.speed - other.speed);
         v.speed *= 0.7;
-        if (isPlayer && impact > 8) {
+        if (isPlayer && impact > 8 && v.crashCooldown <= 0) {
           G.audio.crash();
-          G.wanted.addHeat(G.config.heatPerCrime.hitPed * 0.5, 'crash');
+          v.crashCooldown = 1.5;
+          // Only the aggressor raises the heat: Mara is at fault only when
+          // she is moving toward the car she hits. Being rear-ended by a
+          // cruiser — even a slower one — is the PD's fault, not hers.
+          const dxN = (other.pos.x - v.pos.x) / d;
+          const dzN = (other.pos.z - v.pos.z) / d;
+          const closing = Math.sin(v.heading) * v.speed * dxN + Math.cos(v.heading) * v.speed * dzN;
+          if (closing > 2) {
+            G.wanted.addHeat(G.config.heatPerCrime.hitPed * 0.5, 'crash');
+          }
         }
       }
     }
