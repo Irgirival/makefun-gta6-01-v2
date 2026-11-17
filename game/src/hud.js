@@ -100,6 +100,11 @@ export function createHud(G) {
         this.speed.classList.remove('hidden');
         const kmh = Math.round(Math.abs(G.driving.speed) * 3.6);
         this.speed.innerHTML = `${kmh} <small>km/h</small>`;
+      } else if (G.boating) {
+        // v3: the speedo reads knots of boat speed while sailing.
+        this.speed.classList.remove('hidden');
+        const kmh = Math.round(Math.abs(G.boating.speed) * 3.6);
+        this.speed.innerHTML = `${kmh} <small>km/h · sailing</small>`;
       } else {
         this.speed.classList.add('hidden');
       }

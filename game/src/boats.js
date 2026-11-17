@@ -1,0 +1,224 @@
+// boats.js — Solmar's water: stealable, drivable boats at the harbor and
+// the Isla Verde marina. Press E near a moored boat to climb aboard; WASD
+// steers with a slow, heavy boat feel, the hull bobs on the swell and a
+// foam wake trails behind at speed. Press E again to hop off at the shore.
+// Boats live outside the car list: they have their own physics, camera and
+// collision (they bounce off the harbor walls and the island shore).
+
+import * as THREE from 'three';
+
+const BOAT_SPOTS = [
+  { x: 352, z: -60, heading: Math.PI / 2, name: 'Harbor Runner' },
+  { x: 352, z: 40, heading: Math.PI / 2, name: 'Bay Cruiser' },
+  { x: 352, z: 140, heading: -Math.PI / 2, name: 'Dock Skipper' },
+  { x: -129, z: 571, heading: 0, name: 'Marina Star' },
+  { x: -101, z: 571, heading: 0, name: 'Verde Voyager' },
+];
+
+const BOAT_TOP_SPEED = 26;
+const BOAT_ACCEL = 12;
+const BOAT_TURN = 0.9;
+
+function buildBoatMesh(color) {
+  const group = new THREE.Group();
+  const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1, 6.4), mat(color));
+  hull.position.y = 0.6;
+  group.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.2, 4), mat(color));
+  bow.rotation.x = Math.PI / 2;
+  bow.rotation.y = Math.PI / 4;
+  bow.position.set(0, 0.6, 4.2);
+  bow.scale.set(1, 1, 0.6);
+  group.add(bow);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.3, 4.6), mat(0xe8e0c8));
+  deck.position.y = 1.15;
+  group.add(deck);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.1, 2.2), mat(0x1a2a3a));
+  cabin.position.set(0, 1.8, -0.6);
+  group.add(cabin);
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 0.15),
+    new THREE.MeshLambertMaterial({ color: 0x9fd8e8, emissive: 0x224455 }));
+  windshield.position.set(0, 1.9, 0.55);
+  windshield.rotation.x = -0.3;
+  group.add(windshield);
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.12, 6.2), mat(0x8a8a8a));
+  rail.position.y = 1.35;
+  group.add(rail);
+  for (const sx of [-0.9, 0.9]) {
+    const light = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2),
+      new THREE.MeshLambertMaterial({ color: 0xfff2b0, emissive: 0x888844 }));
+    light.position.set(sx, 1.3, 3.1);
+    group.add(light);
+  }
+  group.userData.wake = [];
+  return group;
+}
+
+export function createBoats(G) {
+  const boats = { list: [], boarded: null, wakeTimer: 0 };
+  const colors = [0xd81a2a, 0x1a6ad8, 0xf0f0f0, 0xd8a03a, 0x2a7a3a];
+  BOAT_SPOTS.forEach((spot, i) => {
+    const mesh = buildBoatMesh(colors[i % colors.length]);
+    mesh.position.set(spot.x, 0.3, spot.z);
+    mesh.rotation.y = spot.heading;
+    G.scene.add(mesh);
+    boats.list.push({
+      name: spot.name,
+      mesh,
+      pos: new THREE.Vector3(spot.x, 0, spot.z),
+      heading: spot.heading,
+      speed: 0,
+      steer: 0,
+      bobPhase: i * 1.3,
+      wake: [],
+    });
+  });
+  G.boats = boats;
+  return boats;
+}
+
+export function nearestBoat(G) {
+  const p = G.player.pos;
+  let best = null, bd = 5;
+  for (const b of G.boats.list) {
+    const d = Math.hypot(b.pos.x - p.x, b.pos.z - p.z);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+
+export function enterBoat(G, boat) {
+  G.boats.boarded = boat;
+  G.boating = boat;
+  G.player.group.visible = false;
+  // Taking a boat that is not yours is still a crime in Solmar.
+  G.wanted.addHeat(G.config.heatPerCrime.boat || 18, 'boat theft');
+  G.hud.toast(`Aboard the ${boat.name} — WASD to sail, E to hop off at the shore.`);
+  G.audio.doorSlam();
+  G.audio.engineStart();
+}
+
+export function exitBoat(G) {
+  const boat = G.boats.boarded;
+  if (!boat) return;
+  // Step off onto the nearest dry side: the shore is whichever way the
+  // water is not. Boats sit in water; the player lands beside the hull.
+  const side = Math.abs(boat.pos.x) > Math.abs(boat.pos.z) ? { x: -4, z: 0 } : { x: 0, z: -4 };
+  G.player.pos.set(boat.pos.x + side.x, 0, boat.pos.z + side.z);
+  G.player.group.position.copy(G.player.pos);
+  G.player.group.visible = true;
+  boat.speed = 0;
+  G.boats.boarded = null;
+  G.boating = null;
+  G.hud.toast(`Off the ${boat.name}. Dry land, solid ground.`);
+}
+
+function dropWake(G, boat, dt) {
+  // A fading foam quad behind the stern while the boat is moving.
+  boat.wakeTimer = (boat.wakeTimer || 0) - dt;
+  if (boat.wakeTimer > 0 || Math.abs(boat.speed) < 6) return;
+  boat.wakeTimer = 0.12;
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+  w.rotation.x = -Math.PI / 2;
+  w.position.set(
+    boat.pos.x - Math.sin(boat.heading) * 3.4,
+    0.35,
+    boat.pos.z - Math.cos(boat.heading) * 3.4);
+  G.scene.add(w);
+  boat.wake.push({ mesh: w, life: 1.6 });
+}
+
+function updateWake(G, boat, dt) {
+  for (let i = boat.wake.length - 1; i >= 0; i--) {
+    const w = boat.wake[i];
+    w.life -= dt;
+    w.mesh.material.opacity = Math.max(0, w.life / 1.6) * 0.5;
+    w.mesh.scale.setScalar(1 + (1.6 - w.life) * 0.8);
+    if (w.life <= 0) {
+      G.scene.remove(w.mesh);
+      w.mesh.material.dispose();
+      boat.wake.splice(i, 1);
+    }
+  }
+}
+
+function clampToWater(G, boat) {
+  // Keep boats in the water: east harbor channel, south sea, island bay.
+  // If a boat noses onto land, push it back and scrub its speed.
+  const p = boat.pos;
+  const inHarbor = p.x > 322 && p.x < 430;
+  const inSea = p.z > 400 && p.z < 700;
+  const inBay = p.x > -260 && p.x < -60 && p.z > 440 && p.z < 660;
+  const inChannel = p.x > 300 && p.z > 300 && p.z < 430;
+  if (inHarbor || inSea || inBay || inChannel) return;
+  // Nearest water wins: shove the boat back toward the channel it left.
+  if (p.z >= 300) { p.z = 420; boat.speed *= -0.2; }
+  else if (p.x >= 300) { p.x = 340; boat.speed *= -0.2; }
+  else { p.z = Math.min(p.z, 400); p.x = Math.max(p.x, 330); boat.speed *= 0.2; }
+  G.audio.crash();
+}
+
+export function updateBoats(G, dt) {
+  const boats = G.boats;
+  if (!boats) return;
+  // Boarding prompt when on foot near a moored boat.
+  if (!G.boating && !G.driving && !G.shot) {
+    const near = nearestBoat(G);
+    if (near) G.hud.setInteract(`<b>E</b> — board the ${near.name}`);
+  }
+  for (const b of boats.list) {
+    // Idle boats bob gently on the swell.
+    const bob = Math.sin(G.elapsed * 1.4 + b.bobPhase) * 0.12;
+    const roll = Math.sin(G.elapsed * 0.9 + b.bobPhase) * 0.03;
+    if (b !== boats.boarded) {
+      b.mesh.position.set(b.pos.x, 0.3 + bob, b.pos.z);
+      b.mesh.rotation.set(roll, b.heading, 0);
+    }
+    updateWake(G, b, dt);
+  }
+  const boat = boats.boarded;
+  if (!boat) return;
+  const input = G.input;
+  const throttle = input.down('forward') ? 1 : input.down('back') ? -0.5 : 0;
+  const steerTarget = (input.down('left') ? 1 : 0) - (input.down('right') ? 1 : 0);
+  boat.steer += (steerTarget - boat.steer) * Math.min(1, dt * 3);
+  if (Math.abs(boat.speed) > 1) {
+    boat.heading += boat.steer * BOAT_TURN * dt * (boat.speed > 0 ? 1 : -1)
+      * Math.min(1, Math.abs(boat.speed) / 8 + 0.2);
+  }
+  if (throttle > 0) boat.speed += BOAT_ACCEL * throttle * dt;
+  if (throttle < 0) boat.speed += BOAT_ACCEL * throttle * 0.7 * dt;
+  boat.speed -= boat.speed * 0.35 * dt;
+  boat.speed = Math.max(-BOAT_TOP_SPEED * 0.4, Math.min(BOAT_TOP_SPEED, boat.speed));
+  boat.pos.x += Math.sin(boat.heading) * boat.speed * dt;
+  boat.pos.z += Math.cos(boat.heading) * boat.speed * dt;
+  clampToWater(G, boat);
+  // v3: rain chops the swell — the bob grows with the weather's chop.
+  const chop = G.weather ? G.weather.chop : 0.1;
+  const bobAmp = 0.14 + chop * 0.5;
+  const bob = Math.sin(G.elapsed * 1.6 + boat.bobPhase) * bobAmp
+    + Math.abs(boat.speed) * 0.004 * Math.sin(G.elapsed * 6);
+  const roll = Math.sin(G.elapsed * 0.9 + boat.bobPhase) * 0.04 - boat.steer * 0.05;
+  boat.mesh.position.set(boat.pos.x, 0.3 + bob, boat.pos.z);
+  boat.mesh.rotation.set(roll, boat.heading, boat.steer * 0.04);
+  dropWake(G, boat, dt);
+  // Mara rides on the deck: keep her hidden but her position on the boat.
+  G.player.pos.set(boat.pos.x, 0, boat.pos.z);
+  G.player.group.position.copy(G.player.pos);
+  // Chase camera behind the boat, higher than the car camera.
+  const cam = G.camera;
+  const back = 13, up = 6;
+  const cx = boat.pos.x - Math.sin(boat.heading) * back;
+  const cz = boat.pos.z - Math.cos(boat.heading) * back;
+  cam.position.set(cx, up, cz);
+  cam.lookAt(boat.pos.x, 1.2, boat.pos.z);
+  G.hud.setObjectiveHint(`Sailing the ${boat.name} — ${Math.round(Math.abs(boat.speed) * 3.6)} km/h · E to hop off`);
+  G.audio.engineSet(Math.abs(boat.speed) / BOAT_TOP_SPEED);
+}
+
+export function boatStatusText(G) {
+  if (!G.boats) return 'No boats yet.';
+  return `${G.boats.list.length} boats — harbor (3) and Isla Verde marina (2)`;
+}

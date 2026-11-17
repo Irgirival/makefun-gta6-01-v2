@@ -60,6 +60,28 @@ export function createMinimap(G) {
         ctx.beginPath(); ctx.moveTo(rx1, ry1); ctx.lineTo(rx2, ry1); ctx.stroke();
       }
 
+      // v3: Isla Verde — a sand disc south across the water, the causeway
+      // bridge to it, and the boats as cyan dots in the harbor and marina.
+      if (G.isla) {
+        const [ix, iy] = toMap(-160, 540);
+        const ir = 95 * scale;
+        ctx.fillStyle = '#c9b078';
+        ctx.beginPath(); ctx.arc(ix, iy, Math.max(2, ir), 0, Math.PI * 2); ctx.fill();
+        const [bx1, by1] = toMap(-160, 340);
+        const [bx2, by2] = toMap(-160, 500);
+        ctx.strokeStyle = '#8a8a86';
+        ctx.lineWidth = Math.max(2, 14 * scale);
+        ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+      }
+      if (G.boats) {
+        ctx.fillStyle = '#4dd2ff';
+        for (const b of G.boats.list) {
+          const [x, y] = toMap(b.pos.x, b.pos.z);
+          if (x < 0 || y < 0 || x > W || y > H) continue;
+          ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
       // Buildings as faint blocks (only those in view).
       ctx.fillStyle = 'rgba(200,200,190,0.35)';
       for (const b of G.city.colliders) {

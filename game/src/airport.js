@@ -18,6 +18,8 @@ const RUNWAY = { z: -260, x0: -325, x1: -195 };
 const PLANE_SPOTS = [
   { x: -272, z: -278, heading: Math.PI / 2, color: 0x2a7ad8 },
   { x: -208, z: -278, heading: Math.PI / 2, color: 0xd83a3a },
+  // v3: the Verde Heist getaway plane, waiting by hangar B with its door open.
+  { x: -292, z: -240, heading: -Math.PI / 2, color: 0x2a7a3a },
 ];
 
 export function buildAirport(G) {

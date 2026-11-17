@@ -144,6 +144,11 @@ export function updateVehicle(G, v, dt, input) {
   } else if (v.driver === 'traffic') {
     throttle = v.throttleTarget ?? 0;
     steerTarget = v.steerTarget ?? 0;
+  } else if (v.driver === 'race') {
+    // v3: race rivals and the vigilante fugitive are steered by their own
+    // modules through the same target fields traffic uses.
+    throttle = v.throttleTarget ?? 0;
+    steerTarget = v.steerTarget ?? 0;
   }
 
   // Steering eases toward the target; faster cars turn less. Rain cuts the
@@ -161,7 +166,9 @@ export function updateVehicle(G, v, dt, input) {
   if (brake) v.speed -= Math.sign(v.speed) * 42 * dt;
   v.speed -= v.speed * 0.55 * dt; // rolling drag
   if (Math.abs(v.speed) < 0.15 && throttle === 0) v.speed = 0;
-  v.speed = Math.max(-spec.topSpeed * 0.45, Math.min(spec.topSpeed, v.speed));
+  // v3 garage tuning: an owned, upgraded car is genuinely faster.
+  const topSpeed = spec.topSpeed * (v.upgradeBoost || 1);
+  v.speed = Math.max(-topSpeed * 0.45, Math.min(topSpeed, v.speed));
 
   const nx = v.pos.x + Math.sin(v.heading) * v.speed * dt;
   const nz = v.pos.z + Math.cos(v.heading) * v.speed * dt;

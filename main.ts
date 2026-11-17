@@ -1,11 +1,14 @@
-// Solmar City v2 — Mara Solano: a complete 3D open-world crime game for the
-// make.fun gta6-01 bounty (Node 22, standard library only). v2 expands the
-// v1 city with a police helicopter that hunts Mara at 4-5 stars, a full
-// day/night cycle with streetlights and car headlights, the Solmar Airfield
-// district (runway, terminal, tower, hangars, parked planes), a rideable
-// motorcycle, rain weather with wet-road grip loss, a sixth story mission
-// ("The Long Runway"), courier runs, stunt-jump ramps, city buses and a
-// more varied crowd — joggers, tourists, elders and friends in pairs.
+// Solmar City v3 — Mara Solano: a complete 3D open-world crime game for the
+// make.fun gta6-01 bounty (Node 22, standard library only). v3 expands the
+// v2 city with street racing (three circuits, three AI rivals, prizes and a
+// season ladder), Vic's tuning garage (paint, engine and armor that persist),
+// Mission 7 "The Verde Heist" with its epilogue, the Isla Verde island
+// district across a causeway bridge (boardwalk, lighthouse, marina, hotel),
+// five drivable boats, a safehouse that clears the heat and changes Mara's
+// outfit, three switchable radio stations, and vigilante contracts with
+// spike strips and roadblocks at 3+ stars — on top of v2's police
+// helicopter, day/night cycle, Solmar Airfield, motorcycle, rain weather,
+// sixth story mission, courier runs, stunt jumps, buses and varied crowds.
 //
 // The game lives in this directory's game/ folder as plain static files a
 // desktop browser loads fully offline: game/index.html plus its ES modules
@@ -15,16 +18,18 @@
 // synthesis, so there are no audio files at all).
 //
 // What the player gets: a procedural sun-soaked city ("Solmar City") with a
-// beach, harbor, parks, a central plaza and the new airfield; Mara Solano on
-// foot (WASD + mouse-look, jump, sprint) and behind the wheel (six vehicle
-// types plus the Comet 900 motorcycle, arcade physics, car stealing with E);
+// beach, harbor, parks, a central plaza, the airfield and the Isla Verde
+// island across its causeway; Mara Solano on foot (WASD + mouse-look, jump,
+// sprint) and behind the wheel (six vehicle types plus the Comet 900
+// motorcycle, arcade physics, car stealing with E, and five drivable boats);
 // traffic AI, buses and pedestrians; a 0-5 star wanted system with pursuing
-// cruisers, a searchlight helicopter, roadblocks and arrests; punch and
-// pistol combat; six story missions with dialogue, waypoints and cash
-// rewards, a repeatable taxi job, courier runs, stunt jumps and twelve hidden
-// packages; a HUD with health/armor, cash, wanted stars, clock, weather and
-// a canvas minimap; title, pause, busted/wasted and mission-complete
-// screens; and localStorage saves.
+// cruisers, a searchlight helicopter, spike strips, roadblocks and arrests;
+// punch and pistol combat; seven story missions with dialogue, waypoints
+// and cash rewards ending in the Verde Heist, a repeatable taxi job, courier
+// runs, stunt jumps, street races with AI rivals, a tuning garage, vigilante
+// bounties, a safehouse and three radio stations; a HUD with health/armor,
+// cash, wanted stars, clock, weather and a canvas minimap; title, pause,
+// busted/wasted and mission-complete screens; and localStorage saves.
 //
 // This program hands the entry in: it copies game/ and screenshots/ from
 // beside this file to /output and writes /output/dossier.json, the summary

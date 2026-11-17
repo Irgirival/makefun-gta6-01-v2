@@ -150,7 +150,11 @@ function updateCourier(G, dt) {
     if (d > 3.5) return;
     c.parcel.visible = false;
     c.stage = 'dropoff';
-    c.dropoff = openSpot(G, range(G.rng, -300, 300), range(G.rng, -300, 300), 60);
+    // v3: one run in four ends on Isla Verde — across the causeway bridge,
+    // with the lighthouse as the landmark. The rest stay in the city grid.
+    c.dropoff = G.rng() < 0.25
+      ? { x: -160, z: 540 }
+      : openSpot(G, range(G.rng, -300, 300), range(G.rng, -300, 300), 60);
     c.timer = 50;
     c.timerTotal = 50;
     G.hud.setMission('Courier Run', `Deliver the parcel — leg ${c.leg}/3`, '50 seconds. Drive fast, stay clean.');

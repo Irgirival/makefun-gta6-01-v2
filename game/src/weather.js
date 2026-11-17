@@ -20,6 +20,7 @@ export function createWeather(G) {
     modeIndex: 0,
     intensity: 0,        // 0 dry .. 1 heaviest, eased toward the mode target
     grip: 1,             // 1 dry .. 0.68 heavy rain (read by vehicles.js)
+    chop: 0.1,           // v3: sea swell 0.1 calm .. 0.5 heavy rain (read by boats.js)
     nextAutoChange: 110, // seconds until the sky rolls its own dice
     rainTimer: 0,
     points: null,
@@ -88,6 +89,8 @@ export function updateWeather(G, dt) {
   w.intensity += (target - w.intensity) * Math.min(1, dt * 0.7);
   if (w.intensity < 0.02 && target === 0) w.intensity = 0;
   w.grip = 1 - w.intensity * 0.32;
+  // v3: the same storm chops up the sea — boats bob harder in heavy rain.
+  w.chop = 0.1 + w.intensity * 0.4;
 
   // Wet roads: darker asphalt while it rains (the city exposes its road
   // material for exactly this).

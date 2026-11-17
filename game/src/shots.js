@@ -76,13 +76,18 @@ export function applyShot(G, name) {
     const ct = createVehicle(G, 'sedan', 60, -16.6, -Math.PI / 2, { driver: 'traffic', occupied: true });
     ct.speed = 12; ct.route = { axis: 'x', dir: -1, nextTurn: 200 }; ct.cruiseSpeed = 12;
   } else if (name === 'mission') {
-    // Mission 6 at the airfield: Mara on foot by the terminal, the runway
-    // and a parked plane behind her, the gold marker on the terminal door.
+    // v3: Mission 7, the Verde Heist, at the airfield — Mara on foot by the
+    // terminal, the getaway plane behind her, the gold marker down the runway.
     p.pos.set(-235, 0, -262);
     p.heading = Math.PI;
     p.camYaw = 0;
     p.camPitch = 0.3;
-    startMission(G, 5);
+    startMission(G, 6);
+    // Jump to the runway step so the objective matches the shot.
+    const def = MISSIONS[6];
+    G.missions.step = 2;
+    G.hud.setMission(def.title, def.steps[2].text, def.steps[2].hint);
+    placeMarker(G, def.steps[2].target);
     // A taxi and a van parked at the terminal, a couple of ground crew.
     createVehicle(G, 'taxi', -218, -272, Math.PI, { parked: true });
     createVehicle(G, 'van', -252, -272, 0, { parked: true });

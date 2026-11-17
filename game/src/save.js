@@ -32,6 +32,22 @@ export function createSave(G) {
             : { x: G.player.pos.x, z: G.player.pos.z },
           clockMinutes: Math.floor(G.clockMinutes),
           savedAt: Date.now(),
+          // v3: racing ladder, garage tuning, radio station, bounties.
+          races: G.races ? {
+            wins: G.races.ladder.wins, podiums: G.races.ladder.podiums,
+            races: G.races.ladder.races, best: G.races.ladder.best,
+            circuitIndex: G.races.circuitIndex,
+          } : null,
+          garage: G.garage ? {
+            paintIndex: G.garage.paintIndex, engineLevel: G.garage.engineLevel,
+            armorLevel: G.garage.armorLevel, ownedId: G.garage.ownedId,
+            ownedType: G.garage.ownedType,
+          } : null,
+          radioIndex: G.radio ? G.radio.index : 0,
+          vigilante: G.vigilante ? {
+            bounties: G.vigilante.bounties, earned: G.vigilante.earned,
+          } : null,
+          safehouseVisits: G.safehouse ? G.safehouse.visits : 0,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       } catch (err) {

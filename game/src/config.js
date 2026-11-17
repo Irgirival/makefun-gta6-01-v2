@@ -31,7 +31,7 @@ export const CONFIG = {
   driveTurn: 1.9,
 
   // Wanted / police.
-  heatPerCrime: { steal: 18, punch: 10, shoot: 22, killCop: 40, hitPed: 14 },
+  heatPerCrime: { steal: 18, punch: 10, shoot: 22, killCop: 40, hitPed: 14, boat: 18 },
   heatDecayPerSec: 1.1,   // decays only while no police can see the player
   heatPerStar: 20,
   maxStars: 5,
@@ -66,7 +66,7 @@ export const CONFIG = {
   rainGripMin: 0.68,
 
   // v2 additions: parked motorcycles, extra varied pedestrians, buses.
-  motorcycles: 3,
+  motorcycles: 4,   // v3: a fourth Comet waits on the Isla Verde boardwalk
   crowdExtra: 14,
   cityBuses: 2,
 
@@ -85,4 +85,15 @@ export const CONFIG = {
 
   // Minimap.
   minimapRange: 190,      // world units shown across the minimap diameter
+
+  // v3: street racing, garage, boats, vigilante work and the Verde heist.
+  raceLaps: 2,
+  racePrizeFirst: 1500,
+  garagePaintPrice: 150,
+  garageEnginePrice: 500,
+  garageArmorPrice: 400,
+  boatTopSpeed: 26,
+  vigilanteBounty: 600,
+  finaleReward: 6000,
+  missionRewardsV3: [400, 650, 900, 1200, 2500, 4000, 6000],
 };

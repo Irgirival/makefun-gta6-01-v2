@@ -173,7 +173,8 @@ export function updateHelicopter(G, dt) {
   if (G.shot) {
     h.pos.set(target.x - 18, 32, target.z - 28);
   } else {
-    const wantH = HOVER_HEIGHT;
+    // v3: over the island the air unit climbs clear of the lighthouse.
+    const wantH = target.z > 400 ? HOVER_HEIGHT + 14 : HOVER_HEIGHT;
     h.pos.y += (wantH - h.pos.y) * Math.min(1, dt * 0.8);
     const speed = dist > 30 ? CHASE_SPEED : CHASE_SPEED * 0.45;
     if (dist > 4) {

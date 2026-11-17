@@ -42,6 +42,11 @@ export function createAudio(G) {
       if (this.master) this.master.gain.value = m ? 0 : 0.5;
     },
 
+    // v3: stop the ambient loop (the radio takes over the airwaves).
+    stopMusic() {
+      if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; }
+    },
+
     // --- one-shot helpers -------------------------------------------------
     tone(freq, dur, type = 'sine', vol = 0.2, slideTo = null) {
       if (!this.ensure() || this.muted) return;

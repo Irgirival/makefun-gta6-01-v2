@@ -36,6 +36,16 @@ import { createMinimap } from './minimap.js';
 import { createAudio } from './audio.js';
 import { createSave } from './save.js';
 import { applyShot, poseShotCamera, SHOT_NAMES } from './shots.js';
+// v3 systems: street racing, Vic's garage, Isla Verde, boats, safehouse,
+// radio stations, vigilante contracts and the Verde Heist finale.
+import { createRaces, updateRaces } from './races.js';
+import { createGarage, updateGarage, applyGarageToCar } from './garage.js';
+import { buildIslaVerde, updateIslaVerde } from './islaverde.js';
+import { createBoats, updateBoats, nearestBoat, enterBoat, exitBoat } from './boats.js';
+import { createSafehouse, updateSafehouse } from './safehouse.js';
+import { createRadio, updateRadio } from './radio.js';
+import { createVigilante, updateVigilante } from './vigilante.js';
+import { registerFinale, updateFinale, EPILOGUE_TEXT } from './finale.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -65,6 +75,7 @@ const G = {
   policeCars: [],
   policeFoot: [],
   driving: null,
+  boating: null,         // v3: the boat Mara is sailing, if any
   shot: null,
   shotFrames: 0,
   cameraKick: 0,
@@ -128,6 +139,15 @@ registerExtraMissions(G);
 spawnMotorcycles(G);
 spawnCrowds(G);
 spawnBuses(G);
+// v3 systems, created last so the v1/v2 placements above keep their seeds.
+createRaces(G);
+createGarage(G);
+buildIslaVerde(G);
+createBoats(G);
+createSafehouse(G);
+createRadio(G);
+createVigilante(G);
+registerFinale(G);
 
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
@@ -135,6 +155,31 @@ if (G.saveData) {
   G.health = G.saveData.health ?? CONFIG.playerHealth;
   G.armor = G.saveData.armor ?? 0;
   G.clockMinutes = G.saveData.clockMinutes ?? CONFIG.clockStartMinutes;
+  // v3 progress: racing ladder, garage tuning, radio, bounties, safehouse.
+  if (G.saveData.races) {
+    Object.assign(G.races.ladder, {
+      wins: G.saveData.races.wins ?? 0,
+      podiums: G.saveData.races.podiums ?? 0,
+      races: G.saveData.races.races ?? 0,
+      best: G.saveData.races.best ?? null,
+    });
+    G.races.circuitIndex = G.saveData.races.circuitIndex ?? 0;
+  }
+  if (G.saveData.garage) {
+    Object.assign(G.garage, {
+      paintIndex: G.saveData.garage.paintIndex ?? 0,
+      engineLevel: G.saveData.garage.engineLevel ?? 0,
+      armorLevel: G.saveData.garage.armorLevel ?? 0,
+      ownedId: G.saveData.garage.ownedId ?? null,
+      ownedType: G.saveData.garage.ownedType ?? null,
+    });
+  }
+  if (G.saveData.radioIndex) G.radio.index = G.saveData.radioIndex;
+  if (G.saveData.vigilante) {
+    G.vigilante.bounties = G.saveData.vigilante.bounties ?? 0;
+    G.vigilante.earned = G.saveData.vigilante.earned ?? 0;
+  }
+  if (G.saveData.safehouseVisits) G.safehouse.visits = G.saveData.safehouseVisits;
   if (G.saveData.pos) {
     G.player.pos.set(G.saveData.pos.x, 0, G.saveData.pos.z);
     G.player.group.position.copy(G.player.pos);
@@ -152,6 +197,7 @@ function showTitle() {
   endEl.classList.add('hidden');
   G.hud.hide();
   if (G.driving) exitCar(G);
+  if (G.boating) exitBoat(G);
   $('btnContinue').classList.toggle('hidden', !G.save.exists());
   document.exitPointerLock?.();
 }
@@ -183,6 +229,8 @@ function startGame(fresh) {
 
 function gameOver(kind, cause) {
   if (G.mode === 'over') return;
+  // A boat trip ends with the story: climb off before the screen changes.
+  if (G.boating) exitBoat(G);
   G.endKind = kind;
   G.mode = 'over';
   const title = $('endTitle');
@@ -214,7 +262,10 @@ function gameOver(kind, cause) {
   } else if (kind === 'story') {
     title.textContent = 'SOLMAR IS YOURS';
     title.className = 'done';
-    text.textContent = cause || 'Every mission complete. Mara Solano owns this city now.';
+    // v3: after the Verde Heist the generic line gives way to the epilogue.
+    text.textContent = (G.missions.index >= MISSIONS.length)
+      ? EPILOGUE_TEXT
+      : (cause || 'Every mission complete. Mara Solano owns this city now.');
     $('btnRetry').textContent = 'KEEP PLAYING';
   }
   G.audio.sirenStop();
@@ -258,7 +309,8 @@ function stepWorld(dt) {
   // One fixed step of the living city: traffic, peds, police, missions.
   updateTraffic(G, dt);
   for (const v of G.vehicles) {
-    if (v.driver === 'traffic' || v.driver === 'police' || v.driver === 'player') {
+    // v3: 'race' covers street-race rivals and the vigilante fugitive.
+    if (v.driver === 'traffic' || v.driver === 'police' || v.driver === 'player' || v.driver === 'race') {
       updateVehicle(G, v, dt, v.driver === 'player' ? G.input : null);
     }
   }
@@ -271,6 +323,15 @@ function stepWorld(dt) {
   updateWeather(G, dt);
   updateMissions(G, dt);
   updateSideMissions(G, dt);
+  // v3 systems ride the same fixed step as the rest of the living city.
+  updateRaces(G, dt);
+  updateBoats(G, dt);
+  updateGarage(G, dt);
+  updateVigilante(G, dt);
+  updateSafehouse(G, dt);
+  updateRadio(G, dt);
+  updateFinale(G, dt);
+  updateIslaVerde(G, dt);
 }
 
 function frame() {
@@ -282,13 +343,18 @@ function frame() {
     G.elapsed += dt;
     G.clockMinutes += dt * G.config.clockRate;
 
-    // Enter / exit cars.
+    // Enter / exit cars — and v3 boats: E near a moored boat boards it.
     if (G.input.pressed('enter')) {
-      if (G.driving) exitCar(G);
+      if (G.boating) exitBoat(G);
+      else if (G.driving) exitCar(G);
       else {
-        const car = nearestEnterableCar(G);
-        if (car) enterCar(G, car);
-        else G.hud.toast('No car close enough — get nearer and press E.');
+        const boat = nearestBoat(G);
+        if (boat) enterBoat(G, boat);
+        else {
+          const car = nearestEnterableCar(G);
+          if (car) { enterCar(G, car); applyGarageToCar(G, car); }
+          else G.hud.toast('No car close enough — get nearer and press E.');
+        }
       }
     }
     if (G.input.pressed('pause')) {
@@ -301,7 +367,10 @@ function frame() {
       G.hud.toast(G.audio.muted ? 'Sound muted.' : 'Sound on.');
     }
 
-    if (G.driving) {
+    if (G.boating) {
+      // Boats steer their own camera and engine hum (see boats.js).
+      G.audio.engineStartLoop();
+    } else if (G.driving) {
       updateDriveCamera(G, dt);
       G.audio.engineStartLoop();
       G.audio.engineSet(Math.abs(G.driving.speed) / G.driving.spec.topSpeed);

@@ -185,3 +185,10 @@ export function timeOfDayLabel(G) {
   if (m >= 19 * 60 && m < 23 * 60) return 'Night';
   return 'Late night';
 }
+
+// v3: true when the lighthouse should be sweeping — after 19:00 or before
+// 06:00. The island module reads this instead of recomputing the clock.
+export function isNight(G) {
+  const m = Math.floor(G.clockMinutes) % (24 * 60);
+  return m < 6 * 60 || m >= 19 * 60;
+}

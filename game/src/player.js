@@ -62,6 +62,13 @@ export function createPlayer(G) {
     speed: 0,
     punchTimer: 0,
     punchAnim: 0,
+    // v3: the safehouse swaps Mara's jacket — one method, used by safehouse.js.
+    setJacket(color) {
+      if (parts.torso && parts.torso.material) parts.torso.material.color.set(color);
+      for (const arm of [parts.armL, parts.armR]) {
+        if (arm) arm.children.forEach((m) => { if (m.material) m.material.color.set(color); });
+      }
+    },
   };
   group.position.copy(player.pos);
   return player;

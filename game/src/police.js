@@ -126,6 +126,8 @@ export function updatePolice(G, dt) {
   }
 
   // Cruiser chase: steer toward the player, ram speed, brake near them.
+  // v3: cruisers cannot chase onto the water — while Mara is sailing they
+  // hold at the shore and wait for her to come back to land.
   for (const v of G.policeCars) {
     const dx = target.x - v.pos.x, dz = target.z - v.pos.z;
     const dist = Math.hypot(dx, dz);
@@ -133,9 +135,14 @@ export function updatePolice(G, dt) {
     let diff = desired - v.heading;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    v.steerTarget = Math.max(-1, Math.min(1, diff * 2.2));
-    v.throttleTarget = dist > 8 ? 1 : 0.2;
-    if (dist < 5 && Math.abs(v.speed) > 4) v.throttleTarget = -0.5;
+    if (G.boating) {
+      v.steerTarget = 0;
+      v.throttleTarget = 0;
+    } else {
+      v.steerTarget = Math.max(-1, Math.min(1, diff * 2.2));
+      v.throttleTarget = dist > 8 ? 1 : 0.2;
+      if (dist < 5 && Math.abs(v.speed) > 4) v.throttleTarget = -0.5;
+    }
     // Flash the light bar.
     const t = G.elapsed * 8;
     const red = v.mesh.userData.lightRed, blue = v.mesh.userData.lightBlue;

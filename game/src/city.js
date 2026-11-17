@@ -315,7 +315,9 @@ export function buildCity(G) {
       if (pos.x < -lim) { pos.x = -lim; hit = true; }
       if (pos.x > cfg.harborX + 90) { pos.x = cfg.harborX + 90; hit = true; }
       if (pos.z < -lim) { pos.z = -lim; hit = true; }
-      if (pos.z > cfg.waterZ + 60) { pos.z = cfg.waterZ + 60; hit = true; }
+      // v3: the south limit reaches past Isla Verde (z ~635) so the island
+      // is drivable and walkable; the sea beyond it is out of bounds.
+      if (pos.z > cfg.waterZ + 240) { pos.z = cfg.waterZ + 240; hit = true; }
       return hit;
     },
     nearestRoadLine(x, z, axis) {
@@ -329,6 +331,25 @@ export function buildCity(G) {
       return best;
     },
   };
+  // v3: a causeway sign where the beach road meets the Isla Verde bridge,
+  // so drivers can find the island without the minimap.
+  {
+    const signGroup = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.5, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0x2a2a2a }));
+    post.position.y = 2.25;
+    signGroup.add(post);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(9, 2.2, 0.3),
+      new THREE.MeshLambertMaterial({ color: 0x1a6ad8, emissive: 0x113366 }));
+    board.position.y = 5.2;
+    signGroup.add(board);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, 0.32),
+      new THREE.MeshLambertMaterial({ color: 0xffe98a, emissive: 0x664400 }));
+    stripe.position.y = 4.2;
+    signGroup.add(stripe);
+    signGroup.position.set(-172, 0, 330);
+    G.scene.add(signGroup);
+  }
   G.city = city;
   return city;
 }

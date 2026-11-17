@@ -4,9 +4,10 @@
 // the road network instead of keyboard input.
 
 import { createVehicle } from './vehicles.js';
-import { pick, range, rangeInt } from './random.js';
+import { pick, range, rangeInt, pickWeighted } from './random.js';
 
-const TRAFFIC_TYPES = ['sedan', 'sedan', 'taxi', 'van', 'sedan', 'sports'];
+// v3: weighted traffic mix — sedans everywhere, sports cars rare.
+const TRAFFIC_WEIGHTS = [['sedan', 5], ['taxi', 2], ['van', 2], ['sports', 1]];
 
 export function spawnTraffic(G) {
   const rng = G.rng;
@@ -21,7 +22,7 @@ export function spawnTraffic(G) {
     const heading = alongZ
       ? (lane > 0 ? 0 : Math.PI)               // +z or -z
       : (lane > 0 ? Math.PI / 2 : -Math.PI / 2); // +x or -x
-    const v = createVehicle(G, TRAFFIC_TYPES[i % TRAFFIC_TYPES.length], x, z, heading,
+    const v = createVehicle(G, pickWeighted(rng, TRAFFIC_WEIGHTS), x, z, heading,
       { driver: 'traffic', occupied: true });
     v.speed = range(rng, 8, 14);
     v.route = { axis: alongZ ? 'z' : 'x', dir: lane > 0 ? 1 : -1, nextTurn: range(rng, 40, 200) };
@@ -37,6 +38,9 @@ function angleDiff(a, b) {
 }
 
 export function updateTraffic(G, dt) {
+  // During a street race the traffic gives the racers room: everyone
+  // cruises 30% slower so the circuit stays readable.
+  const raceSlow = (G.races && G.races.active) ? 0.7 : 1;
   for (const v of G.vehicles) {
     if (v.driver !== 'traffic') continue;
     const route = v.route;
@@ -86,7 +90,7 @@ export function updateTraffic(G, dt) {
       if (forward > 0 && forward < 16 && lateral < 3.2) ahead = Math.min(ahead, forward);
     }
     // Also stop at a red-ish rhythm: cars pause briefly at some intersections.
-    const target = ahead < 16 ? Math.max(0, (ahead - 7) / 9) * v.cruiseSpeed : v.cruiseSpeed;
+    const target = ahead < 16 ? Math.max(0, (ahead - 7) / 9) * v.cruiseSpeed : v.cruiseSpeed * raceSlow;
     v.throttleTarget = v.speed < target ? 0.55 : 0;
     if (v.speed > target + 2) v.throttleTarget = -0.4;
   }

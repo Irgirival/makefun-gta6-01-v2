@@ -209,3 +209,10 @@ export function damagePlayer(G, amount, cause) {
 export function healPlayer(G, amount) {
   G.health = Math.min(G.config.playerHealth, G.health + amount);
 }
+
+// v3: the safehouse restocks Mara — a full magazine and a full reserve,
+// so she never walks out of her own front door unarmed.
+export function restockAmmo(G) {
+  G.combat.ammo = G.config.pistolMag;
+  G.combat.reserve = G.config.pistolReserve;
+}

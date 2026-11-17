@@ -158,6 +158,8 @@ export function startMission(G, index) {
   placeMarker(G, def.steps[0].target);
   // Mission 4 starts hot: the PD is already looking for Mara.
   if (def.id === 'heat-rising') G.wanted.addHeat(45, 'mission heat');
+  // v3: the Verde Heist starts warm — the casino's lookouts are already out.
+  if (def.id === 'verde-heist') G.wanted.addHeat(20, 'heist heat');
   if (def.steps[0].type === 'timed') { m.timer = def.steps[0].seconds; m.timerTotal = def.steps[0].seconds; }
 }
 

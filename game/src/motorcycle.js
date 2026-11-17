@@ -20,6 +20,7 @@ const BIKE_SPOTS = [
   { x: 30, z: 44, heading: Math.PI / 2 },      // by the plaza fountain
   { x: -16, z: -88, heading: 0 },              // outside Vic's garage
   { x: -222, z: -272, heading: Math.PI },      // at the airfield apron
+  { x: -150, z: 512, heading: Math.PI / 2 },   // v3: on the Isla Verde boardwalk
 ];
 
 function buildBikeMesh(color) {

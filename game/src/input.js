@@ -29,6 +29,12 @@ export function createInput(canvas) {
     KeyR: 'reload',
     KeyJ: 'taxi',
     KeyC: 'courier',
+    KeyG: 'race',          // v3: street racing at the plaza start banner
+    KeyU: 'paint',         // v3: garage repaint at Vic's garage
+    KeyI: 'engine',        // v3: garage engine upgrade
+    KeyO: 'armor',         // v3: garage armor plating
+    KeyN: 'radio',         // v3: cycle the radio station
+    KeyV: 'vigilante',     // v3: take a vigilante contract
     KeyT: 'weather',
     KeyM: 'mute',
     KeyP: 'pause', Escape: 'pause',

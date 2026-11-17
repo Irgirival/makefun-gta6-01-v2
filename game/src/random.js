@@ -28,6 +28,19 @@ export function chance(rng, p) {
   return rng() < p;
 }
 
+// Weighted pick: entries are [value, weight]; heavier entries come up more.
+// v3: traffic uses it so sports cars stay rare and sedans stay common.
+export function pickWeighted(rng, entries) {
+  let total = 0;
+  for (const [, w] of entries) total += w;
+  let roll = rng() * total;
+  for (const [value, w] of entries) {
+    roll -= w;
+    if (roll <= 0) return value;
+  }
+  return entries[entries.length - 1][0];
+}
+
 // A stable hash of a string, used to seed per-block detail from block coords.
 export function hash2(x, z) {
   let h = (x * 374761393 + z * 668265263) | 0;

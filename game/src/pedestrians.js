@@ -76,6 +76,15 @@ export function spawnFleeingPed(G, x, z) {
 function pickSidewalkTarget(G, ped) {
   // Walk along the nearest road's sidewalk, toward a random point on it.
   const rng = G.rng;
+  // v3: island tourists stay local — they stroll their own boardwalk
+  // instead of marching back to the mainland sidewalks.
+  if (ped.local) {
+    ped.target = new THREE.Vector3(
+      ped.local.x + range(rng, -ped.local.r, ped.local.r),
+      0,
+      ped.local.z + range(rng, -ped.local.r, ped.local.r));
+    return;
+  }
   const alongX = rng() < 0.5;
   const road = pick(rng, G.city.roads.xs);
   const side = (rng() < 0.5 ? 1 : -1) * (G.config.roadWidth / 2 + 2.5);

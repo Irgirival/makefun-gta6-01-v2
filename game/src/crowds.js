@@ -127,6 +127,10 @@ export function spawnCrowds(G) {
   for (let i = 0; i < 3; i++) {
     spawnVariedPed(G, 'tourist', range(rng, -100, 140), range(rng, -100, 140));
   }
+  // v3: beachgoers soak up the sun on the south sand, slow as the tide.
+  for (let i = 0; i < 4; i++) {
+    spawnVariedPed(G, 'tourist', range(rng, -160, 40), range(rng, 345, 395));
+  }
   // Elders take the morning air near the parks.
   spawnVariedPed(G, 'elder', -140 + range(rng, -20, 20), -140 + range(rng, -20, 20));
   spawnVariedPed(G, 'elder', 180 + range(rng, -20, 20), 100 + range(rng, -20, 20));
