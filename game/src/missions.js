@@ -296,13 +296,30 @@ export function updateMissions(G, dt) {
   advanceStep(G);
 }
 
+// A reachable fare spot: on asphalt, clear of buildings, so the marker can
+// never land inside a block where no car can reach it.
+function openFareSpot(G, cx, cz, spread) {
+  const rng = G.rng;
+  for (let i = 0; i < 60; i++) {
+    const x = cx + range(rng, -spread, spread);
+    const z = cz + range(rng, -spread, spread);
+    if (!G.city.isRoad(x, z)) continue;
+    let blocked = false;
+    for (const c of G.city.colliders) {
+      if (x > c.minX - 3 && x < c.maxX + 3 && z > c.minZ - 3 && z < c.maxZ + 3) { blocked = true; break; }
+    }
+    if (!blocked) return { x, z };
+  }
+  // Fallback: the nearest road centre, which is always drivable.
+  return { x: G.city.nearestRoadLine(cx, cz, 'x'), z: cz };
+}
+
 function startTaxi(G) {
   const m = G.missions;
-  const rng = G.rng;
   const pos = G.driving ? G.driving.pos : G.player.pos;
-  // Pickup a few blocks away, dropoff across town.
-  const pickup = { x: pos.x + range(rng, -80, 80), z: pos.z + range(rng, -80, 80) };
-  const dropoff = { x: range(rng, -300, 300), z: range(rng, -300, 300) };
+  // Pickup a few blocks away, dropoff across town — both on open road.
+  const pickup = openFareSpot(G, pos.x, pos.z, 80);
+  const dropoff = openFareSpot(G, range(G.rng, -300, 300), range(G.rng, -300, 300), 60);
   m.taxi = { active: true, pickup, dropoff, fare: 0, passenger: false };
   G.hud.setMission('Taxi Job', 'Pick up the fare at the marker', 'Drive there and stop — they will get in.');
   placeMarker(G, pickup);
