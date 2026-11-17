@@ -88,6 +88,83 @@ export function createSafehouse(G) {
   return safehouse;
 }
 
+// v6: a second safehouse in Old Town — a stone cottage above the market
+// where Mara can duck the heat. Same rules as the first house: step inside
+// the hedge ring, the stars clear, her health and armor come back, and the
+// game saves. The quarter looks after its own.
+export function createOldTownSafehouse(G) {
+  const spot = { x: 292, z: -152 };
+  const safehouse2 = {
+    pos: spot,
+    radius: 7,
+    cooldown: 0,
+    visits: 0,
+  };
+  const group = new THREE.Group();
+  const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(8, 4.2, 7), mat(0x9a8f7a));
+  walls.position.y = 2.1;
+  group.add(walls);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3, 4), mat(0x6a4a3a));
+  roof.position.y = 5.7;
+  roof.rotation.y = Math.PI / 4;
+  group.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.8, 0.3),
+    new THREE.MeshLambertMaterial({ color: 0x2a4a6a, emissive: 0x112244 }));
+  door.position.set(-1.2, 1.4, 3.6);
+  group.add(door);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.3, 0.15),
+    new THREE.MeshLambertMaterial({ color: 0xffe98a, emissive: 0x664400 }));
+  win.position.set(1.8, 2.3, 3.55);
+  group.add(win);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6),
+    new THREE.MeshLambertMaterial({ color: 0xffe98a, emissive: 0xaa8800 }));
+  lamp.position.set(0.6, 3.2, 3.7);
+  group.add(lamp);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.8, 7, 5), mat(0x3a6a3a));
+    bush.position.set(Math.cos(a) * 6.5, 0.6, Math.sin(a) * 6.5);
+    bush.scale.y = 0.7;
+    group.add(bush);
+  }
+  group.position.set(spot.x, 0, spot.z);
+  G.scene.add(group);
+  G.city.colliders.push({
+    minX: spot.x - 4, maxX: spot.x + 4, minZ: spot.z - 3.5, maxZ: spot.z + 3.5,
+  });
+  safehouse2.group = group;
+  G.safehouse2 = safehouse2;
+  return safehouse2;
+}
+
+export function updateOldTownSafehouse(G, dt) {
+  const s = G.safehouse2;
+  if (!s) return;
+  if (s.cooldown > 0) s.cooldown -= dt;
+  if (G.driving || G.boating) return;
+  const p = G.player.pos;
+  const d = Math.hypot(p.x - s.pos.x, p.z - s.pos.z);
+  if (d > s.radius) return;
+  if (s.cooldown > 0) {
+    G.hud.setInteract('Old Town safehouse — come back soon, the heat is still watching.');
+    return;
+  }
+  s.cooldown = 20;
+  s.visits++;
+  const hadHeat = G.wanted.stars > 0;
+  G.wanted.clear();
+  G.health = G.config.playerHealth;
+  G.armor = Math.max(G.armor, 50);
+  G.audio.missionComplete();
+  G.hud.showDialogue([
+    'OLD TOWN SAFEHOUSE — Mara slips into the stone cottage above the market, and the quarter keeps her secret.',
+    hadHeat ? 'The PD loses the trail in the narrow streets. The stars are gone.' : 'No heat on her — just the cathedral bells and a quiet room.',
+    'Saved. Old Town looks after its own.',
+  ]);
+  G.save.save(G);
+}
+
 export function changeOutfit(G) {
   const s = G.safehouse;
   s.outfitIndex = (s.outfitIndex + 1) % OUTFITS.length;

@@ -57,7 +57,20 @@ export function createDayNight(G) {
   G.scene.add(stars);
   dn.stars = stars;
   G.daynight = dn;
+  // v6: photo mode bends time — jump the clock to any hour of the day and
+  // the sun, the sky and the streetlights follow on the next frame.
+  dn.setTimeOfDay = (hour) => { G.clockMinutes = hour * 60; };
   return dn;
+}
+
+// v6: jump the clock to an hour of the day (0-24). The sun, the sky and the
+// streetlights follow the clock, so a photo can be staged at dawn, golden
+// hour or midnight without waiting for the day to turn.
+export function setTimeOfDay(G, hour) {
+  G.clockMinutes = (((hour % 24) + 24) % 24) * 60;
+  const names = ['midnight', 'dawn', 'morning', 'noon', 'afternoon', 'golden hour', 'blue hour', 'night'];
+  const slot = hour < 1 ? 0 : hour < 6 ? 1 : hour < 10 ? 2 : hour < 14 ? 3 : hour < 17 ? 4 : hour < 19 ? 5 : hour < 20 ? 6 : 7;
+  G.hud.toast(`Time of day — ${names[slot]} (${Math.floor(hour)}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}).`);
 }
 
 // Where the sun sits for a time of day: an arc from the east horizon at

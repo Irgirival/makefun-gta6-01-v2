@@ -39,7 +39,7 @@ import { applyShot, poseShotCamera, SHOT_NAMES } from './shots.js';
 // v3 systems: street racing, Vic's garage, Isla Verde, boats, safehouse,
 // radio stations, vigilante contracts and the Verde Heist finale.
 import { createRaces, updateRaces } from './races.js';
-import { createGarage, updateGarage, applyGarageToCar } from './garage.js';
+import { createGarage, updateGarage, applyGarageToCar, refreshShowroom } from './garage.js';
 import { buildIslaVerde, updateIslaVerde } from './islaverde.js';
 import { createBoats, updateBoats, nearestBoat, enterBoat, exitBoat } from './boats.js';
 import { createSafehouse, updateSafehouse, applyOutfitPerk, SHOP_OUTFITS, closeSafehouseShop } from './safehouse.js';
@@ -62,6 +62,21 @@ import { createStorm, updateStorm } from './storm.js';
 import { createPhotoMode, updatePhotoMode, togglePhotoMode } from './photomode.js';
 import { createCasinoGames, closeCasinoGames } from './casinogames.js';
 import { registerMission10 } from './missions2.js';
+import { buildOldTown, updateOldTown } from './oldtown.js';
+import { registerMissions11And12, updateMissions3 } from './missions3.js';
+import { createVipJob, updateVipJob } from './vipjob.js';
+import { createBusFire, updateBusFire } from './busfire.js';
+import { createPoker, updatePoker } from './poker.js';
+import { createMilitary, updateMilitary } from './military.js';
+import { createCollection, registerCollectedCar, callCollectedCar } from './carcollection.js';
+import { createPhotoMode2, updatePhotoMode2 } from './photomode2.js';
+import { buildMountain, updateMountain } from './mountain.js';
+import { createTalkRadio, updateTalkRadio } from './talkradio.js';
+import { spawnMarketShoppers, spawnOldTownTourists } from './pedestrians.js';
+import { createOldTownSafehouse, updateOldTownSafehouse } from './safehouse.js';
+import { nearestCharter, boardCharter, updateCharter } from './airport.js';
+import { updateNewsHeli } from './helicopter.js';
+import { applyShotOldTown } from './shots.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -184,6 +199,21 @@ createPhotoMode(G);
 createCasinoGames(G);
 registerMission10(G);
 
+// v6 systems, created last so the v1–v5 placements above keep their seeds.
+buildOldTown(G);
+registerMissions11And12(G);
+createVipJob(G);
+createBusFire(G);
+createPoker(G);
+createMilitary(G);
+createCollection(G);
+createPhotoMode2(G);
+buildMountain(G);
+createTalkRadio(G);
+spawnMarketShoppers(G);
+spawnOldTownTourists(G);
+createOldTownSafehouse(G);
+
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
   G.cash = G.saveData.cash ?? CONFIG.startCash;
@@ -242,6 +272,36 @@ if (G.saveData) {
   }
   if (G.saveData.nitroTankLevel) G.nitro.tankLevel = G.saveData.nitroTankLevel;
   if (G.saveData.vigilanteContracts) G.vigilante.contracts = G.saveData.vigilanteContracts;
+  // v6: restore the VIP career, the poker table, the collection, the Guard
+  // record, the mountain visits and the bus fares with the rest of the save.
+  if (G.saveData.vip) Object.assign(G.vip, {
+    jobs: G.saveData.vip.jobs ?? 0,
+    earned: G.saveData.vip.earned ?? 0,
+    rating: G.saveData.vip.rating ?? 4.2,
+    ratingCount: G.saveData.vip.ratingCount ?? 12,
+    bestTip: G.saveData.vip.bestTip ?? 0,
+  });
+  if (G.saveData.poker) Object.assign(G.poker, {
+    handsPlayed: G.saveData.poker.handsPlayed ?? 0,
+    handsWon: G.saveData.poker.handsWon ?? 0,
+    biggestPot: G.saveData.poker.biggestPot ?? 0,
+  });
+  if (G.saveData.collection) {
+    G.collection.owned = G.saveData.collection.owned || [];
+    G.collection.calls = G.saveData.collection.calls ?? 0;
+    G.collection.collected = G.saveData.collection.collected ?? 0;
+    refreshShowroom(G);
+  }
+  if (G.saveData.military) Object.assign(G.military, {
+    apcSpawns: G.saveData.military.apcSpawns ?? 0,
+    escapes: G.saveData.military.escapes ?? 0,
+  });
+  if (G.saveData.mountain) G.mountain.summitVisits = G.saveData.mountain.summitVisits ?? 0;
+  if (G.saveData.busfire) Object.assign(G.busfire, {
+    fares: G.saveData.busfire.fares ?? 0,
+    fareEarned: G.saveData.busfire.fareEarned ?? 0,
+    hydrantHits: G.saveData.busfire.hydrantHits ?? 0,
+  });
   if (G.saveData.pos) {
     G.player.pos.set(G.saveData.pos.x, 0, G.saveData.pos.z);
     G.player.group.position.copy(G.player.pos);
@@ -302,6 +362,17 @@ function startGame(fresh) {
     }
     G.nitro.tankLevel = 0;
     G.vigilante.contracts = 0;
+    // v6: a fresh start clears the new career too — VIP rating, poker
+    // hands, the collection, the Guard record, the mountain and the fares.
+    if (G.vip) {
+      G.vip.jobs = 0; G.vip.earned = 0; G.vip.rating = 4.2;
+      G.vip.ratingCount = 12; G.vip.bestTip = 0;
+    }
+    if (G.poker) { G.poker.handsPlayed = 0; G.poker.handsWon = 0; G.poker.biggestPot = 0; G.poker.chips = 1000; G.poker.boughtIn = false; }
+    if (G.collection) { G.collection.owned = []; G.collection.calls = 0; G.collection.collected = 0; }
+    if (G.military) { G.military.apcSpawns = 0; G.military.escapes = 0; }
+    if (G.mountain) G.mountain.summitVisits = 0;
+    if (G.busfire) { G.busfire.fares = 0; G.busfire.fareEarned = 0; G.busfire.hydrantHits = 0; }
   }
   titleEl.classList.add('hidden');
   pauseEl.classList.add('hidden');
@@ -385,6 +456,10 @@ $('btnSaveQuit').addEventListener('click', () => {
   G.save.save(G);
   showTitle();
 });
+// v6: the collection's call-car button — the car drives itself to Mara.
+$('btnCallCar').addEventListener('click', () => {
+  callCollectedCar(G);
+});
 $('btnRetry').addEventListener('click', resumeFromEnd);
 $('btnEndTitle').addEventListener('click', showTitle);
 
@@ -396,7 +471,11 @@ function stepWorld(dt) {
   // v5: photo mode freezes the living city — the camera is the only thing
   // that moves, and the mode's own update still runs so B can leave it.
   updatePhotoMode(G, dt);
+  // v6: time-of-day and weather staging run even while the camera is frozen.
+  updatePhotoMode2(G, dt);
   if (G.photomode && G.photomode.active && G.photomode.frozen) return;
+  // v6: the poker table pauses the street — the city waits for the cards.
+  if (G.poker && G.poker.open) return;
   // One fixed step of the living city: traffic, peds, police, missions.
   updateTraffic(G, dt);
   for (const v of G.vehicles) {
@@ -424,6 +503,17 @@ function stepWorld(dt) {
   updateFinale(G, dt);
   updateIslaVerde(G, dt);
   updateNitro(G, dt);
+  // v6 systems ride the same fixed step as the rest of the living city.
+  updateOldTown(G, dt);
+  updateVipJob(G, dt);
+  updateBusFire(G, dt);
+  updateMilitary(G, dt);
+  updateMountain(G, dt);
+  updateTalkRadio(G, dt);
+  updateMissions3(G, dt);
+  updateCharter(G, dt);
+  updateNewsHeli(G, dt);
+  updateOldTownSafehouse(G, dt);
   // v4 systems ride the same fixed step as the rest of the living city.
   updateHeist(G, dt);
   updateFlyHeli(G, dt);
@@ -449,7 +539,9 @@ function frame() {
     // casino: E near a moored boat boards it, near a heli flies it, near
     // a jet ski rides it, at the casino door walks Mara in.
     // v5: not while the camera is out — E is the photographer's key then.
-    if (G.input.pressed('enter') && !(G.photomode && G.photomode.active)) {
+    // v6: not while the charter flight is in the air — Mara is a passenger
+    // then, and the E chain would try to board a heli under the plane.
+    if (G.input.pressed('enter') && !(G.photomode && G.photomode.active) && !G.charterRide) {
       if (G.casino.open) closeCasino(G);
       else if (G.flying) exitFlyHeli(G);
       else if (G.jetski) exitJetSki(G);
@@ -461,13 +553,14 @@ function frame() {
         else {
           const ski = nearestJetSki(G);
           if (ski) enterJetSki(G, ski);
+          else if (nearestCharter(G)) boardCharter(G);
           else if (casinoNearDoor(G)) openCasino(G);
           else {
             const boat = nearestBoat(G);
             if (boat) enterBoat(G, boat);
             else {
               const car = nearestEnterableCar(G);
-              if (car) { enterCar(G, car); applyGarageToCar(G, car); }
+              if (car) { enterCar(G, car); applyGarageToCar(G, car); registerCollectedCar(G, car); }
               else G.hud.toast('No car close enough — get nearer and press E.');
             }
           }
@@ -501,6 +594,9 @@ function frame() {
       // v4: helicopters and jet skis steer their own cameras and engine
       // note inside their own updates (see flyheli.js / jetski.js).
       G.audio.engineStartLoop();
+    } else if (G.charterRide) {
+      // v6: the charter steers its own camera in updateCharter — Mara is a
+      // passenger and her feet stay on the apron until touchdown.
     } else if (G.photomode && G.photomode.active) {
       // v5: the photo camera steers itself in stepWorld — nobody else
       // touches the camera while Mara is behind the lens.
@@ -532,6 +628,9 @@ function frame() {
       }
     }
 
+    // v6: the poker table reads its keys before the world steps, so the Z
+    // press is never swallowed by the photo freeze or the poker freeze.
+    updatePoker(G, dt);
     stepWorld(dt);
     updateCombat(G, dt);
 
@@ -574,7 +673,11 @@ function frame() {
 window.__game = G;
 
 // ---- Shot mode / normal start ----------------------------------------------
-if (shotName && SHOT_NAMES.includes(shotName)) {
+// v6: the Old Town staging pose is not one of the four dossier shots, but it
+// is wired the same way so the quarter can be verified headlessly.
+if (shotName === 'oldtown') {
+  applyShotOldTown(G);
+} else if (shotName && SHOT_NAMES.includes(shotName)) {
   applyShot(G, shotName);
 } else {
   showTitle();

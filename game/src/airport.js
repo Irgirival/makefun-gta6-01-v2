@@ -172,10 +172,25 @@ export function buildAirport(G) {
   group.add(truck);
   addCollider(FUEL.x + 6, FUEL.z + 4, 3, 6);
 
+  // v6: the charter plane — a gold-striped air taxi parked on the apron.
+  // Mara can board it (E) for a free scenic flight around the bay; it
+  // climbs, circles the city, and brings her back to the apron.
+  const charterGroup = new THREE.Group();
+  buildPlane(charterGroup, mat, 0, 0, 0, 0xd8a03a);
+  charterGroup.position.set(-260, 0, -240);
+  charterGroup.rotation.y = Math.PI / 2;
+  G.scene.add(charterGroup);
+  const charter = {
+    group: charterGroup, state: 'parked', t: 0, angle: Math.PI / 2, rider: false,
+  };
+
   G.scene.add(group);
 
+  // v6: the charter flight — board on the apron, circle the bay, land back.
+  // While Mara rides, the plane steers its own camera.
   G.airport = {
     group,
+    charter,
     terminal: TERMINAL,
     tower: TOWER,
     hangarA: HANGAR_A,
@@ -186,6 +201,84 @@ export function buildAirport(G) {
     runway: RUNWAY,
   };
   return G.airport;
+}
+
+// v6: the charter flight — a free scenic loop around the bay. Mara boards
+// on the apron (E), the plane climbs, circles the city for forty seconds,
+// and sets her back down where she started. While she rides, the plane
+// steers the camera and the street waits below.
+export function nearestCharter(G) {
+  const c = G.airport && G.airport.charter;
+  if (!c || c.state !== 'parked') return null;
+  const p = G.player.pos;
+  return Math.hypot(c.group.position.x - p.x, c.group.position.z - p.z) < 7 ? c : null;
+}
+
+export function boardCharter(G) {
+  const c = G.airport.charter;
+  c.state = 'takeoff';
+  c.t = 0;
+  c.rider = true;
+  // The climb blends from the apron to the scenic circle, so the plane
+  // never jumps — it lifts off the runway and sweeps out over the bay.
+  c.startX = c.group.position.x;
+  c.startZ = c.group.position.z;
+  G.charterRide = c;
+  G.player.group.visible = false;
+  G.hud.toast('Charter flight — sit back, Mara. The bay looks better from up here.');
+  G.audio.engineStart();
+}
+
+export function updateCharter(G, dt) {
+  const c = G.airport && G.airport.charter;
+  if (!c || c.state === 'parked') return;
+  c.t += dt;
+  const cx = -100, cz = 0, r = 220;
+  if (c.state === 'takeoff') {
+    const k = Math.min(1, c.t / 8);
+    c.group.position.y = k * 70;
+    c.angle += dt * 0.12;
+    const tx = cx + Math.cos(c.angle) * r;
+    const tz = cz + Math.sin(c.angle) * r;
+    c.group.position.x = c.startX + (tx - c.startX) * k;
+    c.group.position.z = c.startZ + (tz - c.startZ) * k;
+    c.group.rotation.y = -c.angle;
+    if (k >= 1) { c.state = 'cruise'; c.t = 0; }
+  } else if (c.state === 'cruise') {
+    c.angle += dt * 0.12;
+    c.group.position.set(cx + Math.cos(c.angle) * r, 70, cz + Math.sin(c.angle) * r);
+    c.group.rotation.y = -c.angle;
+    if (c.t > 40) { c.state = 'landing'; c.t = 0; }
+  } else if (c.state === 'landing') {
+    const k = Math.min(1, c.t / 8);
+    c.group.position.y = 70 * (1 - k);
+    c.angle += dt * 0.12;
+    const tx = cx + Math.cos(c.angle) * r;
+    const tz = cz + Math.sin(c.angle) * r;
+    // Blend back to the apron as the plane descends, no jump on touchdown.
+    c.group.position.x = tx + (-260 - tx) * k;
+    c.group.position.z = tz + (-240 - tz) * k;
+    c.group.rotation.y = -c.angle;
+    if (k >= 1) {
+      c.state = 'parked';
+      c.group.position.set(-260, 0, -240);
+      c.group.rotation.y = Math.PI / 2;
+      c.rider = false;
+      G.charterRide = null;
+      G.player.group.visible = true;
+      G.player.pos.set(-250, 0, -240);
+      G.player.group.position.copy(G.player.pos);
+      G.hud.toast('Charter flight complete — back on the apron. The bay tour is free, the view is priceless.');
+      G.audio.missionComplete();
+    }
+  }
+  // While riding, the camera chases the plane from behind and above.
+  if (c.rider) {
+    const p = c.group.position;
+    const fx = Math.sin(c.group.rotation.y), fz = Math.cos(c.group.rotation.y);
+    G.camera.position.set(p.x - fx * 16, p.y + 5, p.z - fz * 16);
+    G.camera.lookAt(p.x, p.y, p.z);
+  }
 }
 
 function buildPlane(group, mat, x, z, heading, stripeColor) {

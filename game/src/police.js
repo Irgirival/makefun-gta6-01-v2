@@ -15,6 +15,7 @@ export function createWanted(G) {
     lastSeenAt: -999,
     arrestTimer: 0,
     roadblockAt: 0,        // first roadblock only after 45 s of play
+    v6SurgeDone: false,    // v6: the five-star double roadblock, once per chase
     addHeat(amount, reason) {
       const was = this.stars;
       this.heat = Math.min(100, this.heat + amount);
@@ -209,6 +210,22 @@ export function updatePolice(G, dt) {
     }
     G.hud.toast('Roadblock ahead! Smash through or go around.');
   }
+
+  // v6: the five-star surge — the moment the Guard is called, the PD throws
+  // a double roadblock across the avenue ahead of Mara, six cruisers wide.
+  if (w.stars >= 5 && !w.v6SurgeDone && G.driving) {
+    w.v6SurgeDone = true;
+    const ahead = 45;
+    const bx = target.x + Math.sin(G.driving.heading) * ahead;
+    const bz = target.z + Math.cos(G.driving.heading) * ahead;
+    for (let i = -1; i <= 1; i++) {
+      const px = bx + Math.cos(G.driving.heading) * i * 6;
+      const pz = bz - Math.sin(G.driving.heading) * i * 6;
+      createVehicle(G, 'police', px, pz, G.driving.heading + Math.PI / 2, { parked: true });
+    }
+    G.hud.toast('Five stars — a double roadblock is forming ahead!');
+  }
+  if (w.stars < 5) w.v6SurgeDone = false;
 }
 
 export function nearestPoliceDistance(G) {

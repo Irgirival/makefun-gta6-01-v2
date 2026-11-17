@@ -85,6 +85,29 @@ export const RACE_CIRCUITS = [
       { x: 140, z: 220 }, { x: 60, z: 220 },
     ],
   },
+  // v6: two more circuits. Old Town GP threads the historic quarter's
+  // narrow streets past the cathedral and the market; the Summit Run
+  // crosses the causeway and climbs the island to the ski lodge.
+  {
+    id: 'oldtown',
+    name: 'Old Town GP',
+    laps: 2,
+    prize: [2600, 1300, 650, 300],
+    points: [
+      { x: 220, z: -180 }, { x: 300, z: -180 }, { x: 300, z: -260 }, { x: 220, z: -260 },
+      { x: 220, z: -100 }, { x: 300, z: -100 }, { x: 300, z: -180 }, { x: 220, z: -180 },
+    ],
+  },
+  {
+    id: 'summit',
+    name: 'Summit Run',
+    laps: 2,
+    prize: [3200, 1600, 800, 400],
+    points: [
+      { x: -160, z: 420 }, { x: -160, z: 505 }, { x: -230, z: 505 }, { x: -230, z: 555 },
+      { x: -110, z: 555 }, { x: -110, z: 505 }, { x: -160, z: 505 }, { x: -160, z: 420 },
+    ],
+  },
 ];
 
 export const RACE_START = { x: 20, z: 60 };

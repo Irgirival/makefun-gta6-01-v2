@@ -47,7 +47,9 @@ export function registerExtraMissions(G) {
 
   const side = {
     courier: { active: false, stage: null, leg: 0, pickup: null, dropoff: null, timer: 0, timerTotal: 0, streak: 0, parcel: null },
-    stunts: { best: 0, total: 0, ramps: [] },
+    // v6: stunt chains — jumps landed within 30 seconds of each other pay
+    // more each time, so a driver who links ramps gets rich.
+    stunts: { best: 0, total: 0, ramps: [], chain: 0, lastJumpAt: -999, chainBest: 0 },
   };
   G.side = side;
 
@@ -219,10 +221,17 @@ function updateStunts(G, dt) {
       v.jumpY = 0;
       st.total++;
       if (dist >= JUMP_MIN) {
-        const pay = JUMP_BASE_PAY + Math.round((dist - JUMP_MIN) * 5);
+        // v6: chain the jumps — land another within 30 seconds and the pay
+        // climbs 25% per link, so a driver who threads ramps gets rich.
+        if (G.elapsed - st.lastJumpAt < 30) st.chain++;
+        else st.chain = 1;
+        st.lastJumpAt = G.elapsed;
+        if (st.chain > st.chainBest) st.chainBest = st.chain;
+        const mult = 1 + 0.25 * (st.chain - 1);
+        const pay = Math.round((JUMP_BASE_PAY + Math.round((dist - JUMP_MIN) * 5)) * mult);
         G.cash += pay;
         if (dist > st.best) st.best = Math.round(dist);
-        G.hud.toast(`STUNT JUMP — ${Math.round(dist)}m of air! +$${pay}`);
+        G.hud.toast(`STUNT JUMP — ${Math.round(dist)}m of air! +$${pay}${st.chain > 1 ? ` (chain x${st.chain})` : ''}`);
         G.audio.missionComplete();
       } else {
         G.hud.toast(`Jumped ${Math.round(dist)}m — ${JUMP_MIN}m pays. Hit the ramp faster.`);

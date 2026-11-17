@@ -62,6 +62,10 @@ export function createPlayer(G) {
     speed: 0,
     punchTimer: 0,
     punchAnim: 0,
+    // v6: sprint stamina — 100 points, drained by sprinting, restored by
+    // walking or standing still. Empty means a forced breather.
+    stamina: 100,
+    exhausted: false,
     // v3: the safehouse swaps Mara's jacket — one method, used by safehouse.js.
     setJacket(color) {
       if (parts.torso && parts.torso.material) parts.torso.material.color.set(color);
@@ -85,7 +89,17 @@ export function updatePlayer(G, dt) {
 
   const fwd = input.down('forward') ? 1 : input.down('back') ? -1 : 0;
   const strafe = input.down('right') ? 1 : input.down('left') ? -1 : 0;
-  const sprint = input.down('sprint') && fwd > 0;
+  // v6: sprint stamina — sprinting drains the meter, walking restores it,
+  // and an empty meter forces a breather before the next burst.
+  let sprint = input.down('sprint') && fwd > 0;
+  if (sprint && p.stamina <= 0) {
+    p.exhausted = true;
+    G.hud.toast('Winded! Catch your breath before sprinting again.');
+  }
+  if (p.exhausted && p.stamina > 40) p.exhausted = false;
+  if (sprint && p.exhausted) sprint = false;
+  if (sprint) p.stamina = Math.max(0, p.stamina - 18 * dt);
+  else p.stamina = Math.min(100, p.stamina + (p.moving ? 12 : 20) * dt);
   // v5: the Harbor Runner outfit adds 15% to the sprint — the jacket earns it.
   const sprintMult = sprint ? (p.sprintBoost || 1) : 1;
   const speed = (sprint ? cfg.sprintSpeed : cfg.walkSpeed) * sprintMult;

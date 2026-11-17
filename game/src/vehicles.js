@@ -19,6 +19,9 @@ export const VEHICLE_TYPES = {
   // the boardwalk — both parked in the open, both stealable.
   armored: { name: 'Solmar Armored Van', topSpeed: 30, accel: 18, turn: 1.5, colors: [0x3a4a3a, 0x5a5a5a] },
   limo:    { name: 'Verde Limousine', topSpeed: 38, accel: 24, turn: 1.5, colors: [0x1a1a22, 0xf0f0f0, 0x6a1a2a] },
+  // v6: the fire engine — long, heavy, red, with a ladder on top and a
+  // light bar that clears traffic when Mara drives it with the siren live.
+  firetruck: { name: 'Solmar Fire Engine', topSpeed: 30, accel: 20, turn: 1.4, colors: [0xd81a1a, 0xc9a03a] },
 };
 
 function buildCarMesh(type, color, rng) {
@@ -26,8 +29,12 @@ function buildCarMesh(type, color, rng) {
   const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
   const isVan = type === 'van';
   const isPolice = type === 'police';
-  const bodyLen = isVan ? 5.2 : 4.4;
-  const bodyH = isVan ? 1.5 : 0.85;
+  // v6: the big rigs — the city bus and the fire engine are long, tall and
+  // slow to turn, and their axles sit wide apart like the limousine's.
+  const isFireTruck = type === 'firetruck';
+  const isBus = type === 'bus';
+  const bodyLen = isVan ? 5.2 : isBus ? 7.4 : isFireTruck ? 7.0 : 4.4;
+  const bodyH = isVan ? 1.5 : isBus ? 1.7 : isFireTruck ? 1.6 : 0.85;
   const isArmored = type === 'armored';
   const isLimo = type === 'limo';
   const limoLen = isLimo ? 6.8 : bodyLen;
@@ -71,6 +78,53 @@ function buildCarMesh(type, color, rng) {
     cap.position.set(0, limoH + 0.95, -2.4);
     group.add(cap);
   }
+  if (isBus) {
+    // A long window band and a glowing destination sign: the city bus
+    // reads as a bus from across the avenue, not as a stretched sedan.
+    const band = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.7, 6.4),
+      new THREE.MeshLambertMaterial({ color: 0x9fd0e8, emissive: 0x223344 }));
+    band.position.y = 1.55;
+    group.add(band);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.15),
+      new THREE.MeshLambertMaterial({ color: 0xffd23e, emissive: 0x554400 }));
+    sign.position.set(0, 1.55, 3.75);
+    group.add(sign);
+  }
+  if (isFireTruck) {
+    // Ladder on the roof, water tank at the back, a white cheatline and a
+    // light bar up front — the engine is the loudest thing on the road.
+    const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 6.4), mat(0xc9c9c9));
+    ladder.position.set(0, limoH + 0.85, 0);
+    group.add(ladder);
+    for (let rz = -3; rz <= 3; rz += 1) {
+      const rung = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.08, 0.18), mat(0x8a8a8a));
+      rung.position.set(0, limoH + 0.98, rz);
+      group.add(rung);
+    }
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 2.2), mat(0x8a1a1a));
+    tank.position.set(0, limoH + 0.35, -1.8);
+    group.add(tank);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.3, 6.9), mat(0xf0f0f0));
+    stripe.position.y = 0.95;
+    group.add(stripe);
+  }
+  if (isFireTruck || isArmored) {
+    // A light bar the chase systems can flash: red and blue on the fire
+    // engine, and on the Guard APC that rolls in at five stars.
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 0.5), mat(0x222222));
+    bar.position.set(0, bodyH + 1.05, -0.2);
+    group.add(bar);
+    const red = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.52),
+      new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xaa0000 }));
+    red.position.set(-0.32, bodyH + 1.18, -0.2);
+    group.add(red);
+    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.52),
+      new THREE.MeshLambertMaterial({ color: 0x2244ff, emissive: 0x0000aa }));
+    blue.position.set(0.32, bodyH + 1.18, -0.2);
+    group.add(blue);
+    group.userData.lightRed = red;
+    group.userData.lightBlue = blue;
+  }
   if (isPolice) {
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.28, bodyLen * 0.9), mat(0xf0f0f0));
     stripe.position.y = 0.85; group.add(stripe);
@@ -100,11 +154,12 @@ function buildCarMesh(type, color, rng) {
       new THREE.MeshLambertMaterial({ color: 0xcc2222, emissive: 0x660000 }));
     t.position.set(sx, 0.75, -effLen / 2 - 0.02); group.add(t);
   }
-  // Wheels — the limousine's axles sit wide apart, like the city bus.
+  // Wheels — the limousine's axles sit wide apart, like the city bus and
+  // the fire engine, whose long bodies need the same spread.
   const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 10);
   const wheelMat = mat(0x181818);
   const wheels = [];
-  const axle = isLimo ? 2.4 : 1.45;
+  const axle = (isLimo || isBus || isFireTruck) ? 2.4 : 1.45;
   for (const [wx, wz] of [[-0.95, axle], [0.95, axle], [-0.95, -axle], [0.95, -axle]]) {
     const w = new THREE.Mesh(wheelGeo, wheelMat);
     w.rotation.z = Math.PI / 2;

@@ -100,5 +100,12 @@ export function updateTraffic(G, dt) {
     const target = ahead < 16 ? Math.max(0, (ahead - 7) / 9) * v.cruiseSpeed : v.cruiseSpeed * raceSlow * rushHour;
     v.throttleTarget = v.speed < target ? 0.55 : 0;
     if (v.speed > target + 2) v.throttleTarget = -0.4;
+    // v6: the fire engine's siren clears the road — traffic ahead of the
+    // truck brakes hard and pulls over while Mara rolls through with the
+    // lights flashing.
+    if (G.busfire && G.driving === G.busfire.truck) {
+      const dd = Math.hypot(v.pos.x - G.driving.pos.x, v.pos.z - G.driving.pos.z);
+      if (dd < 45) v.throttleTarget = -0.8;
+    }
   }
 }

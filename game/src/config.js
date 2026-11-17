@@ -105,4 +105,21 @@ export const CONFIG = {
   outfitShopMarkup: 1,      // outfits sell at list price
   vendorStalls: 3,          // street-vendor stalls around the plaza and boardwalk
   performerSpots: 2,        // street performers drawing a crowd
+
+  // v6: the Old Town quarter, the mountain, the VIP job, poker, the Guard
+  // and the car collection — every new system reads its numbers here.
+  oldTownPlaza: { x: 260, z: -260 },
+  vipFareBase: 120,         // VIP pickup base fare
+  vipFarePerUnit: 0.55,
+  parcelFareBase: 90,
+  pokerBuyIn: 100,          // dollars for 1,000 chips at the high-roller table
+  pokerChipRate: 10,        // chips per dollar when cashing out
+  militaryStars: 5,         // the National Guard rolls in at this many stars
+  militaryStandDown: 3,     // ...and stands down below this many
+  collectionMax: 5,         // cars Mara can own at once
+  snowGrip: 0.85,           // grip on snowy roads
+  landmarkBonus: 50,        // dollars per new landmark visited
+  mountainBonus: 200,       // dollars for the first summit viewpoint visit
+  busFarePerRider: 5,
+  hydrantBonus: 25,
 };

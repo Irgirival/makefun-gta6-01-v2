@@ -42,6 +42,14 @@ export function createStats(G) {
         ['Hidden packages', `${m.collectedCount || 0} / 12 found`],
         ['Garage', `Engine Lv${g.engineLevel} · Armor Lv${g.armorLevel}${g.neon ? ' · Neon' : ''}${g.suspensionLevel ? ` · Suspension Lv${g.suspensionLevel}` : ''}`],
         ['Radio', G.radio ? G.radio.station().name : 'Off'],
+        // v6: the new scorecard rows — VIP work, poker, the collection, the
+        // Guard, the landmarks and the mountain.
+        ['VIP jobs', G.vip ? `${G.vip.jobs} jobs · $${G.vip.earned} earned · rating ${G.vip.rating.toFixed(1)}★` : '—'],
+        ['Poker', G.poker ? `${G.poker.handsPlayed} hands · ${G.poker.handsWon} won · biggest pot $${G.poker.biggestPot}` : '—'],
+        ['Car collection', G.collection ? `${G.collection.owned.length}/5 — ${G.collection.owned.map((o) => o.name).join(', ') || 'nothing yet'}` : '—'],
+        ['Military', G.military ? `${G.military.apcSpawns} Guard deployments · ${G.military.escapes} escapes` : '—'],
+        ['Landmarks', G.oldtown ? `${Object.keys(G.oldtown.visited).length}/${G.oldtown.landmarks.length} visited` : '—'],
+        ['Bus & fire', G.busfire ? `${G.busfire.fares} riders · $${G.busfire.fareEarned} fares · ${G.busfire.hydrantHits} hydrants` : '—'],
         ['Time in Solmar', `${hours}h ${String(mins).padStart(2, '0')}m`],
         ['Wanted now', G.wanted.stars > 0 ? `${G.wanted.stars} star${G.wanted.stars > 1 ? 's' : ''} — the PD is looking` : 'clean — for now'],
       ];
@@ -66,5 +74,9 @@ export function careerSummary(G) {
   // v5: the camera and the tables join the career line.
   const snaps = G.photomode ? G.photomode.snaps : 0;
   const tables = G.casinogames ? G.casinogames.bjHands : 0;
-  return `${l.wins} race wins, ${v.bounties} bounties, ${G.missions.index} missions done, ${snaps} snapshots, ${tables} blackjack hands, $${Math.floor(G.cash)} in pocket.`;
+  // v6: the VIP job, the poker table and the collection join it too.
+  const vipJobs = G.vip ? G.vip.jobs : 0;
+  const pokerHands = G.poker ? G.poker.handsPlayed : 0;
+  const cars = G.collection ? G.collection.owned.length : 0;
+  return `${l.wins} race wins, ${v.bounties} bounties, ${G.missions.index} missions done, ${snaps} snapshots, ${tables} blackjack hands, ${vipJobs} VIP jobs, ${pokerHands} poker hands, ${cars}/5 cars collected, $${Math.floor(G.cash)} in pocket.`;
 }

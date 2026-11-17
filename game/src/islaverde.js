@@ -336,6 +336,39 @@ export function buildIslaVerde(G) {
     G.scene.add(scope);
     addCollider(G, -192, 556, 2.6, 1.2);
   }
+  // v6: the mountain trailhead — a signpost where the boardwalk meets the
+  // trail, and a ski-rental shack with bright skis by the door, so the
+  // mountain reads as a destination before Mara ever climbs it.
+  {
+    const sign = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.2, 0.4), lambert(0x4a2a1a));
+    post.position.y = 1.6;
+    sign.add(post);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.6, 0.25),
+      new THREE.MeshLambertMaterial({ color: 0x2a6a4a, emissive: 0x113322 }));
+    board.position.y = 3.4;
+    sign.add(board);
+    sign.position.set(-200, 0, 478);
+    G.scene.add(sign);
+    const shack = new THREE.Group();
+    const shackWalls = new THREE.Mesh(new THREE.BoxGeometry(6, 3.6, 5), lambert(0x8a5a3a));
+    shackWalls.position.y = 1.8;
+    shack.add(shackWalls);
+    const shackRoof = new THREE.Mesh(new THREE.ConeGeometry(4.6, 2.2, 4), lambert(0xf0f4f8));
+    shackRoof.position.y = 4.7;
+    shackRoof.rotation.y = Math.PI / 4;
+    shack.add(shackRoof);
+    for (let i = 0; i < 3; i++) {
+      const ski = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.2, 0.08),
+        lambert([0xd81a2a, 0x1a6ad8, 0xffd23e][i]));
+      ski.position.set(-2.4 + i * 0.6, 1.4, 2.6);
+      ski.rotation.z = 0.12;
+      shack.add(ski);
+    }
+    shack.position.set(-186, 0, 482);
+    G.scene.add(shack);
+    addCollider(G, -186, 482, 6, 5);
+  }
   return G.isla;
 }
 

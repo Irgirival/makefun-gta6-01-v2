@@ -39,6 +39,30 @@ export function createNitro(G) {
     },
   };
   G.nitro = nitro;
+  // v6: nitro refill stations — a pump by Vic's garage and one on the beach
+  // road. Drive any car up to a pump and the tank fills to the brim, free.
+  const stations = [];
+  for (const [sx, sz] of [[-16, -88], [56, 296]]) {
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1.0),
+      new THREE.MeshLambertMaterial({ color: 0x1a6ad8, emissive: 0x113366 }));
+    base.position.y = 1.1;
+    group.add(base);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 1.2),
+      new THREE.MeshLambertMaterial({ color: 0xffd23e, emissive: 0x554400 }));
+    top.position.y = 2.4;
+    group.add(top);
+    const hose = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6),
+      new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+    hose.position.set(0.9, 1.0, 0);
+    hose.rotation.z = 0.5;
+    group.add(hose);
+    group.position.set(sx, 0, sz);
+    G.scene.add(group);
+    G.city.colliders.push({ minX: sx - 1, maxX: sx + 1, minZ: sz - 0.6, maxZ: sz + 0.6 });
+    stations.push({ x: sx, z: sz, group });
+  }
+  nitro.stations = stations;
   return nitro;
 }
 
@@ -119,6 +143,18 @@ export function updateNitro(G, dt) {
   // The flame belongs to one car: if Mara swapped cars, hide the old flame.
   if (n.flame && n.flame.visible && (!car || n.flame.parent !== car.mesh)) {
     n.flame.visible = false;
+  }
+  // v6: the refill stations — drive up to a pump and the tank fills to the
+  // brim, free, as a thank-you for keeping Solmar moving.
+  if (n.stations) {
+    const p = car ? car.pos : G.player.pos;
+    for (const s of n.stations) {
+      if (Math.hypot(s.x - p.x, s.z - p.z) < 5 && n.meter < nitroMax(G)) {
+        n.meter = nitroMax(G);
+        G.hud.toast('Nitro topped up at the refill station — full tank!');
+        G.audio.pickup();
+      }
+    }
   }
 }
 

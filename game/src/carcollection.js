@@ -5,6 +5,7 @@
 // Collected cars keep their paint and arrive with a full tank of attitude.
 
 import { VEHICLE_TYPES, createVehicle } from './vehicles.js';
+import { refreshShowroom } from './garage.js';
 
 export const COLLECTION_MAX = 5;
 const COLLECTION_SPOTS = [
@@ -43,6 +44,7 @@ export function registerCollectedCar(G, car) {
   c.collected++;
   G.hud.toast(`Collection: ${entry.name} added! (${c.owned.length}/${COLLECTION_MAX})`);
   G.audio.pickup();
+  refreshShowroom(G);
   G.save.save(G);
   return true;
 }

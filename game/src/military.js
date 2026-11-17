@@ -55,8 +55,8 @@ function spawnMilitary(G) {
   const m = G.military;
   const pos = G.driving ? G.driving.pos : G.player.pos;
   const rng = G.rng;
-  // The APC: an armored van with a military driver, so the chase model
-  // drives it straight at Mara like a police cruiser.
+  // The APC: an armored van that the military drives itself — it is NOT
+  // in G.policeCars, so the PD's cruiser-count logic never touches it.
   const a = rng() * Math.PI * 2;
   const tx = pos.x + Math.sin(a) * 70;
   const tz = pos.z + Math.cos(a) * 70;
@@ -65,10 +65,9 @@ function spawnMilitary(G) {
   const truck = createVehicle(G, 'armored',
     Math.abs(tx - roadX) < Math.abs(tz - roadZ) ? roadX : tx,
     Math.abs(tx - roadX) < Math.abs(tz - roadZ) ? tz : roadZ,
-    0, { driver: 'police', occupied: true, color: 0x4a5a3a });
-  truck.speed = 14;
+    0, { driver: null, occupied: true, color: 0x4a5a3a });
+  truck.speed = 0;
   truck.name = 'National Guard APC';
-  G.policeCars.push(truck);
   m.truck = truck;
   m.soldiers = [];
   for (let i = 0; i < SOLDIER_COUNT; i++) {
@@ -90,11 +89,13 @@ function spawnMilitary(G) {
 function standDown(G) {
   const m = G.military;
   if (m.truck) {
-    const idx = G.policeCars.indexOf(m.truck);
-    if (idx >= 0) G.policeCars.splice(idx, 1);
-    const vi = G.vehicles.indexOf(m.truck);
-    if (vi >= 0) G.vehicles.splice(vi, 1);
-    G.scene.remove(m.truck.mesh);
+    // If Mara stole the APC herself, it stays hers — the Guard just
+    // stops chasing and the truck becomes an ordinary armored van.
+    if (G.driving !== m.truck) {
+      const vi = G.vehicles.indexOf(m.truck);
+      if (vi >= 0) G.vehicles.splice(vi, 1);
+      G.scene.remove(m.truck.mesh);
+    }
     m.truck = null;
   }
   for (const s of m.soldiers) G.scene.remove(s.mesh);
@@ -132,8 +133,37 @@ export function updateMilitary(G, dt) {
       G.hud.setObjectiveHint('National Guard on the street — break line of sight and lose the stars!');
     }
   }
-  // The APC keeps pressure even when Mara ducks behind cover.
-  if (m.truck && !G.policeCars.includes(m.truck)) G.policeCars.push(m.truck);
+  // The APC keeps pressure even when Mara ducks behind cover: it steers
+  // straight at her, ramming speed, and flashes its own light bar. If Mara
+  // stole the APC herself, the Guard leaves it alone.
+  if (m.truck && G.driving !== m.truck) {
+    const t = m.truck;
+    const dx = pos.x - t.pos.x;
+    const dz = pos.z - t.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const desired = Math.atan2(dx, dz);
+    let diff = desired - t.heading;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    t.heading += Math.max(-1.6 * dt, Math.min(1.6 * dt, diff * 2 * dt));
+    t.speed = dist > 10 ? 20 : 8;
+    t.pos.x += Math.sin(t.heading) * t.speed * dt;
+    t.pos.z += Math.cos(t.heading) * t.speed * dt;
+    G.city.collideCircle(t.pos, 2.2);
+    t.mesh.position.copy(t.pos);
+    t.mesh.rotation.y = t.heading;
+    const red = t.mesh.userData.lightRed;
+    const blue = t.mesh.userData.lightBlue;
+    if (red && blue) {
+      const on = Math.floor(G.elapsed * 6) % 2 === 0;
+      red.material.emissive.setHex(on ? 0xff0000 : 0x220000);
+      blue.material.emissive.setHex(on ? 0x000022 : 0x0000ff);
+    }
+    if (!G.driving && dist < 2.6 && t.speed > 3) {
+      G.combat.damagePlayer(12, 'run over by the APC');
+      t.speed *= 0.3;
+    }
+  }
 }
 
 export function militarySummary(G) {

@@ -6,6 +6,8 @@
 // ambient synthwave loop the game starts with is the radio's off-air
 // state — turning the radio on replaces it, turning it off brings it back.
 
+import { talkCrimeReport } from './talkradio.js';
+
 const STATIONS = [
   { id: 'off', name: 'Radio Off', blurb: 'Just the city and the engine.' },
   { id: 'solmar-fm', name: 'Solmar FM 88.4 — Synthwave', blurb: 'Neon nights, driving bass.' },
@@ -15,6 +17,9 @@ const STATIONS = [
   // Solmar After Dark for the slow cruise home.
   { id: 'harbor-rock', name: 'Harbor Rock 104.7', blurb: 'Guitars loud enough for the docks.' },
   { id: 'after-dark', name: 'Solmar After Dark 95.6 — Funk', blurb: 'Slow bass for the midnight avenues.' },
+  // v6: a fourth music voice — Solmar Sports & Traffic, play-by-play for
+  // the street races and traffic reports from the news helicopter.
+  { id: 'sports', name: 'Solmar Sports & Traffic 98.2', blurb: 'Play-by-play and traffic from the sky.' },
 ];
 
 // Chord roots per station, in Hz: synthwave Am–F–C–G, latin Dm–Bb–F–C,
@@ -27,6 +32,8 @@ const STATION_CHORDS = {
   // seventh chords that never hurry anywhere.
   'harbor-rock': [[82.4, 123.5, 164.8], [98, 146.8, 196], [110, 164.8, 220], [123.5, 185, 246.9]],
   'after-dark': [[55, 65.4, 82.4, 98], [49, 58.3, 73.4, 87.3], [65.4, 82.4, 98, 116.5], [58.3, 73.4, 87.3, 103.8]],
+  // v6: sports runs on bright major chords that never sit still.
+  sports: [[131, 164.8, 196], [117.5, 146.8, 175], [110, 130.8, 164.8], [98, 123.5, 146.8]],
 };
 const STATION_BASS = {
   'solmar-fm': [55, 43.65, 65.4, 49],
@@ -34,8 +41,9 @@ const STATION_BASS = {
   talk: [55, 55, 49, 55],
   'harbor-rock': [82.4, 98, 110, 123.5],
   'after-dark': [55, 49, 65.4, 58.3],
+  sports: [65.4, 58.3, 55, 49],
 };
-const STATION_STEP = { 'solmar-fm': 0.42, verde: 0.3, talk: 0.6, 'harbor-rock': 0.32, 'after-dark': 0.55 };
+const STATION_STEP = { 'solmar-fm': 0.42, verde: 0.3, talk: 0.6, 'harbor-rock': 0.32, 'after-dark': 0.55, sports: 0.28 };
 
 // What the DJ says when you tune in — each station has a voice.
 const DJ_IDENTS = {
@@ -58,6 +66,10 @@ const DJ_IDENTS = {
   'after-dark': [
     'VELVET (After Dark): "Slow it down, Solmar. The night is long and the bass is longer."',
     'VELVET: "You\'re listening to After Dark — funk for the drive home, whenever home is."',
+  ],
+  sports: [
+    'PLAY-BY-PLAY (Sports & Traffic): "You\'re on Solmar Sports — the races, the traffic, and the chase, live from the sky."',
+    'PLAY-BY-PLAY: "Traffic is moving, the tram is on time, and somewhere out there a Vortex GT is making history."',
   ],
 };
 
@@ -243,6 +255,11 @@ const BULLETIN_POOLS = {
 export function radioBulletin(G, force = false) {
   const r = G.radio;
   if (!r || r.station().id === 'off') return null;
+  // v6: when the heat is on, the talk show's crime desk cuts in on every
+  // other bulletin — Host Dana follows Mara's rap sheet live.
+  if (G.wanted && G.wanted.stars >= 1 && G.talkradio && r.bulletinCount % 2 === 0) {
+    return talkCrimeReport(G);
+  }
   const stars = G.wanted ? G.wanted.stars : 0;
   const missionsDone = G.missions ? G.missions.index : 0;
   const raining = G.weather && G.weather.mode !== 'clear';

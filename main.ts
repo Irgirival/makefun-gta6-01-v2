@@ -1,21 +1,17 @@
-// Solmar City v5 — Mara Solano: a complete 3D open-world crime game for the
-// make.fun gta6-01 bounty (Node 22, standard library only). v5 tops up v4
-// with photo mode (free orbit camera, five film filters, HUD hide, PNG
-// snapshots), the casino table floor (roulette and blackjack-lite), Radio v2
-// (Harbor Rock and Solmar After Dark plus live news bulletins that react to
-// the wanted level and the story), Mission 10 "The Last Sunset" (a golden-
-// hour coda from the lighthouse to the beach bar, with a full-PD surge),
-// two new race circuits (Uptown Loop and the night-running Midnight Beach
-// Run at 1.5x purse), an armored van and a limousine to steal, a safehouse
-// outfit shop with perks and a weapon locker, garage sport suspension and
-// nitro tanks, street performers with audiences, vendor stalls, tourists
-// photographing the landmarks, a golden-haze weather mode, rush-hour
-// traffic, a fast Verde Comet speedboat, a Boulevard Cruiser bike, stakeout
-// vigilante contracts, a 5-star searchlight sweep and a living career
-// scorecard — on top of v4's heist arc, flyable helicopters, race league,
-// jet skis, casino, street events and storm fronts, and v3's street racing,
-// tuning garage, Verde Heist finale, Isla Verde island, boats, safehouse,
-// radio, vigilante contracts and nitro.
+// Solmar City v6 — Mara Solano: a complete 3D open-world crime game for the
+// make.fun gta6-01 bounty (Node 22, standard library only). v6 tops up v5
+// with the Old Town historic quarter (cathedral, market, tram), Missions 11
+// "Old Town Rising" and 12 "The Mountain Run", VIP pickups and parcel runs
+// with a driver rating, Texas Hold'em poker at the Verde Casino, the
+// National Guard at five stars, a five-car collection with a garage
+// showroom, photo mode v2 (time-of-day and weather staging, landmark
+// checklist), a snow-capped mountain with a ski lodge and snowfall, a
+// charter flight, a harbor ferry, a drivable city bus and fire engine, an
+// SMG, sprint stamina, a fourth radio station that reacts to your crimes,
+// and two more race circuits — on top of v5's photo mode, casino table
+// floor, Radio v2, Mission 10, night racing, armored van and limousine,
+// safehouse outfit shop, garage suspension and nitro tanks, street
+// performers, golden-haze weather, rush-hour traffic and the Verde Comet.
 //
 // The game lives in this directory's game/ folder as plain static files a
 // desktop browser loads fully offline: game/index.html plus its ES modules
@@ -31,7 +27,7 @@
 // motorcycle, arcade physics, car stealing with E, and five drivable boats);
 // traffic AI, buses and pedestrians; a 0-5 star wanted system with pursuing
 // cruisers, a searchlight helicopter, spike strips, roadblocks and arrests;
-// punch and pistol combat; nine story missions with dialogue, waypoints
+// punch and pistol combat; twelve story missions with dialogue, waypoints
 // and cash rewards ending in the King of Solmar, a repeatable taxi job, courier
 // runs, stunt jumps, street races with AI rivals and a championship league,
 // a tuning garage, vigilante bounties, a safehouse, three radio stations,

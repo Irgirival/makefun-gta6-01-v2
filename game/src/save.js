@@ -77,6 +77,28 @@ export function createSave(G) {
             rivals: G.league.rivals.map((r) => ({ short: r.short, points: r.points })),
           } : null,
           jetskiBest: G.jetskis ? G.jetskis.trial.best : null,
+          // v6: VIP career, poker, the collection, the Guard, the mountain
+          // and the bus fares all persist with the rest of Mara's career.
+          vip: G.vip ? {
+            jobs: G.vip.jobs, earned: G.vip.earned, rating: G.vip.rating,
+            ratingCount: G.vip.ratingCount, bestTip: G.vip.bestTip,
+          } : null,
+          poker: G.poker ? {
+            handsPlayed: G.poker.handsPlayed, handsWon: G.poker.handsWon,
+            biggestPot: G.poker.biggestPot,
+          } : null,
+          collection: G.collection ? {
+            owned: G.collection.owned, calls: G.collection.calls,
+            collected: G.collection.collected,
+          } : null,
+          military: G.military ? {
+            apcSpawns: G.military.apcSpawns, escapes: G.military.escapes,
+          } : null,
+          mountain: G.mountain ? { summitVisits: G.mountain.summitVisits } : null,
+          busfire: G.busfire ? {
+            fares: G.busfire.fares, fareEarned: G.busfire.fareEarned,
+            hydrantHits: G.busfire.hydrantHits,
+          } : null,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       } catch (err) {

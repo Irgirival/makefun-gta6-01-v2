@@ -164,6 +164,37 @@ export function createMinimap(G) {
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
       }
 
+      // v6: the new world on the map — Old Town landmarks in purple, the
+      // ski lodge in white, the military APC in red and the live VIP job
+      // in pink, so Mara can read the whole v6 map at a glance.
+      if (G.oldtown) {
+        ctx.fillStyle = '#c98aff';
+        for (const lm of G.oldtown.landmarks) {
+          if (lm.id === 'lodge') continue;
+          const [x, y] = toMap(lm.x, lm.z);
+          if (x < 0 || y < 0 || x > W || y > H) continue;
+          ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      if (G.mountain) {
+        const [x, y] = toMap(-196, 500);
+        if (x >= 0 && y >= 0 && x <= W && y <= H) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      if (G.military && G.military.truck) {
+        const [x, y] = toMap(G.military.truck.pos.x, G.military.truck.pos.z);
+        ctx.fillStyle = '#ff2222';
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      if (G.vip && G.vip.active) {
+        const t = G.vip.stage === 'pickup' ? G.vip.pickup : G.vip.dropoff;
+        const [x, y] = toMap(t.x, t.z);
+        ctx.fillStyle = '#ff8ac9';
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+      }
+
       // Traffic: grey dots.
       ctx.fillStyle = '#c9c9c9';
       for (const v of G.vehicles) {

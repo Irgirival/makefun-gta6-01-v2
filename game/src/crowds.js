@@ -148,6 +148,22 @@ export function spawnCrowds(G) {
   }
   // v5: performers, vendors and their crowds — the street life.
   spawnStreetLife(G);
+  // v6: the Old Town crowd — market browsers, cathedral gawkers and tram
+  // commuters who keep the historic quarter feeling lived-in.
+  spawnOldTownCrowd(G);
+}
+
+// v6: Old Town's own crowd, built on the same varied-ped system as the
+// rest of the city, with local targets so they stay in the quarter.
+export function spawnOldTownCrowd(G) {
+  for (let i = 0; i < 4; i++) {
+    const ped = spawnVariedPed(G, 'tourist', 236 + i * 10, -212 + (i % 2 ? 3 : -3));
+    if (ped) ped.local = { x: 260, z: -212, r: 28 };
+  }
+  for (let i = 0; i < 3; i++) {
+    const ped = spawnVariedPed(G, 'tourist', 250 + i * 10, -270);
+    if (ped) ped.local = { x: 260, z: -260, r: 24 };
+  }
 }
 
 // Pairs stay together: the follower re-aims at the leader's target whenever

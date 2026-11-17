@@ -104,6 +104,49 @@ export function createBoats(G) {
       fast: !!spot.fast,
     });
   });
+  // v6: the Old Town ferry — a fat double-decker that runs the harbor loop
+  // on its own clock, harbor docks to the Isla Verde marina and back. Board
+  // it like any boat; it sails itself while Mara rides the deck.
+  const ferryGroup = new THREE.Group();
+  const ferryMat = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(6, 2, 14), ferryMat(0x1a3a5a));
+  hull.position.y = 1;
+  ferryGroup.add(hull);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.6, 14.6), ferryMat(0xf0f0f0));
+  deck.position.y = 2.2;
+  ferryGroup.add(deck);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(5, 2.4, 8), ferryMat(0xe8dcc0));
+  cabin.position.set(0, 3.6, -1);
+  ferryGroup.add(cabin);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.3, 8.4), ferryMat(0x2a6a4a));
+  roof.position.set(0, 5, -1);
+  ferryGroup.add(roof);
+  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 2.6, 10), ferryMat(0xd8a03a));
+  funnel.position.set(0, 5.6, 3.5);
+  ferryGroup.add(funnel);
+  for (const wx of [-2.6, 2.6]) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.0, 6.5),
+      new THREE.MeshLambertMaterial({ color: 0x9fd0e8, emissive: 0x223344 }));
+    win.position.set(wx, 3.6, -1);
+    ferryGroup.add(win);
+  }
+  ferryGroup.position.set(320, 0.3, 470);
+  G.scene.add(ferryGroup);
+  boats.list.push({
+    name: 'Old Town Ferry',
+    mesh: ferryGroup,
+    pos: new THREE.Vector3(320, 0, 470),
+    heading: Math.PI,
+    speed: 0,
+    steer: 0,
+    bobPhase: 2.1,
+    wake: [],
+    topSpeed: 8,
+    fast: false,
+    ferry: true,
+    route: [{ x: 320, z: 470 }, { x: -115, z: 580 }],
+    routeIndex: 1,
+  });
   // Two tour rings, one builder: colored spheres on striped posts, bobbing.
   boats.tour.buoys = buildBuoyRing(G, TOUR_BUOYS, 0xff5a2a);
   boats.marina.buoys = buildBuoyRing(G, MARINA_BUOYS, 0xffd23e);
@@ -273,6 +316,39 @@ export function updateBoats(G, dt) {
     if (near) G.hud.setInteract(`<b>E</b> — board the ${near.name}`);
   }
   for (const b of boats.list) {
+    // v6: the ferry sails its own loop — harbor docks to the marina and
+    // back, whether Mara is aboard or not. Riding it is free; hopping off
+    // at the marina saves the whole causeway drive.
+    if (b.ferry) {
+      const target = b.route[b.routeIndex % b.route.length];
+      const dx = target.x - b.pos.x, dz = target.z - b.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 12) {
+        b.routeIndex++;
+        if (b === boats.boarded) G.hud.toast(`Ferry stop — ${b.routeIndex % 2 === 0 ? 'harbor docks' : 'Isla Verde marina'}. E to hop off.`);
+      } else {
+        const want = Math.atan2(dx, dz);
+        let diff = want - b.heading;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        b.heading += Math.max(-0.5 * dt, Math.min(0.5 * dt, diff * dt));
+        b.speed = 8;
+        b.pos.x += Math.sin(b.heading) * b.speed * dt;
+        b.pos.z += Math.cos(b.heading) * b.speed * dt;
+      }
+      const bob = Math.sin(G.elapsed * 1.4 + b.bobPhase) * 0.12;
+      b.mesh.position.set(b.pos.x, 0.3 + bob, b.pos.z);
+      b.mesh.rotation.y = b.heading;
+      if (b === boats.boarded) {
+        // Mara rides on deck: her position and the camera follow the ferry.
+        G.player.pos.set(b.pos.x, 0, b.pos.z);
+        G.player.group.position.copy(G.player.pos);
+        const cam = G.camera;
+        cam.position.set(b.pos.x - Math.sin(b.heading) * 13, 6, b.pos.z - Math.cos(b.heading) * 13);
+        cam.lookAt(b.pos.x, 1.2, b.pos.z);
+        G.hud.setObjectiveHint('Riding the Old Town ferry — E to hop off at the next stop');
+      }
+    }
     // Idle boats bob gently on the swell.
     const bob = Math.sin(G.elapsed * 1.4 + b.bobPhase) * 0.12;
     const roll = Math.sin(G.elapsed * 0.9 + b.bobPhase) * 0.03;
@@ -284,6 +360,9 @@ export function updateBoats(G, dt) {
   }
   const boat = boats.boarded;
   if (!boat) return;
+  // v6: the ferry sails itself — the loop above already rides it, so the
+  // steering section below never touches it.
+  if (boat.ferry) return;
   const input = G.input;
   const throttle = input.down('forward') ? 1 : input.down('back') ? -0.5 : 0;
   const steerTarget = (input.down('left') ? 1 : 0) - (input.down('right') ? 1 : 0);

@@ -40,6 +40,9 @@ export function createInput(canvas) {
     KeyL: 'locker',        // v5: safehouse outfit shop + weapon locker
     KeyH: 'suspension',    // v5: garage sport suspension (better handling)
     KeyK: 'nitrotank',     // v5: garage nitro tank (bigger bottle, instant fill)
+    // v6: X takes a VIP / parcel job, Z sits at the Verde poker table.
+    KeyX: 'vip',
+    KeyZ: 'poker',
     KeyT: 'weather',
     KeyM: 'mute',
     KeyP: 'pause', Escape: 'pause',

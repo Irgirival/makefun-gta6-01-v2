@@ -66,3 +66,19 @@ export function sampleN(rng, arr, n) {
   if (n >= arr.length) return shuffle(rng, arr);
   return shuffle(rng, arr).slice(0, n);
 }
+
+// v6: clamp a value into a range, and a cheap bell-curve draw (the sum of
+// four uniforms, centred on 0) for natural-feeling variation — the VIP
+// tips, the poker bluffs and the market crowds all roll on it.
+export function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+export function gauss(rng) {
+  return (rng() + rng() + rng() + rng() - 2) / 2;
+}
+
+export function pickExcept(rng, arr, exclude) {
+  const pool = arr.filter((x) => x !== exclude);
+  return pool.length ? pick(rng, pool) : arr[0];
+}

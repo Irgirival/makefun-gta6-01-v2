@@ -9,7 +9,7 @@ import { nearestPed } from './pedestrians.js';
 
 export function createCombat(G) {
   const combat = {
-    weapon: 'fists',       // 'fists' | 'pistol'
+    weapon: 'fists',       // 'fists' | 'pistol' | 'smg'
     ammo: G.config.pistolMag,
     reserve: G.config.pistolReserve,
     punchCooldown: 0,
@@ -58,14 +58,15 @@ export function updateCombat(G, dt) {
 
   if (G.mode !== 'playing' || G.driving) return;
 
-  // Weapon switch.
+  // Weapon switch: fists -> pistol -> SMG -> fists. The SMG is the safehouse
+  // locker's prize — it sprays fast, hits lighter, and drinks ammo.
   if (input.pressed('weapon')) {
-    c.weapon = c.weapon === 'fists' ? 'pistol' : 'fists';
-    G.hud.toast(c.weapon === 'pistol' ? 'Pistol drawn.' : 'Fists up.');
+    c.weapon = c.weapon === 'fists' ? 'pistol' : c.weapon === 'pistol' ? 'smg' : 'fists';
+    G.hud.toast(c.weapon === 'pistol' ? 'Pistol drawn.' : c.weapon === 'smg' ? 'SMG out — hold the trigger, watch the spray.' : 'Fists up.');
     G.audio.weaponSwitch();
   }
   // Reload.
-  if (input.pressed('reload') && c.weapon === 'pistol' && c.ammo < G.config.pistolMag && c.reserve > 0) {
+  if (input.pressed('reload') && (c.weapon === 'pistol' || c.weapon === 'smg') && c.ammo < G.config.pistolMag && c.reserve > 0) {
     const need = G.config.pistolMag - c.ammo;
     const take = Math.min(need, c.reserve);
     c.ammo += take; c.reserve -= take;
@@ -93,9 +94,11 @@ export function updateCombat(G, dt) {
       removeOfficer(G, officer);
     }
   }
-  // Fire the pistol with the mouse.
-  if (input.mouseClicked && c.weapon === 'pistol' && c.fireCooldown <= 0) {
-    c.fireCooldown = 0.28;
+  // Fire the pistol — or the SMG, which sprays three times as fast with a
+  // wider spread and half the punch per round — with the mouse.
+  const isGun = c.weapon === 'pistol' || c.weapon === 'smg';
+  if (input.mouseClicked && isGun && c.fireCooldown <= 0) {
+    c.fireCooldown = c.weapon === 'smg' ? 0.09 : 0.28;
     if (c.ammo <= 0) {
       G.audio.emptyClick();
       G.hud.toast('Out of ammo — press R to reload.');
@@ -110,10 +113,11 @@ export function updateCombat(G, dt) {
     const from = cam.position.clone();
     const dir = new THREE.Vector3();
     cam.getWorldDirection(dir);
-    // Slight spread.
-    dir.x += (G.rng() - 0.5) * 0.02;
-    dir.y += (G.rng() - 0.5) * 0.02;
-    dir.z += (G.rng() - 0.5) * 0.02;
+    // Slight spread — wider on the SMG, which is a hose, not a scalpel.
+    const spread = c.weapon === 'smg' ? 0.05 : 0.02;
+    dir.x += (G.rng() - 0.5) * spread;
+    dir.y += (G.rng() - 0.5) * spread;
+    dir.z += (G.rng() - 0.5) * spread;
     dir.normalize();
     const ray = new THREE.Raycaster(from, dir, 0.1, 120);
     // Hit peds first (sphere test), then officers, then the world.
@@ -128,7 +132,8 @@ export function updateCombat(G, dt) {
     }
     if (hitPed) {
       hitPoint = new THREE.Vector3(hitPed.pos.x, 1.2, hitPed.pos.z);
-      damagePed(G, hitPed, G.config.pistolDamage);
+      // The SMG hits lighter per round — it wins by volume, not by power.
+      damagePed(G, hitPed, c.weapon === 'smg' ? Math.round(G.config.pistolDamage / 2) : G.config.pistolDamage);
     } else {
       const officer = nearestOfficerAlong(G, from, dir);
       if (officer) {

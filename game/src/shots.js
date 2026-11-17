@@ -127,5 +127,37 @@ export function poseShotCamera(G) {
     // From the apron, looking north at the terminal, the runway to the right.
     cam.position.set(p.pos.x - 12, 4.6, p.pos.z + 12);
     cam.lookAt(p.pos.x + 10, 2.5, p.pos.z - 16);
+  } else if (G.shot === 'oldtown') {
+    // v6: from the plaza's south edge, looking north at the cathedral and
+    // the market — the tram line crosses the frame on the avenue.
+    cam.position.set(p.pos.x + 4, 4.2, p.pos.z + 9);
+    cam.lookAt(p.pos.x - 2, 2, p.pos.z - 14);
   }
+}
+
+// v6: a fifth pose for the new quarter — Mara on foot in the Old Town
+// plaza, the cathedral behind her and the tram gliding past on the avenue.
+// It is not one of the four dossier shots; it is a staging pose for the
+// photo mode's landmark checklist and for headless verification of the
+// quarter (use ?shot=oldtown).
+export function applyShotOldTown(G) {
+  const p = G.player;
+  G.shot = 'oldtown';
+  G.mode = 'playing';
+  G.hud.show();
+  document.getElementById('title').classList.add('hidden');
+  document.getElementById('pause').classList.add('hidden');
+  document.getElementById('end').classList.add('hidden');
+  G.audio.setMuted(true);
+  p.pos.set(260, 0, -240);
+  p.heading = Math.PI;
+  p.camYaw = 0;
+  p.camPitch = 0.3;
+  // Mission 11 starts here, so the objective reads "Old Town Rising".
+  if (MISSIONS.length > 11) startMission(G, 11);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.8;
+    G.pedestrians.spawnPed(G, 260 + Math.cos(a) * 12, -260 + Math.sin(a) * 12, false);
+  }
+  G.shotFrames = 0;
 }

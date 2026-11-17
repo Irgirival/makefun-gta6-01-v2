@@ -6,11 +6,12 @@
 
 import * as THREE from 'three';
 
-const MODES = ['clear', 'light', 'heavy', 'haze'];
-const MODE_LABEL = { clear: 'Clear skies', light: 'Light rain', heavy: 'Heavy rain', haze: 'Golden haze' };
+const MODES = ['clear', 'light', 'heavy', 'haze', 'snow'];
+const MODE_LABEL = { clear: 'Clear skies', light: 'Light rain', heavy: 'Heavy rain', haze: 'Golden haze', snow: 'Snowfall' };
 const DRY_ROAD = new THREE.Color(0x2e3138);
 const WET_ROAD = new THREE.Color(0x1c2126);
 const RAIN_COUNT = 900;
+const SNOW_COUNT = 700;     // v6: fat slow flakes for the mountain and photo mode
 const RAIN_BOX = 70;      // the storm box around the player, in world units
 const RAIN_HEIGHT = 34;
 
@@ -29,6 +30,12 @@ export function createWeather(G) {
     points: null,
     drops: null,
     speeds: null,
+    // v6: snowfall — a second cloud of fat slow flakes, plus the factor
+    // the day/night cycle reads to whiten the world.
+    snowFactor: 0,
+    snowPoints: null,
+    snowDrops: null,
+    snowSpeeds: null,
   };
   // One Points cloud for every drop: positions recycle inside a box that
   // follows the player, so the storm is endless and cheap.
@@ -53,6 +60,31 @@ export function createWeather(G) {
   weather.points = points;
   weather.drops = positions;
   weather.speeds = speeds;
+  // v6: the snowfall cloud — same recycling box as the rain, slower falls
+  // and a sideways drift so the flakes wander instead of streaking.
+  const snowPositions = new Float32Array(SNOW_COUNT * 3);
+  const snowSpeeds = new Float32Array(SNOW_COUNT);
+  for (let i = 0; i < SNOW_COUNT; i++) {
+    snowPositions[i * 3] = (rng() - 0.5) * RAIN_BOX;
+    snowPositions[i * 3 + 1] = rng() * RAIN_HEIGHT;
+    snowPositions[i * 3 + 2] = (rng() - 0.5) * RAIN_BOX;
+    snowSpeeds[i] = 3 + rng() * 4;
+  }
+  const snowGeo = new THREE.BufferGeometry();
+  snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+  const snowPoints = new THREE.Points(snowGeo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.5, transparent: true, opacity: 0,
+    depthWrite: false,
+  }));
+  snowPoints.visible = false;
+  snowPoints.frustumCulled = false;
+  G.scene.add(snowPoints);
+  weather.snowPoints = snowPoints;
+  weather.snowDrops = snowPositions;
+  weather.snowSpeeds = snowSpeeds;
+  // v6: jump straight to a named mode — photo mode and the mountain use it
+  // instead of cycling through every mode in between.
+  weather.setMode = (mode) => applyMode(G, mode);
   G.weather = weather;
   return weather;
 }
@@ -90,10 +122,13 @@ export function updateWeather(G, dt) {
   // Ease the intensity toward the mode's target so rain fades in and out.
   // Haze sits at a low intensity of its own: enough to close the horizon,
   // never enough to count as rain.
-  const target = w.mode === 'clear' ? 0 : w.mode === 'light' ? 0.5 : w.mode === 'haze' ? 0.35 : 1;
+  const target = w.mode === 'clear' ? 0 : w.mode === 'light' ? 0.5 : w.mode === 'haze' ? 0.35 : w.mode === 'snow' ? 0.45 : 1;
   w.intensity += (target - w.intensity) * Math.min(1, dt * 0.7);
   if (w.intensity < 0.02 && target === 0) w.intensity = 0;
   w.hazeFactor = w.mode === 'haze' ? Math.min(1, w.intensity / 0.35) : 0;
+  // v6: snow sits at its own intensity — enough to see the flakes and feel
+  // the grip go, never enough to count as rain.
+  w.snowFactor = w.mode === 'snow' ? Math.min(1, w.intensity / 0.45) : 0;
   w.grip = 1 - w.intensity * 0.32;
   // v3: the same storm chops up the sea — boats bob harder in heavy rain.
   w.chop = 0.1 + w.intensity * 0.4;
@@ -112,6 +147,38 @@ export function updateWeather(G, dt) {
       w.rainTimer = 0.45;
       G.audio.noise(0.4, 0.02 + w.intensity * 0.05, 3200, 'highpass');
     }
+  }
+
+  // Snow: fat slow flakes that drift sideways and settle — the mountain
+  // weather, and photo mode's favourite. It runs instead of the rain.
+  if (w.mode === 'snow') {
+    w.points.visible = false;
+    const snowing = w.intensity > 0.03;
+    w.snowPoints.visible = snowing;
+    if (!snowing) {
+      w.snowPoints.material.opacity = 0;
+      return;
+    }
+    w.snowPoints.material.opacity = 0.35 + w.intensity * 0.55;
+    const px = G.driving ? G.driving.pos.x : G.player.pos.x;
+    const pz = G.driving ? G.driving.pos.z : G.player.pos.z;
+    const arr = w.snowDrops;
+    for (let i = 0; i < SNOW_COUNT; i++) {
+      const y = i * 3 + 1;
+      arr[y] -= w.snowSpeeds[i] * dt * (0.7 + w.intensity * 0.5);
+      // A lazy sideways wander, so the flakes never fall straight.
+      arr[i * 3] += Math.sin(G.elapsed * 0.8 + i) * dt * 2;
+      if (arr[y] < 0) {
+        arr[y] = RAIN_HEIGHT;
+        arr[i * 3] = px + (G.rng() - 0.5) * RAIN_BOX;
+        arr[i * 3 + 2] = pz + (G.rng() - 0.5) * RAIN_BOX;
+      }
+      if (arr[i * 3] > px + RAIN_BOX / 2) arr[i * 3] -= RAIN_BOX;
+      if (arr[i * 3 + 2] > pz + RAIN_BOX / 2) arr[i * 3 + 2] -= RAIN_BOX;
+      if (arr[i * 3 + 2] < pz - RAIN_BOX / 2) arr[i * 3 + 2] += RAIN_BOX;
+    }
+    w.snowPoints.geometry.attributes.position.needsUpdate = true;
+    return;
   }
 
   // Move the drops. The box is centred on the player, so the storm never

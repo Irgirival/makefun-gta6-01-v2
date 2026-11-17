@@ -89,15 +89,24 @@ export function createHud(G) {
         : mins >= 1020 && mins < 1140 ? 'Dusk'
         : mins >= 1140 && mins < 1380 ? 'Night' : 'Late night';
       const wmode = G.weather ? G.weather.mode : 'clear';
-      const wlabel = wmode === 'light' ? 'Light rain' : wmode === 'heavy' ? 'Heavy rain' : 'Clear';
+      // v6: snowfall and golden haze get their own words under the clock.
+      const wlabel = wmode === 'light' ? 'Light rain' : wmode === 'heavy' ? 'Heavy rain' : wmode === 'snow' ? 'Snowfall' : wmode === 'haze' ? 'Golden haze' : 'Clear';
       this.weatherLabel.textContent = `${tod} · ${wlabel}`;
       this.healthFill.style.width = `${Math.max(0, G.health)}%`;
       this.armorFill.style.width = `${Math.max(0, G.armor)}%`;
       const c = G.combat;
+      // v6: the SMG joins the weapon box, and the sprint stamina meter rides
+      // under it while Mara is on foot.
       this.weaponBox.textContent = c.weapon === 'pistol'
         ? `Pistol — ${c.ammo} / ${c.reserve}`
-        : 'Fists  (Q for pistol)';
-      this.crosshair.classList.toggle('hidden', !(c.weapon === 'pistol' && !G.driving));
+        : c.weapon === 'smg'
+          ? `SMG — ${c.ammo} / ${c.reserve}`
+          : 'Fists  (Q for pistol · Q again for SMG)';
+      this.crosshair.classList.toggle('hidden', !((c.weapon === 'pistol' || c.weapon === 'smg') && !G.driving));
+      if (!G.driving && G.player && G.player.stamina !== undefined) {
+        const st = Math.round(G.player.stamina);
+        this.weaponBox.textContent += ` · Sprint ${st}%${G.player.exhausted ? ' — winded!' : ''}`;
+      }
       if (G.driving) {
         this.speed.classList.remove('hidden');
         const kmh = Math.round(Math.abs(G.driving.speed) * 3.6);

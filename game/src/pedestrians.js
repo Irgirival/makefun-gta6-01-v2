@@ -65,6 +65,34 @@ export function spawnPedestrians(G) {
   }
 }
 
+// v6: Old Town's own street life — market shoppers who browse the stalls
+// and tourists who photograph the cathedral, all keeping local targets in
+// the quarter instead of marching back to the mainland sidewalks.
+export function spawnMarketShoppers(G) {
+  for (let i = 0; i < 6; i++) {
+    const x = 236 + i * 8;
+    const z = -212 + (i % 2 ? 4 : -4);
+    const ped = spawnPed(G, x, z, false);
+    if (ped) {
+      ped.local = { x: 260, z: -212, r: 30 };
+      ped.target = new THREE.Vector3(x, 0, z);
+    }
+  }
+}
+
+export function spawnOldTownTourists(G) {
+  for (let i = 0; i < 4; i++) {
+    const x = 260 + (i % 2 ? 14 : -14);
+    const z = -260 + (i < 2 ? 12 : -12);
+    const ped = spawnPed(G, x, z, false);
+    if (ped) {
+      ped.local = { x: 260, z: -260, r: 26 };
+      ped.target = new THREE.Vector3(x, 0, z);
+      ped.stationary = i === 3; // one tourist stands still, camera raised
+    }
+  }
+}
+
 export function spawnPed(G, x, z, fleeing) {
   const rng = G.rng;
   const mesh = buildPedMesh(G, rng);

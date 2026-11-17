@@ -79,6 +79,23 @@ export function createGarage(G) {
   }
   group.position.set(GARAGE_POS.x, 0, GARAGE_POS.z);
   G.scene.add(group);
+  // v6: the showroom — five plinths on the apron in front of the shop, one
+  // per collection slot. A collected car appears on its plinth in its own
+  // paint; empty plinths wait, grey and patient.
+  const showroom = [];
+  for (let i = 0; i < 5; i++) {
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 8),
+      new THREE.MeshLambertMaterial({ color: 0x3a3f45 }));
+    pad.position.set(-16 + i * 8, 0.15, 7);
+    group.add(pad);
+    const car = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 4.4),
+      new THREE.MeshLambertMaterial({ color: 0x5a5a5a }));
+    car.position.set(-16 + i * 8, 0.7, 7);
+    car.visible = false;
+    group.add(car);
+    showroom.push({ pad, car });
+  }
+  garage.showroom = showroom;
   // The shop front is solid: Mara parks beside it, not through it.
   G.city.colliders.push({
     minX: GARAGE_POS.x - 5, maxX: GARAGE_POS.x + 5,
@@ -87,6 +104,20 @@ export function createGarage(G) {
   garage.group = group;
   G.garage = garage;
   return garage;
+}
+
+// v6: refresh the showroom plinths from the collection — a collected car
+// appears on its plinth in its own paint, so the garage shows off what
+// Mara owns without a word.
+export function refreshShowroom(G) {
+  const g = G.garage;
+  const c = G.collection;
+  if (!g || !g.showroom || !c) return;
+  g.showroom.forEach((slot, i) => {
+    const owned = c.owned[i];
+    slot.car.visible = !!owned;
+    if (owned && slot.car.material) slot.car.material.color.set(owned.color);
+  });
 }
 
 function repaint(G, car, paint) {

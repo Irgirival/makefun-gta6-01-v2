@@ -144,12 +144,18 @@ export function buildCity(G) {
     return b;
   }
 
+  // v6: the Old Town quarter owns two north-east blocks — no modern towers
+  // here; oldtown.js fills them with the plaza, the cathedral and the market.
+  const OLD_TOWN_BLOCKS = new Set(['260,-260', '260,-180']);
   for (let bx = -cfg.cityHalf + cfg.blockSize / 2; bx <= cfg.cityHalf - cfg.blockSize / 2; bx += cfg.blockSize) {
     for (let bz = -cfg.cityHalf + cfg.blockSize / 2; bz <= cfg.cityHalf - cfg.blockSize / 2; bz += cfg.blockSize) {
       const key = `${bx},${bz}`;
       const distCenter = Math.hypot(bx, bz);
       // The airfield owns these four north-west blocks: no buildings here.
       if (AIRFIELD_BLOCKS.has(key)) continue;
+      // The Old Town quarter owns its two north-east blocks: the plaza and
+      // the market street are built by oldtown.js, not by the tower placer.
+      if (OLD_TOWN_BLOCKS.has(key)) continue;
       // Harbor strip: east edge blocks become docks, not buildings.
       if (bx >= cfg.harborX - cfg.blockSize) {
         // Working docks: piers, sheds, stacked containers and a crane.
@@ -319,6 +325,12 @@ export function buildCity(G) {
     group, colliders, roads,
     // Materials the day/night and weather systems tune at runtime.
     roadMat, lampMat, windowMat,
+    // v6: let new districts register their own solid props, so the Old
+    // Town cathedral, the market stalls and the ski lodge all block
+    // movement exactly like a tower does.
+    addCollider(cx, cz, hw, hd) {
+      colliders.push({ minX: cx - hw, maxX: cx + hw, minZ: cz - hd, maxZ: cz + hd });
+    },
     isRoad(x, z) {
       const half = cfg.roadWidth / 2 + 1;
       for (const c of roads.xs) if (Math.abs(x - c) < half) return true;

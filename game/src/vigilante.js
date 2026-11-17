@@ -69,11 +69,14 @@ export function startVigilante(G) {
   // v5: every second contract is a stakeout — tail a suspect sedan, do not
   // ram it. The target drives slow and steady; get too close and it spots
   // you, drift too far and you lose it.
-  const stakeout = v.contracts % 2 === 1;
-  v.kind = stakeout ? 'stakeout' : 'chase';
+  // v6: every third contract is an armored takedown — the target is a
+  // Syndicate armored van carrying the crew's cash, and it does not scare.
+  const armored = v.contracts % 3 === 2;
+  const stakeout = !armored && v.contracts % 2 === 1;
+  v.kind = armored ? 'armored' : stakeout ? 'stakeout' : 'chase';
   v.contracts++;
-  const fugitive = createVehicle(G, stakeout ? 'sedan' : 'sports', fx, fz, heading, {
-    driver: 'race', occupied: true, color: stakeout ? 0x3a4a5a : 0x111111,
+  const fugitive = createVehicle(G, armored ? 'armored' : stakeout ? 'sedan' : 'sports', fx, fz, heading, {
+    driver: 'race', occupied: true, color: armored ? 0x3a4a3a : stakeout ? 0x3a4a5a : 0x111111,
   });
   fugitive.throttleTarget = 0;
   fugitive.steerTarget = 0;
@@ -92,7 +95,13 @@ export function startVigilante(G) {
   v.timer = FUGITIVE_TIMEOUT;
   v.tailTime = 0;
   v.exposedTimer = 0;
-  if (stakeout) {
+  if (armored) {
+    G.hud.showDialogue([
+      'VIGILANTE — ARMORED TAKEDOWN: a Syndicate armored van is moving the crew\'s cash across town.',
+      `Ram it ${RAMS_TO_STOP} times to crack it open — it is heavy, slow, and it will not swerve for you.`,
+      `$${BOUNTY} from the PD, plus whatever is in the back. Go take it.`,
+    ]);
+  } else if (stakeout) {
     G.hud.showDialogue([
       'VIGILANTE — STAKEOUT: a suspect in a grey sedan is running errands for the crew.',
       'Tail it for 20 seconds — stay 12–55m back. Get closer than 12m and it spots you; drift past 55m and it is gone.',
@@ -238,7 +247,17 @@ export function updateVigilante(G, dt) {
         v.rams++;
         G.audio.crash();
         G.hud.toast(`Ram ${v.rams}/${RAMS_TO_STOP} — the fugitive is rattled!`);
-        if (v.rams >= RAMS_TO_STOP) { endVigilante(G, true, 'Three solid rams — the Comet GT gave up the ghost.'); return; }
+        if (v.rams >= RAMS_TO_STOP) {
+          // v6: the armored van pays double — the PD bounty plus the cash
+          // that was in the back, seized on the spot.
+          if (v.kind === 'armored') {
+            endVigilante(G, true, 'Three solid rams — the armored van cracked open. The crew\'s cash is yours.');
+            G.cash += BOUNTY;
+            G.hud.toast(`Armored takedown bonus — +$${BOUNTY} in seized cash!`);
+            return;
+          }
+          endVigilante(G, true, 'Three solid rams — the Comet GT gave up the ghost.'); return;
+        }
       }
       v.pinTimer += dt;
       if (v.pinTimer > 2) { endVigilante(G, true, 'Pinned against the curb for two seconds — the fugitive surrendered.'); return; }

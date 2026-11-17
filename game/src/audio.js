@@ -102,6 +102,19 @@ export function createAudio(G) {
       [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.3, 'triangle', 0.2), i * 130));
     },
     sirenBurst() { this.tone(700, 0.5, 'sine', 0.12, 1100); },
+    // v6: the Old Town tram bell, the fire engine's two-tone siren and the
+    // soft chime when a VIP slides into the back seat.
+    tramBell() {
+      this.tone(1320, 0.18, 'sine', 0.16);
+      setTimeout(() => this.tone(1320, 0.18, 'sine', 0.16), 220);
+    },
+    fireSiren() {
+      this.tone(660, 0.35, 'square', 0.1, 880);
+      setTimeout(() => this.tone(880, 0.35, 'square', 0.1, 660), 360);
+    },
+    vipChime() {
+      [880, 1108, 1318, 1760].forEach((f, i) => setTimeout(() => this.tone(f, 0.2, 'triangle', 0.14), i * 90));
+    },
     engineStart() { this.tone(60, 0.4, 'sawtooth', 0.18, 140); this.noise(0.25, 0.2, 600); },
     // v5: photo-mode shutter, casino chips, news-bulletin sting, roulette
     // ball tick and a crowd going wild for a street performer.

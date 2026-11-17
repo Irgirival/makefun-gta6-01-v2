@@ -26,6 +26,17 @@ export const CRUISER_SPEC = {
   colors: [0x2a2a2a, 0x6a1a2a, 0x1a3a5a],
 };
 
+// v6: the Trail Blazer 250 — a dirt bike for the mountain road. Slower than
+// the Comet on asphalt, quicker in the turns, and the only bike that feels
+// at home on the trail up to the ski lodge.
+export const DIRT_SPEC = {
+  name: 'Trail Blazer 250',
+  topSpeed: 34,
+  accel: 28,
+  turn: 2.8,
+  colors: [0x4a5a3a, 0x8a6a3a, 0x2a4a5a],
+};
+
 const BIKE_SPOTS = [
   { x: 30, z: 44, heading: Math.PI / 2 },      // by the plaza fountain
   { x: -16, z: -88, heading: 0 },              // outside Vic's garage
@@ -128,7 +139,8 @@ function buildBikeMesh(color, cruiser = false) {
 
 export function createMotorcycle(G, x, z, heading, opts = {}) {
   // v5: opts.cruiser picks the Boulevard Cruiser's steadier spec.
-  const spec = opts.cruiser ? CRUISER_SPEC : MOTORCYCLE_SPEC;
+  // v6: opts.dirt picks the Trail Blazer's off-road spec.
+  const spec = opts.dirt ? DIRT_SPEC : opts.cruiser ? CRUISER_SPEC : MOTORCYCLE_SPEC;
   const color = opts.color ?? pick(G.rng, spec.colors);
   const mesh = buildBikeMesh(color, !!opts.cruiser);
   mesh.position.set(x, 0, z);
@@ -163,6 +175,9 @@ export function spawnMotorcycles(G) {
   // v5: a Boulevard Cruiser parked outside the beach bar, for the long
   // ride down the beach road.
   createMotorcycle(G, -112, 344, Math.PI / 2, { parked: true, cruiser: true });
+  // v6: a Trail Blazer dirt bike at the mountain trailhead, for the ride
+  // up to the ski lodge — the only bike that likes the mountain road.
+  createMotorcycle(G, -200, 470, Math.PI / 2, { parked: true, dirt: true });
   // One Comet already out riding the traffic, for the player to chase down.
   const bike = createMotorcycle(G, -100, 60, Math.PI / 2, { driver: 'traffic', occupied: true });
   bike.speed = 16;

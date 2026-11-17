@@ -23,9 +23,72 @@ export function createHelicopter(G) {
     beam: null,
     spot: null,
     pool: null,
+    // v6: the news chopper — a white press helicopter that circles Mara at
+    // 3+ stars and turns her chase into the evening's lead story.
+    news: null,
+    newsActive: false,
+    newsAngle: 0,
   };
   G.heli = heli;
   return heli;
+}
+
+// v6: the SOLMAR NEWS chopper — white with a red stripe, a camera pod under
+// the nose, no searchlight. It only watches, and the city watches with it.
+function buildNewsHeliMesh(G) {
+  const group = new THREE.Group();
+  const mat = (c, opts = {}) => new THREE.MeshLambertMaterial({ color: c, ...opts });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 4.6), mat(0xf0f0f0));
+  group.add(body);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.5, 4.2), mat(0xd81a2a));
+  stripe.position.y = -0.4;
+  group.add(stripe);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 1.0),
+    new THREE.MeshLambertMaterial({ color: 0x9fd0e8, emissive: 0x223344 }));
+  nose.position.set(0, 0.2, 2.4);
+  group.add(nose);
+  const pod = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), mat(0x1a1a1a));
+  pod.position.set(0, -1.2, 1.6);
+  group.add(pod);
+  const rotor = new THREE.Group();
+  rotor.position.y = 1.9;
+  for (const off of [0, Math.PI / 2]) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 7.2), mat(0x181818));
+    blade.rotation.y = off;
+    rotor.add(blade);
+  }
+  group.add(rotor);
+  group.userData.rotor = rotor;
+  return group;
+}
+
+export function updateNewsHeli(G, dt) {
+  const h = G.heli;
+  if (!h) return;
+  const stars = G.wanted.stars;
+  if (!h.newsActive && stars >= 3 && G.mode === 'playing' && !G.shot) {
+    h.news = buildNewsHeliMesh(G);
+    h.news.position.set(G.player.pos.x + 60, 90, G.player.pos.z);
+    G.scene.add(h.news);
+    h.newsActive = true;
+    h.newsAngle = 0;
+    G.hud.toast('SOLMAR NEWS chopper is overhead — you are the story now.');
+  }
+  if (!h.newsActive) return;
+  if (stars < 2) {
+    G.scene.remove(h.news);
+    h.news = null;
+    h.newsActive = false;
+    return;
+  }
+  // A slow, wide orbit — the camera pod never loses her.
+  const target = G.driving ? G.driving.pos : G.player.pos;
+  h.newsAngle += dt * 0.25;
+  const nx = target.x + Math.cos(h.newsAngle) * 42;
+  const nz = target.z + Math.sin(h.newsAngle) * 42;
+  h.news.position.set(nx, 70, nz);
+  h.news.rotation.y = Math.atan2(target.x - nx, target.z - nz);
+  if (h.news.userData.rotor) h.news.userData.rotor.rotation.y += dt * 22;
 }
 
 function buildHeliMesh(G) {
