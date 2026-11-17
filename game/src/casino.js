@@ -9,6 +9,7 @@
 // keeps running behind it, and E (or the cash-out button) closes it.
 
 import * as THREE from 'three';
+import { createCasinoGames, openCasinoGames } from './casinogames.js';
 
 const CASINO_DOOR = { x: -160, z: 520 };
 const SPIN_COST = 25;
@@ -106,6 +107,7 @@ export function createCasino(G) {
     '<button id="casinoLower" style="font:inherit;padding:10px 18px;border-radius:8px;border:none;background:#2a7a3a;color:#fff;cursor:pointer">LOWER</button>' +
     '</div>' +
     '<div id="casinoTally" style="margin-top:12px;font-size:14px;opacity:0.9"></div>' +
+    '<button id="casinoTables" style="font:inherit;margin-top:12px;padding:10px 26px;border-radius:8px;border:none;background:#6a1a8a;color:#fff;cursor:pointer">🎡 TABLE GAMES — ROULETTE &amp; BLACKJACK</button> ' +
     '<button id="casinoCashOut" style="font:inherit;margin-top:12px;padding:10px 26px;border-radius:8px;border:2px solid #d8a03a;background:transparent;color:#ffd23e;cursor:pointer">CASH OUT (E)</button>' +
     '</div>';
   document.body.appendChild(overlay);
@@ -118,6 +120,10 @@ export function createCasino(G) {
   overlay.querySelector('#casinoSpin').addEventListener('click', () => spinSlots(G));
   overlay.querySelector('#casinoHigher').addEventListener('click', () => callCard(G, 'higher'));
   overlay.querySelector('#casinoLower').addEventListener('click', () => callCard(G, 'lower'));
+  // v5: the table floor — roulette and blackjack live one layer up.
+  overlay.querySelector('#casinoTables').addEventListener('click', () => {
+    if (G.casinogames) openCasinoGames(G);
+  });
   overlay.querySelector('#casinoCashOut').addEventListener('click', () => closeCasino(G));
 
   G.casino = casino;

@@ -56,6 +56,10 @@ export function applyShot(G, name) {
     t2.speed = 11; t2.route = { axis: 'z', dir: 1, nextTurn: 200 }; t2.cruiseSpeed = 11;
     const t3 = createVehicle(G, 'van', 63.4, 20, Math.PI, { driver: 'traffic', occupied: true });
     t3.speed = 10; t3.route = { axis: 'z', dir: -1, nextTurn: 200 }; t3.cruiseSpeed = 10;
+    // v5: the Verde Limousine gliding in the right lane ahead — the new
+    // ride reads clearly against the asphalt, long and low.
+    const t4 = createVehicle(G, 'limo', 56.6, 85, Math.PI, { driver: 'traffic', occupied: true });
+    t4.speed = 13; t4.route = { axis: 'z', dir: -1, nextTurn: 200 }; t4.cruiseSpeed = 13;
     // A yellow Comet 900 in the left lane ahead of the car, so the bike
     // reads clearly against the asphalt without blocking the drive.
     createMotorcycle(G, 56, 55, 0, { parked: true, color: 0xffd23e });

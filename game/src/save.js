@@ -38,18 +38,37 @@ export function createSave(G) {
             races: G.races.ladder.races, best: G.races.ladder.best,
             circuitIndex: G.races.circuitIndex,
             bestTimes: G.races.ladder.bestTimes || {},
+            // v5: night-race wins ride with the ladder.
+            nightWins: G.races.ladder.nightWins || 0,
           } : null,
           garage: G.garage ? {
             paintIndex: G.garage.paintIndex, engineLevel: G.garage.engineLevel,
             armorLevel: G.garage.armorLevel, ownedId: G.garage.ownedId,
             ownedType: G.garage.ownedType,
             neon: G.garage.neon, neonColor: G.garage.neonColor,
+            // v5: suspension level rides with the tune.
+            suspensionLevel: G.garage.suspensionLevel || 0,
           } : null,
           radioIndex: G.radio ? G.radio.index : 0,
           vigilante: G.vigilante ? {
             bounties: G.vigilante.bounties, earned: G.vigilante.earned,
           } : null,
           safehouseVisits: G.safehouse ? G.safehouse.visits : 0,
+          // v5: the wardrobe, the camera roll, the table floor and the
+          // nitro bottle all persist with the rest of Mara's career.
+          safehouseShop: G.safehouse ? {
+            ownedOutfits: G.safehouse.ownedOutfits || [],
+            equippedOutfit: G.safehouse.equippedOutfit || null,
+          } : null,
+          photoSnaps: G.photomode ? G.photomode.snaps : 0,
+          casinoTables: G.casinogames ? {
+            bjHands: G.casinogames.bjHands,
+            bjWon: G.casinogames.bjWon,
+            rouletteWins: G.casinogames.rouletteWins,
+            rouletteLosses: G.casinogames.rouletteLosses,
+          } : null,
+          nitroTankLevel: G.nitro ? (G.nitro.tankLevel || 0) : 0,
+          vigilanteContracts: G.vigilante ? (G.vigilante.contracts || 0) : 0,
           // v4: street-league season and the jet-ski trial best time.
           league: G.league ? {
             points: G.league.points, rounds: G.league.rounds,

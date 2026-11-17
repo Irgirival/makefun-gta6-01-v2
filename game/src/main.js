@@ -42,7 +42,7 @@ import { createRaces, updateRaces } from './races.js';
 import { createGarage, updateGarage, applyGarageToCar } from './garage.js';
 import { buildIslaVerde, updateIslaVerde } from './islaverde.js';
 import { createBoats, updateBoats, nearestBoat, enterBoat, exitBoat } from './boats.js';
-import { createSafehouse, updateSafehouse } from './safehouse.js';
+import { createSafehouse, updateSafehouse, applyOutfitPerk, SHOP_OUTFITS, closeSafehouseShop } from './safehouse.js';
 import { createRadio, updateRadio } from './radio.js';
 import { createVigilante, updateVigilante } from './vigilante.js';
 import { registerFinale, updateFinale, EPILOGUE_TEXT } from './finale.js';
@@ -59,6 +59,9 @@ import { createJetSkis, updateJetSkis, nearestJetSki, enterJetSki, exitJetSki } 
 import { createCasino, casinoNearDoor, openCasino, closeCasino } from './casino.js';
 import { createStreetEvents, updateStreetEvents } from './streetevents.js';
 import { createStorm, updateStorm } from './storm.js';
+import { createPhotoMode, updatePhotoMode, togglePhotoMode } from './photomode.js';
+import { createCasinoGames, closeCasinoGames } from './casinogames.js';
+import { registerMission10 } from './missions2.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -176,6 +179,10 @@ createJetSkis(G);
 createCasino(G);
 createStreetEvents(G);
 createStorm(G);
+// v5 systems, created last so the v1–v4 placements above keep their seeds.
+createPhotoMode(G);
+createCasinoGames(G);
+registerMission10(G);
 
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
@@ -211,6 +218,30 @@ if (G.saveData) {
     G.vigilante.earned = G.saveData.vigilante.earned ?? 0;
   }
   if (G.saveData.safehouseVisits) G.safehouse.visits = G.saveData.safehouseVisits;
+  // v5: restore the wardrobe, the camera roll, the table floor, the nitro
+  // bottle and the vigilante contract count with the rest of the career.
+  if (G.saveData.races) {
+    G.races.ladder.nightWins = G.saveData.races.nightWins ?? 0;
+  }
+  if (G.saveData.garage) {
+    G.garage.suspensionLevel = G.saveData.garage.suspensionLevel ?? 0;
+  }
+  if (G.saveData.safehouseShop) {
+    G.safehouse.ownedOutfits = G.saveData.safehouseShop.ownedOutfits || [];
+    const worn = SHOP_OUTFITS.find((o) => o.id === G.saveData.safehouseShop.equippedOutfit);
+    if (worn) applyOutfitPerk(G, worn);
+  }
+  if (G.saveData.photoSnaps) G.photomode.snaps = G.saveData.photoSnaps;
+  if (G.saveData.casinoTables) {
+    Object.assign(G.casinogames, {
+      bjHands: G.saveData.casinoTables.bjHands ?? 0,
+      bjWon: G.saveData.casinoTables.bjWon ?? 0,
+      rouletteWins: G.saveData.casinoTables.rouletteWins ?? 0,
+      rouletteLosses: G.saveData.casinoTables.rouletteLosses ?? 0,
+    });
+  }
+  if (G.saveData.nitroTankLevel) G.nitro.tankLevel = G.saveData.nitroTankLevel;
+  if (G.saveData.vigilanteContracts) G.vigilante.contracts = G.saveData.vigilanteContracts;
   if (G.saveData.pos) {
     G.player.pos.set(G.saveData.pos.x, 0, G.saveData.pos.z);
     G.player.group.position.copy(G.player.pos);
@@ -234,6 +265,11 @@ function showTitle() {
   if (G.flying) { G.flying.altitude = 0; exitFlyHeli(G); }
   if (G.jetski) exitJetSki(G);
   if (G.casino && G.casino.open) closeCasino(G);
+  // v5: the title screen closes the new overlays too — the table floor,
+  // the wardrobe and the camera all go home.
+  if (G.casinogames && G.casinogames.open) closeCasinoGames(G);
+  if (G.safehouse && G.safehouse.shop && G.safehouse.shop.open) closeSafehouseShop(G);
+  if (G.photomode && G.photomode.active) togglePhotoMode(G);
   $('btnContinue').classList.toggle('hidden', !G.save.exists());
   document.exitPointerLock?.();
 }
@@ -251,6 +287,21 @@ function startGame(fresh) {
     G.missions.index = 0;
     G.missions.step = 0;
     G.missions.active = false;
+    // v5: a fresh start clears the new career too — wardrobe, camera
+    // roll, table floor, nitro bottle and the contract count.
+    G.races.ladder.nightWins = 0;
+    G.garage.suspensionLevel = 0;
+    G.safehouse.ownedOutfits = [];
+    G.safehouse.equippedOutfit = null;
+    G.photomode.snaps = 0;
+    if (G.casinogames) {
+      G.casinogames.bjHands = 0;
+      G.casinogames.bjWon = 0;
+      G.casinogames.rouletteWins = 0;
+      G.casinogames.rouletteLosses = 0;
+    }
+    G.nitro.tankLevel = 0;
+    G.vigilante.contracts = 0;
   }
   titleEl.classList.add('hidden');
   pauseEl.classList.add('hidden');
@@ -342,6 +393,10 @@ const clock = new THREE.Clock();
 let titleAngle = 0;
 
 function stepWorld(dt) {
+  // v5: photo mode freezes the living city — the camera is the only thing
+  // that moves, and the mode's own update still runs so B can leave it.
+  updatePhotoMode(G, dt);
+  if (G.photomode && G.photomode.active && G.photomode.frozen) return;
   // One fixed step of the living city: traffic, peds, police, missions.
   updateTraffic(G, dt);
   for (const v of G.vehicles) {
@@ -384,13 +439,17 @@ function frame() {
   const dt = G.shot ? 1 / 60 : rawDt;   // shots step deterministically
 
   if (G.mode === 'playing') {
-    G.elapsed += dt;
-    G.clockMinutes += dt * G.config.clockRate;
+    // v5: photo mode holds the clock still with the world.
+    if (!(G.photomode && G.photomode.active)) {
+      G.elapsed += dt;
+      G.clockMinutes += dt * G.config.clockRate;
+    }
 
     // Enter / exit cars — and v3 boats, v4 helicopters, jet skis and the
     // casino: E near a moored boat boards it, near a heli flies it, near
     // a jet ski rides it, at the casino door walks Mara in.
-    if (G.input.pressed('enter')) {
+    // v5: not while the camera is out — E is the photographer's key then.
+    if (G.input.pressed('enter') && !(G.photomode && G.photomode.active)) {
       if (G.casino.open) closeCasino(G);
       else if (G.flying) exitFlyHeli(G);
       else if (G.jetski) exitJetSki(G);
@@ -416,10 +475,15 @@ function frame() {
       }
     }
     if (G.input.pressed('pause')) {
-      G.mode = 'paused';
-      pauseEl.classList.remove('hidden');
-      updateStats(G); // the career scorecard is fresh every time you pause
-      document.exitPointerLock?.();
+      // v5: P / Esc leaves photo mode first — the pause menu waits its turn.
+      if (G.photomode && G.photomode.active) {
+        togglePhotoMode(G);
+      } else {
+        G.mode = 'paused';
+        pauseEl.classList.remove('hidden');
+        updateStats(G); // the career scorecard is fresh every time you pause
+        document.exitPointerLock?.();
+      }
     }
     if (G.input.pressed('mute')) {
       G.audio.setMuted(!G.audio.muted);
@@ -437,6 +501,9 @@ function frame() {
       // v4: helicopters and jet skis steer their own cameras and engine
       // note inside their own updates (see flyheli.js / jetski.js).
       G.audio.engineStartLoop();
+    } else if (G.photomode && G.photomode.active) {
+      // v5: the photo camera steers itself in stepWorld — nobody else
+      // touches the camera while Mara is behind the lens.
     } else {
       updatePlayer(G, dt);
       G.audio.engineStop();
@@ -444,7 +511,8 @@ function frame() {
 
     // Interact prompt when a car is in reach (hidden in shot mode: the
     // prompt would overlap the mission dialogue in the screenshots).
-    if (!G.shot) {
+    // v5: hidden in photo mode too — the lens wants a clean frame.
+    if (!G.shot && !(G.photomode && G.photomode.active)) {
       if (G.casino.open) {
         G.hud.setInteract('<b>E</b> — cash out of the Verde Casino');
       } else if (G.flying) {

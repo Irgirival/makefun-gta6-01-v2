@@ -1,14 +1,21 @@
-// Solmar City v4 — Mara Solano: a complete 3D open-world crime game for the
-// make.fun gta6-01 bounty (Node 22, standard library only). v4 expands the
-// v3 city with two more story missions (Mission 8 "The Solmar Job" with a
-// vault drill, Mission 9 "King of Solmar" with a gold getaway car), two
-// flyable helicopters (a stealable PD Hawk and a news chopper), a street
-// race league with two new circuits and the Solmar Grand Prix championship,
-// three jet skis with a marina time trial, the Verde Casino (slots and
-// high/low), rotating street events (bank getaways, block takeovers,
-// most-wanted bounties) and fog + thunderstorm fronts with lightning — on
-// top of v3's street racing, tuning garage, Verde Heist finale, Isla Verde
-// island, boats, safehouse, radio, vigilante contracts and nitro.
+// Solmar City v5 — Mara Solano: a complete 3D open-world crime game for the
+// make.fun gta6-01 bounty (Node 22, standard library only). v5 tops up v4
+// with photo mode (free orbit camera, five film filters, HUD hide, PNG
+// snapshots), the casino table floor (roulette and blackjack-lite), Radio v2
+// (Harbor Rock and Solmar After Dark plus live news bulletins that react to
+// the wanted level and the story), Mission 10 "The Last Sunset" (a golden-
+// hour coda from the lighthouse to the beach bar, with a full-PD surge),
+// two new race circuits (Uptown Loop and the night-running Midnight Beach
+// Run at 1.5x purse), an armored van and a limousine to steal, a safehouse
+// outfit shop with perks and a weapon locker, garage sport suspension and
+// nitro tanks, street performers with audiences, vendor stalls, tourists
+// photographing the landmarks, a golden-haze weather mode, rush-hour
+// traffic, a fast Verde Comet speedboat, a Boulevard Cruiser bike, stakeout
+// vigilante contracts, a 5-star searchlight sweep and a living career
+// scorecard — on top of v4's heist arc, flyable helicopters, race league,
+// jet skis, casino, street events and storm fronts, and v3's street racing,
+// tuning garage, Verde Heist finale, Isla Verde island, boats, safehouse,
+// radio, vigilante contracts and nitro.
 //
 // The game lives in this directory's game/ folder as plain static files a
 // desktop browser loads fully offline: game/index.html plus its ES modules

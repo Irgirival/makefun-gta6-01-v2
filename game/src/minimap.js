@@ -106,6 +106,35 @@ export function createMinimap(G) {
         }
       }
 
+      // v5: the safehouse (green house square), the Verde Casino (gold
+      // star on the boardwalk) and the street performers (purple dots) —
+      // the places that pay, heal or entertain, at a glance.
+      if (G.safehouse) {
+        const [x, y] = toMap(G.safehouse.pos.x, G.safehouse.pos.z);
+        if (x >= 0 && y >= 0 && x <= W && y <= H) {
+          ctx.fillStyle = '#7dff9a';
+          ctx.fillRect(x - 4, y - 4, 8, 8);
+          ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.strokeRect(x - 4, y - 4, 8, 8);
+        }
+      }
+      {
+        const [x, y] = toMap(-160, 520);
+        if (x >= 0 && y >= 0 && x <= W && y <= H) {
+          ctx.fillStyle = '#ffd23e';
+          ctx.beginPath();
+          ctx.moveTo(x, y - 7); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 7, y);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+        }
+      }
+      ctx.fillStyle = '#c98aff';
+      for (const ped of G.peds) {
+        if (ped.kind !== 'performer' && ped.kind !== 'vendor') continue;
+        const [x, y] = toMap(ped.pos.x, ped.pos.z);
+        if (x < 0 || y < 0 || x > W || y > H) continue;
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+      }
+
       // Buildings as faint blocks (only those in view).
       ctx.fillStyle = 'rgba(200,200,190,0.35)';
       for (const b of G.city.colliders) {

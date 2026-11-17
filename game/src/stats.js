@@ -19,21 +19,28 @@ export function createStats(G) {
       const g = G.garage || { engineLevel: 0, armorLevel: 0, neon: false };
       const bests = Object.entries(l.bestTimes || {})
         .map(([id, time]) => {
-          const name = { downtown: 'Downtown', harbor: 'Harbor', airfield: 'Airfield', verde: 'Verde' }[id] || id;
+          const name = { downtown: 'Downtown', harbor: 'Harbor', airfield: 'Airfield', verde: 'Verde', uptown: 'Uptown', 'midnight-beach': 'Midnight Beach' }[id] || id;
           return `${name} ${time.toFixed(1)}s`;
         })
         .join(' · ') || 'no timed races yet';
       const hours = Math.floor(G.elapsed / 3600);
       const mins = Math.floor((G.elapsed % 3600) / 60);
       const rows = [
-        ['Story', `${Math.min(m.index, 7)} / 7 missions — ${m.index >= 7 ? 'Solmar is yours' : 'the city is still out there'}`],
+        ['Story', `${Math.min(m.index, 10)} / 10 missions — ${m.index >= 10 ? 'Solmar is yours' : 'the city is still out there'}`],
         ['Cash', `$${Math.floor(G.cash).toLocaleString('en-US')}`],
         ['Racing', `${l.wins} wins · ${l.podiums} podiums · ${l.races} races`],
         ['Fastest times', bests],
+        // v5: the new scorecard rows — night wins, the table floor, the
+        // wardrobe, the camera and the street-life tips.
+        ['Night races', `${(l.nightWins || 0)} wins after dark`],
+        ['Casino tables', G.casinogames ? `${G.casinogames.bjHands} blackjack hands · roulette ${G.casinogames.rouletteWins > 0 ? '+$' + G.casinogames.rouletteWins : 'no wins yet'}` : 'not visited yet'],
+        ['Wardrobe', G.safehouse ? `${(G.safehouse.ownedOutfits || []).length} outfits owned${G.safehouse.equippedOutfit ? ` · wearing ${G.safehouse.equippedOutfit}` : ''}` : '—'],
+        ['Photo mode', G.photomode ? `${G.photomode.snaps} snapshots taken` : '—'],
+        ['Street life', G.streetLife ? `${G.streetLife.performers} performers · ${G.streetLife.stalls} stalls · ${G.streetLife.tips} tips dropped` : '—'],
         ['Vigilante', `${v.bounties} bounties · $${v.earned} earned`],
         ['Harbor tours', `${t.done + mt.done} tours · $${t.earned + mt.earned} earned`],
         ['Hidden packages', `${m.collectedCount || 0} / 12 found`],
-        ['Garage', `Engine Lv${g.engineLevel} · Armor Lv${g.armorLevel}${g.neon ? ' · Neon' : ''}`],
+        ['Garage', `Engine Lv${g.engineLevel} · Armor Lv${g.armorLevel}${g.neon ? ' · Neon' : ''}${g.suspensionLevel ? ` · Suspension Lv${g.suspensionLevel}` : ''}`],
         ['Radio', G.radio ? G.radio.station().name : 'Off'],
         ['Time in Solmar', `${hours}h ${String(mins).padStart(2, '0')}m`],
         ['Wanted now', G.wanted.stars > 0 ? `${G.wanted.stars} star${G.wanted.stars > 1 ? 's' : ''} — the PD is looking` : 'clean — for now'],
@@ -56,5 +63,8 @@ export function careerSummary(G) {
   // One line for toasts and the end screen: the career in a sentence.
   const l = G.races ? G.races.ladder : { wins: 0, races: 0 };
   const v = G.vigilante || { bounties: 0 };
-  return `${l.wins} race wins, ${v.bounties} bounties, ${G.missions.index} missions done, $${Math.floor(G.cash)} in pocket.`;
+  // v5: the camera and the tables join the career line.
+  const snaps = G.photomode ? G.photomode.snaps : 0;
+  const tables = G.casinogames ? G.casinogames.bjHands : 0;
+  return `${l.wins} race wins, ${v.bounties} bounties, ${G.missions.index} missions done, ${snaps} snapshots, ${tables} blackjack hands, $${Math.floor(G.cash)} in pocket.`;
 }
