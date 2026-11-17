@@ -110,6 +110,16 @@ export function createHud(G) {
         this.speed.classList.remove('hidden');
         const kmh = Math.round(Math.abs(G.boating.speed) * 3.6);
         this.speed.innerHTML = `${kmh} <small>km/h · sailing</small>`;
+      } else if (G.flying) {
+        // v4: the speedo reads the helicopter's airspeed and altitude.
+        this.speed.classList.remove('hidden');
+        const kmh = Math.round(Math.abs(G.flying.fwdSpeed) * 3.6);
+        this.speed.innerHTML = `${kmh} <small>km/h · flying · ${Math.round(G.flying.altitude)}m</small>`;
+      } else if (G.jetski) {
+        // v4: the speedo reads knots of jet-ski speed across the bay.
+        this.speed.classList.remove('hidden');
+        const kmh = Math.round(Math.abs(G.jetski.speed) * 3.6);
+        this.speed.innerHTML = `${kmh} <small>km/h · jet ski</small>`;
       } else {
         this.speed.classList.add('hidden');
       }

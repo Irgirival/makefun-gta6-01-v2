@@ -15,7 +15,7 @@ downtown of towers — with nothing but a borrowed jacket and a score to settle.
 - **Live city** — traffic AI that follows the roads and stops for cars ahead, buses on the avenues, pedestrians who stroll the sidewalks and flee from gunfire — joggers, tourists, elders with canes, friends walking in pairs.
 - **Wanted 0–5 stars** — crimes raise the heat; Solmar PD cruisers chase you, roadblocks appear at 3+ stars, officers on foot will arrest you if they get close — and at 4+ stars a **police helicopter** hunts you from the sky with a searchlight that stops the heat from cooling off. Break line of sight to cool off.
 - **Combat** — fists (**F**) and a pistol (mouse click, **Q** to switch, **R** to reload).
-- **Six story missions** — "First Wheels", "The Pickup", "Harbor Run", "Heat Rising", "Solmar Nights" and "The Long Runway" at the **Solmar Airfield** (runway, terminal, control tower, hangars, parked planes), with dialogue, waypoints, timed runs and cash rewards — plus a repeatable taxi job (**J**), a courier run (**C**, three timed deliveries), stunt-jump ramps that pay for big air, and twelve hidden cash packages.
+- **Nine story missions** — "First Wheels", "The Pickup", "Harbor Run", "Heat Rising", "Solmar Nights" and "The Long Runway" at the **Solmar Airfield** (runway, terminal, control tower, hangars, parked planes), then the **Verde Heist** and the v4 heist arc ("The Solmar Job", "King of Solmar") — with dialogue, waypoints, timed runs and cash rewards — plus a repeatable taxi job (**J**), a courier run (**C**, three timed deliveries), stunt-jump ramps that pay for big air, and twelve hidden cash packages.
 - **v3 — street racing** — press **G** at the chequered start banner by the plaza to race three circuits (**Downtown Loop**, **Harbor Sprint**, **Airfield GP**) against three AI rivals with rubber-banding, live positions and cash prizes, on a season ladder that saves.
 - **v3 — Vic's garage** — bring your car to the garage and spend cash on a respray (**U**, eight paints), engine upgrades (**I**, +8% top speed, three levels) and armor plating (**O**). Your tuned car persists in the save. Engine Lv1+ unlocks **nitro** (hold **Shift** for +35% top speed, with a meter and a blue exhaust flame), and **Y** buys neon underglow that glows at night.
 - **v3 — Mission 7, "The Verde Heist"** — the story finale: lift the casino's take from the Isla Verde marina, run it to the airfield under a city-wide alarm, lose the heat and bring the money home to the plaza — then the epilogue screen closes Mara's arc.
@@ -25,10 +25,17 @@ downtown of towers — with nothing but a borrowed jacket and a score to settle.
 - **v3 — safehouse** — walk into Mara's yellow house to clear the wanted level, heal up, restock pistol ammo, refill the nitro tank and change outfit (the jacket cycles through five colours).
 - **v3 — radio** — press **N** to cycle three synthesized stations: **Solmar FM** (synthwave), **Radio Verde** (latin groove) and **Talk Solmar** (late-night callers) — each with its own DJ greeting you on tune-in.
 - **v3 — vigilante contracts** — press **V** while driving to hunt a fugitive in a stolen Comet GT: ram it three times or pin it for two seconds and the PD pays a $600 bounty. At 3+ stars the PD fights back with **spike strips** and extra **roadblocks**. Race winners also keep a fastest-time record per circuit, saved with the ladder.
+- **v4 — Missions 8–9, the heist arc** — after the Verde Heist, "The Solmar Job" cracks the National Bank's vault on a 75-second silent-alarm timer (the drill sparks and rattles while Mara holds the crack), and "King of Solmar" runs a gold getaway car from the airfield to the harbor for the last shipment — $8,000 and $12,000, and the epilogue now closes nine missions.
+- **v4 — flyable helicopters** — a **PD Hawk** on the airfield helipad (stealing it is a crime — two stars) and a **News Chopper** at the marina. **E** to climb in; W/S pitches the nose, A/D yaws, **Space** climbs, **Shift** sinks. Rotor wash kicks dust up when you hover low; land on a rooftop, a runway or the beach and press **E** to hop out.
+- **v4 — the Street League** — two new circuits join the rotation (**Beachfront Sprint** and the three-lap **Solmar Grand Prix** full-city loop), and every race now scores championship points against Rico, Tasha and Benny. Reach 30 points to unlock the Grand Prix — win it and Mara is crowned **Solmar Champion** with a $5,000 purse.
+- **v4 — jet skis** — three of them bobbing at the Isla Verde marina (**E** to ride). Carve the bay at 115 km/h and run the six-buoy **marina time trial** in order for $600, with your best time kept on the board.
+- **v4 — the Verde Casino** — walk up to the gold doors on the boardwalk and press **E**. The **slots** take $25 a spin (three 7s pays the $500 jackpot) and the **high/low** table takes a $50 bet and pays $100 when you call the next card right. Winnings and losses are real cash, and the house keeps a tally of the night.
+- **v4 — street events** — every minute or two the city throws something at Mara: a **bank getaway** car tearing across town dropping cash (ram it to stop it, +$400), a **block takeover** to hold on foot for 20 seconds (+$500), or a **most-wanted** fugitive in a tan van to catch (+$600).
+- **v4 — fog and thunderstorms** — storm fronts roll in off the bay: lightning forks down near Mara, thunder rolls a beat later, the fog closes to a few dozen metres and the rain hammers until the front passes. Fog banks can also roll in on their own on a clear morning and burn off by midday.
 - **A living sky** — a full **day/night cycle**: the sun arcs across the sky, dusk turns the city orange, and at night the streetlights come on, windows glow, the moon rises, and driving needs real headlights. **Weather** (**T**) brings light and heavy rain: wet roads darken and grip falls, so cars slide and bikes get twitchy.
 - **HUD + minimap** — health/armor, cash, wanted stars, clock, mission tracker, speedometer and a live canvas minimap.
 - **Sound** — fully synthesized WebAudio: engine hum, sirens, gunshots, footsteps and a synthwave city loop. No audio files.
-- **Save** — progress (cash, missions, packages, racing ladder, garage tuning, radio station, bounties) saves automatically to localStorage.
+- **Save** — progress (cash, missions, packages, racing ladder, league season, garage tuning, radio station, bounties, jet-ski best time) saves automatically to localStorage.
 
 ## Play it
 
@@ -44,8 +51,8 @@ Everything is static files under `game/` (three.js vendored as one minified modu
 | Key | Action |
 |-----|--------|
 | WASD / mouse | Move / look |
-| Space / Shift | Jump / sprint |
-| E | Enter or exit a car |
+| Space / Shift | Jump / sprint — **Space** climbs / **Shift** sinks in a helicopter |
+| E | Enter or exit a car, boat, helicopter, jet ski — or the casino |
 | F | Punch |
 | Click / Q / R | Fire pistol / switch weapon / reload |
 | J | Start a taxi job |

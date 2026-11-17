@@ -38,8 +38,9 @@ const MISSION_7 = {
 };
 
 export const EPILOGUE_TITLE = 'SOLMAR IS YOURS';
-export const EPILOGUE_TEXT = 'Seven missions, three race wins waiting, a garage full of tuned steel, ' +
-  'an island across the bridge and a boat in the marina. Mara Solano came back to Solmar with ' +
+export const EPILOGUE_TEXT = 'Nine missions, three race wins waiting, a garage full of tuned steel, ' +
+  'an island across the bridge, a boat in the marina, a helicopter on the pad and a ' +
+  'championship to defend. Mara Solano came back to Solmar with ' +
   'nothing — and now the city is hers. Keep playing: the streets never sleep.';
 
 export function registerFinale(G) {
@@ -58,15 +59,16 @@ export function updateFinale(G, dt) {
   if (!f) return;
   const m = G.missions;
   // The getaway step (index 3, the wanted step) starts hot: the casino
-  // alarm trips the moment Mara is supposed to be running.
-  if (m.active && m.index === MISSIONS.length - 1 && m.step === 3 && f.heatAddedForStep !== 3) {
+  // alarm trips the moment Mara is supposed to be running. Checked by
+  // mission id, not by list position: v4 appends Missions 8-9 after this.
+  if (m.active && MISSIONS[m.index]?.id === 'verde-heist' && m.step === 3 && f.heatAddedForStep !== 3) {
     f.heatAddedForStep = 3;
     G.wanted.addHeat(48, 'casino alarm');
     G.hud.toast('THE ALARM IS UP — 3 stars and climbing! Lose them, then get to the plaza.');
   }
   if (m.step !== f.lastStep) {
     f.lastStep = m.step;
-    if (!(m.active && m.index === MISSIONS.length - 1 && m.step === 3)) {
+    if (!(m.active && MISSIONS[m.index]?.id === 'verde-heist' && m.step === 3)) {
       // Keep the flag honest across retries of the same step.
       if (m.step !== 3) f.heatAddedForStep = -1;
     }

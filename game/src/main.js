@@ -49,6 +49,16 @@ import { registerFinale, updateFinale, EPILOGUE_TEXT } from './finale.js';
 // v3: nitro boost for Mara's tuned car, and the harbor boat tour.
 import { createNitro, updateNitro, refillNitro } from './nitro.js';
 import { createStats, updateStats } from './stats.js';
+// v4 systems: the heist arc (Missions 8-9), flyable helicopters, the
+// street-race league, jet skis, the Verde Casino, street events and
+// fog + thunderstorms.
+import { registerHeist, updateHeist } from './heist.js';
+import { createFlyHelis, updateFlyHeli, nearestFlyHeli, enterFlyHeli, exitFlyHeli } from './flyheli.js';
+import { createRaceLeague, updateRaceLeague } from './raceleague.js';
+import { createJetSkis, updateJetSkis, nearestJetSki, enterJetSki, exitJetSki } from './jetski.js';
+import { createCasino, casinoNearDoor, openCasino, closeCasino } from './casino.js';
+import { createStreetEvents, updateStreetEvents } from './streetevents.js';
+import { createStorm, updateStorm } from './storm.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -79,6 +89,8 @@ const G = {
   policeFoot: [],
   driving: null,
   boating: null,         // v3: the boat Mara is sailing, if any
+  flying: null,          // v4: the helicopter Mara is flying, if any
+  jetski: null,          // v4: the jet ski Mara is riding, if any
   shot: null,
   shotFrames: 0,
   cameraKick: 0,
@@ -156,6 +168,14 @@ createVigilante(G);
 registerFinale(G);
 createNitro(G);
 createStats(G);
+// v4 systems, created last so the v1–v3 placements above keep their seeds.
+registerHeist(G);
+createFlyHelis(G);
+createRaceLeague(G);
+createJetSkis(G);
+createCasino(G);
+createStreetEvents(G);
+createStorm(G);
 
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
@@ -209,6 +229,11 @@ function showTitle() {
   G.hud.hide();
   if (G.driving) exitCar(G);
   if (G.boating) exitBoat(G);
+  // v4: a parked heli or ski is left where it is; a flying one is
+  // brought down first so Mara is never stranded in the sky.
+  if (G.flying) { G.flying.altitude = 0; exitFlyHeli(G); }
+  if (G.jetski) exitJetSki(G);
+  if (G.casino && G.casino.open) closeCasino(G);
   $('btnContinue').classList.toggle('hidden', !G.save.exists());
   document.exitPointerLock?.();
 }
@@ -344,6 +369,13 @@ function stepWorld(dt) {
   updateFinale(G, dt);
   updateIslaVerde(G, dt);
   updateNitro(G, dt);
+  // v4 systems ride the same fixed step as the rest of the living city.
+  updateHeist(G, dt);
+  updateFlyHeli(G, dt);
+  updateRaceLeague(G, dt);
+  updateJetSkis(G, dt);
+  updateStreetEvents(G, dt);
+  updateStorm(G, dt);
 }
 
 function frame() {
@@ -355,17 +387,31 @@ function frame() {
     G.elapsed += dt;
     G.clockMinutes += dt * G.config.clockRate;
 
-    // Enter / exit cars — and v3 boats: E near a moored boat boards it.
+    // Enter / exit cars — and v3 boats, v4 helicopters, jet skis and the
+    // casino: E near a moored boat boards it, near a heli flies it, near
+    // a jet ski rides it, at the casino door walks Mara in.
     if (G.input.pressed('enter')) {
-      if (G.boating) exitBoat(G);
+      if (G.casino.open) closeCasino(G);
+      else if (G.flying) exitFlyHeli(G);
+      else if (G.jetski) exitJetSki(G);
+      else if (G.boating) exitBoat(G);
       else if (G.driving) exitCar(G);
       else {
-        const boat = nearestBoat(G);
-        if (boat) enterBoat(G, boat);
+        const heli = nearestFlyHeli(G);
+        if (heli) enterFlyHeli(G, heli);
         else {
-          const car = nearestEnterableCar(G);
-          if (car) { enterCar(G, car); applyGarageToCar(G, car); }
-          else G.hud.toast('No car close enough — get nearer and press E.');
+          const ski = nearestJetSki(G);
+          if (ski) enterJetSki(G, ski);
+          else if (casinoNearDoor(G)) openCasino(G);
+          else {
+            const boat = nearestBoat(G);
+            if (boat) enterBoat(G, boat);
+            else {
+              const car = nearestEnterableCar(G);
+              if (car) { enterCar(G, car); applyGarageToCar(G, car); }
+              else G.hud.toast('No car close enough — get nearer and press E.');
+            }
+          }
         }
       }
     }
@@ -387,6 +433,10 @@ function frame() {
       updateDriveCamera(G, dt);
       G.audio.engineStartLoop();
       G.audio.engineSet(Math.abs(G.driving.speed) / G.driving.spec.topSpeed);
+    } else if (G.flying || G.jetski) {
+      // v4: helicopters and jet skis steer their own cameras and engine
+      // note inside their own updates (see flyheli.js / jetski.js).
+      G.audio.engineStartLoop();
     } else {
       updatePlayer(G, dt);
       G.audio.engineStop();
@@ -395,9 +445,20 @@ function frame() {
     // Interact prompt when a car is in reach (hidden in shot mode: the
     // prompt would overlap the mission dialogue in the screenshots).
     if (!G.shot) {
-      if (!G.driving) {
+      if (G.casino.open) {
+        G.hud.setInteract('<b>E</b> — cash out of the Verde Casino');
+      } else if (G.flying) {
+        G.hud.setInteract('<b>E</b> — land and get out (Shift to sink)');
+      } else if (G.jetski) {
+        G.hud.setInteract('<b>E</b> — hop off the jet ski');
+      } else if (!G.driving) {
+        const heli = nearestFlyHeli(G);
+        const ski = nearestJetSki(G);
         const car = nearestEnterableCar(G);
-        G.hud.setInteract(car ? `<b>E</b> — take the ${car.spec.name}` : null);
+        if (heli) G.hud.setInteract(`<b>E</b> — fly the ${heli.name}`);
+        else if (ski) G.hud.setInteract(`<b>E</b> — ride the ${ski.name}`);
+        else if (casinoNearDoor(G)) G.hud.setInteract('<b>E</b> — enter the Verde Casino');
+        else G.hud.setInteract(car ? `<b>E</b> — take the ${car.spec.name}` : null);
       } else {
         G.hud.setInteract(`<b>E</b> — get out of the ${G.driving.spec.name}`);
       }

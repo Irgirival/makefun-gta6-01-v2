@@ -50,6 +50,14 @@ export function createSave(G) {
             bounties: G.vigilante.bounties, earned: G.vigilante.earned,
           } : null,
           safehouseVisits: G.safehouse ? G.safehouse.visits : 0,
+          // v4: street-league season and the jet-ski trial best time.
+          league: G.league ? {
+            points: G.league.points, rounds: G.league.rounds,
+            gpUnlocked: G.league.gpUnlocked, gpWon: G.league.gpWon,
+            champion: G.league.champion,
+            rivals: G.league.rivals.map((r) => ({ short: r.short, points: r.points })),
+          } : null,
+          jetskiBest: G.jetskis ? G.jetskis.trial.best : null,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       } catch (err) {

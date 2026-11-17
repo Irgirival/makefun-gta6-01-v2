@@ -1,14 +1,14 @@
-// Solmar City v3 — Mara Solano: a complete 3D open-world crime game for the
-// make.fun gta6-01 bounty (Node 22, standard library only). v3 expands the
-// v2 city with street racing (three circuits, three AI rivals, prizes and a
-// season ladder), Vic's tuning garage (paint, engine and armor that persist),
-// Mission 7 "The Verde Heist" with its epilogue, the Isla Verde island
-// district across a causeway bridge (boardwalk, lighthouse, marina, hotel),
-// five drivable boats, a safehouse that clears the heat and changes Mara's
-// outfit, three switchable radio stations, and vigilante contracts with
-// spike strips and roadblocks at 3+ stars — on top of v2's police
-// helicopter, day/night cycle, Solmar Airfield, motorcycle, rain weather,
-// sixth story mission, courier runs, stunt jumps, buses and varied crowds.
+// Solmar City v4 — Mara Solano: a complete 3D open-world crime game for the
+// make.fun gta6-01 bounty (Node 22, standard library only). v4 expands the
+// v3 city with two more story missions (Mission 8 "The Solmar Job" with a
+// vault drill, Mission 9 "King of Solmar" with a gold getaway car), two
+// flyable helicopters (a stealable PD Hawk and a news chopper), a street
+// race league with two new circuits and the Solmar Grand Prix championship,
+// three jet skis with a marina time trial, the Verde Casino (slots and
+// high/low), rotating street events (bank getaways, block takeovers,
+// most-wanted bounties) and fog + thunderstorm fronts with lightning — on
+// top of v3's street racing, tuning garage, Verde Heist finale, Isla Verde
+// island, boats, safehouse, radio, vigilante contracts and nitro.
 //
 // The game lives in this directory's game/ folder as plain static files a
 // desktop browser loads fully offline: game/index.html plus its ES modules
@@ -24,10 +24,12 @@
 // motorcycle, arcade physics, car stealing with E, and five drivable boats);
 // traffic AI, buses and pedestrians; a 0-5 star wanted system with pursuing
 // cruisers, a searchlight helicopter, spike strips, roadblocks and arrests;
-// punch and pistol combat; seven story missions with dialogue, waypoints
-// and cash rewards ending in the Verde Heist, a repeatable taxi job, courier
-// runs, stunt jumps, street races with AI rivals, a tuning garage, vigilante
-// bounties, a safehouse and three radio stations; a HUD with health/armor,
+// punch and pistol combat; nine story missions with dialogue, waypoints
+// and cash rewards ending in the King of Solmar, a repeatable taxi job, courier
+// runs, stunt jumps, street races with AI rivals and a championship league,
+// a tuning garage, vigilante bounties, a safehouse, three radio stations,
+// flyable helicopters, jet skis, a working casino, street events and storm
+// fronts; a HUD with health/armor,
 // cash, wanted stars, clock, weather and a canvas minimap; title, pause,
 // busted/wasted and mission-complete screens; and localStorage saves.
 //
