@@ -52,7 +52,7 @@ export function updatePhotoMode2(G, dt) {
   if (G.input.pressed('radio')) {
     pm2.timeIndex = (pm2.timeIndex + 1) % PHOTO_TIMES.length;
     const t = PHOTO_TIMES[pm2.timeIndex];
-    if (G.daynight && G.daynight.setTimeOfDay) G.daynight.setTimeOfDay(G, t.hour);
+    if (G.daynight && G.daynight.setTimeOfDay) G.daynight.setTimeOfDay(t.hour);
     else G.clockMinutes = t.hour * 60;
     G.hud.toast(`Photo time — ${t.name}.`);
   }
@@ -60,7 +60,7 @@ export function updatePhotoMode2(G, dt) {
   if (G.input.pressed('weather')) {
     pm2.weatherIndex = (pm2.weatherIndex + 1) % PHOTO_WEATHERS.length;
     const mode = PHOTO_WEATHERS[pm2.weatherIndex];
-    if (G.weather && G.weather.setMode) G.weather.setMode(G, mode);
+    if (G.weather && G.weather.setMode) G.weather.setMode(mode);
     else if (G.weather) G.weather.mode = mode;
     G.hud.toast(`Photo weather — ${mode}.`);
   }

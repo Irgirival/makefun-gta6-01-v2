@@ -147,7 +147,7 @@ export function updateMountain(G, dt) {
   const d = Math.hypot(pos.x - PEAK.x, pos.z - PEAK.z);
   // Inside the snow zone the weather turns to snow on its own.
   if (d < 70 && G.weather && G.weather.mode !== 'snow' && !G.shot) {
-    if (G.weather.setMode) G.weather.setMode(G, 'snow');
+    if (G.weather.setMode) G.weather.setMode('snow');
   }
   // First visit to the viewpoint pays a postcard bonus.
   const vd = Math.hypot(pos.x - MOUNTAIN.viewpoint.x, pos.z - MOUNTAIN.viewpoint.z);
