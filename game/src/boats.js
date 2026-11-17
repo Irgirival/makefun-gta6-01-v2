@@ -13,6 +13,9 @@ const BOAT_SPOTS = [
   { x: 352, z: 140, heading: -Math.PI / 2, name: 'Dock Skipper' },
   { x: -129, z: 571, heading: 0, name: 'Marina Star' },
   { x: -101, z: 571, heading: 0, name: 'Verde Voyager' },
+  // v5: the Verde Comet — a low, fast speedboat with a bigger motor, the
+  // quickest way across the bay when the causeway is crawling.
+  { x: -88, z: 571, heading: 0, name: 'Verde Comet', fast: true },
 ];
 
 // Two tour rings: the harbor ring (orange buoys, $500) and the marina ring
@@ -96,6 +99,9 @@ export function createBoats(G) {
       steer: 0,
       bobPhase: i * 1.3,
       wake: [],
+      // v5: the Comet's bigger motor — 34 knots where the others do 26.
+      topSpeed: spot.fast ? 34 : BOAT_TOP_SPEED,
+      fast: !!spot.fast,
     });
   });
   // Two tour rings, one builder: colored spheres on striped posts, bobbing.
@@ -289,7 +295,9 @@ export function updateBoats(G, dt) {
   if (throttle > 0) boat.speed += BOAT_ACCEL * throttle * dt;
   if (throttle < 0) boat.speed += BOAT_ACCEL * throttle * 0.7 * dt;
   boat.speed -= boat.speed * 0.35 * dt;
-  boat.speed = Math.max(-BOAT_TOP_SPEED * 0.4, Math.min(BOAT_TOP_SPEED, boat.speed));
+  // v5: the Comet runs to its own, faster top speed.
+  const topSpeed = boat.topSpeed || BOAT_TOP_SPEED;
+  boat.speed = Math.max(-topSpeed * 0.4, Math.min(topSpeed, boat.speed));
   boat.pos.x += Math.sin(boat.heading) * boat.speed * dt;
   boat.pos.z += Math.cos(boat.heading) * boat.speed * dt;
   clampToWater(G, boat);
@@ -313,7 +321,7 @@ export function updateBoats(G, dt) {
   cam.position.set(cx, up, cz);
   cam.lookAt(boat.pos.x, 1.2, boat.pos.z);
   G.hud.setObjectiveHint(`Sailing the ${boat.name} — ${Math.round(Math.abs(boat.speed) * 3.6)} km/h · E to hop off`);
-  G.audio.engineSet(Math.abs(boat.speed) / BOAT_TOP_SPEED);
+  G.audio.engineSet(Math.abs(boat.speed) / topSpeed);
   updateTour(G, boat, dt);
 }
 
@@ -321,7 +329,7 @@ export function boatStatusText(G) {
   if (!G.boats) return 'No boats yet.';
   const t = G.boats.tour;
   const m = G.boats.marina;
-  return `${G.boats.list.length} boats — harbor (3) and Isla Verde marina (2) · ` +
+  return `${G.boats.list.length} boats — harbor (3) and Isla Verde marina (3, incl. the fast Verde Comet) · ` +
     `harbor tour ${t.next}/${t.buoys.length} buoys · ${t.done} tours ($${t.earned}) · ` +
     `marina tour ${m.next}/${m.buoys.length} buoys · ${m.done} tours ($${m.earned})`;
 }

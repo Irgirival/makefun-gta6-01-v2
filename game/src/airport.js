@@ -146,6 +146,32 @@ export function buildAirport(G) {
   sock.position.set(-194.2, 7.6, -276);
   group.add(sock);
 
+  // v5: the fuel truck by the fuel farm — a cab, a silver tank and hazard
+  // stripes, parked where the planes drink. It marks the fuel farm for
+  // Mission 10's runway run.
+  const truck = new THREE.Group();
+  const truckCab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 1.8), mat(0xd8a03a));
+  truckCab.position.set(0, 1.0, 2.6);
+  truck.add(truckCab);
+  const truckTank = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 4.4, 12), mat(0xc9c9c9));
+  truckTank.rotation.x = Math.PI / 2;
+  truckTank.position.set(0, 1.4, -0.8);
+  truck.add(truckTank);
+  const hazardStripe = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.4, 0.2),
+    new THREE.MeshLambertMaterial({ color: 0xd81a2a, emissive: 0x440000 }));
+  hazardStripe.position.set(0, 1.4, -3.05);
+  truck.add(hazardStripe);
+  for (const [wx, wz] of [[-1.0, 2.6], [1.0, 2.6], [-1.0, -1.6], [1.0, -1.6]]) {
+    const truckWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 10), mat(0x181818));
+    truckWheel.rotation.z = Math.PI / 2;
+    truckWheel.position.set(wx, 0.45, wz);
+    truck.add(truckWheel);
+  }
+  truck.position.set(FUEL.x + 6, 0, FUEL.z + 4);
+  truck.rotation.y = Math.PI / 2;
+  group.add(truck);
+  addCollider(FUEL.x + 6, FUEL.z + 4, 3, 6);
+
   G.scene.add(group);
 
   G.airport = {

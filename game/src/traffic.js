@@ -7,7 +7,9 @@ import { createVehicle } from './vehicles.js';
 import { pick, range, rangeInt, pickWeighted } from './random.js';
 
 // v3: weighted traffic mix — sedans everywhere, sports cars rare.
-const TRAFFIC_WEIGHTS = [['sedan', 5], ['taxi', 2], ['van', 2], ['sports', 1]];
+// v5: the new rides join the flow — armored vans on the bank run, the
+// occasional limousine gliding to the casino.
+const TRAFFIC_WEIGHTS = [['sedan', 5], ['taxi', 2], ['van', 2], ['sports', 1], ['armored', 1], ['limo', 1]];
 
 export function spawnTraffic(G) {
   const rng = G.rng;
@@ -41,6 +43,11 @@ export function updateTraffic(G, dt) {
   // During a street race the traffic gives the racers room: everyone
   // cruises 30% slower so the circuit stays readable.
   const raceSlow = (G.races && G.races.active) ? 0.7 : 1;
+  // v5: rush hour — between 17:00 and 19:00 the avenues fill up: every
+  // traffic car pushes 15% harder to keep its gap, so the city feels busy
+  // exactly when Mara is driving home through it.
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const rushHour = mins >= 17 * 60 && mins < 19 * 60 ? 1.15 : 1;
   for (const v of G.vehicles) {
     if (v.driver !== 'traffic') continue;
     const route = v.route;
@@ -90,7 +97,7 @@ export function updateTraffic(G, dt) {
       if (forward > 0 && forward < 16 && lateral < 3.2) ahead = Math.min(ahead, forward);
     }
     // Also stop at a red-ish rhythm: cars pause briefly at some intersections.
-    const target = ahead < 16 ? Math.max(0, (ahead - 7) / 9) * v.cruiseSpeed : v.cruiseSpeed * raceSlow;
+    const target = ahead < 16 ? Math.max(0, (ahead - 7) / 9) * v.cruiseSpeed : v.cruiseSpeed * raceSlow * rushHour;
     v.throttleTarget = v.speed < target ? 0.55 : 0;
     if (v.speed > target + 2) v.throttleTarget = -0.4;
   }

@@ -104,8 +104,10 @@ export function updateDayNight(G, dt) {
     scene.fog.color.copy(DAY_FOG);
   }
   // Fog closes in at night: the city feels smaller and moodier.
-  scene.fog.near = 220 - night * 90;
-  scene.fog.far = 900 - night * 320;
+  // v5: golden haze pulls it in further still, for that low-sun postcard.
+  const haze = G.weather ? (G.weather.hazeFactor || 0) : 0;
+  scene.fog.near = (220 - night * 90) * (1 - haze * 0.6);
+  scene.fog.far = (900 - night * 320) * (1 - haze * 0.55);
 
   // Sun: bright and warm by day, orange and low at dusk, gone at night.
   sun.position.set(arc.x, Math.max(arc.y, -60), arc.z);
@@ -191,4 +193,17 @@ export function timeOfDayLabel(G) {
 export function isNight(G) {
   const m = Math.floor(G.clockMinutes) % (24 * 60);
   return m < 6 * 60 || m >= 19 * 60;
+}
+
+// v5 — golden hour: the low sun, long shadows and orange sky of 17:45,
+// held for a photo or a story beat. Mission 10 starts here — "The Last
+// Sunset" is shot in this light — and photo mode can return to it any time.
+export function setGoldenHour(G) {
+  G.clockMinutes = 17 * 60 + 45;
+  return G.clockMinutes;
+}
+
+export function goldenHourLabel(G) {
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  return mins >= 17 * 60 + 15 && mins <= 18 * 60 + 15 ? 'Golden hour' : null;
 }

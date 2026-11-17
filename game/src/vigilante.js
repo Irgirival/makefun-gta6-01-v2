@@ -46,6 +46,12 @@ export function createVigilante(G) {
     spikes: [],
     roadblockTimer: 20,
     roadblocks: [],
+    // v5: contracts alternate — chase, then stakeout. A stakeout tails a
+    // suspect sedan at a distance instead of ramming it.
+    kind: 'chase',
+    contracts: 0,
+    tailTime: 0,
+    exposedTimer: 0,
   };
   G.vigilante = vig;
   return vig;
@@ -60,8 +66,14 @@ export function startVigilante(G) {
   const heading = car.heading;
   const fx = car.pos.x + Math.sin(heading) * 30;
   const fz = car.pos.z + Math.cos(heading) * 30;
-  const fugitive = createVehicle(G, 'sports', fx, fz, heading, {
-    driver: 'race', occupied: true, color: 0x111111,
+  // v5: every second contract is a stakeout — tail a suspect sedan, do not
+  // ram it. The target drives slow and steady; get too close and it spots
+  // you, drift too far and you lose it.
+  const stakeout = v.contracts % 2 === 1;
+  v.kind = stakeout ? 'stakeout' : 'chase';
+  v.contracts++;
+  const fugitive = createVehicle(G, stakeout ? 'sedan' : 'sports', fx, fz, heading, {
+    driver: 'race', occupied: true, color: stakeout ? 0x3a4a5a : 0x111111,
   });
   fugitive.throttleTarget = 0;
   fugitive.steerTarget = 0;
@@ -78,11 +90,21 @@ export function startVigilante(G) {
   v.rams = 0;
   v.pinTimer = 0;
   v.timer = FUGITIVE_TIMEOUT;
-  G.hud.showDialogue([
-    'VIGILANTE CONTRACT — a fugitive in a stolen black Comet GT is running.',
-    `Ram it ${RAMS_TO_STOP} times, or pin it for 2 seconds. $${BOUNTY} from the PD if you stop it.`,
-    `${FUGITIVE_TIMEOUT} seconds before it vanishes into the night. Go!`,
-  ]);
+  v.tailTime = 0;
+  v.exposedTimer = 0;
+  if (stakeout) {
+    G.hud.showDialogue([
+      'VIGILANTE — STAKEOUT: a suspect in a grey sedan is running errands for the crew.',
+      'Tail it for 20 seconds — stay 12–55m back. Get closer than 12m and it spots you; drift past 55m and it is gone.',
+      `$${BOUNTY} from the PD if you follow it to the drop. Quiet now.`,
+    ]);
+  } else {
+    G.hud.showDialogue([
+      'VIGILANTE CONTRACT — a fugitive in a stolen black Comet GT is running.',
+      `Ram it ${RAMS_TO_STOP} times, or pin it for 2 seconds. $${BOUNTY} from the PD if you stop it.`,
+      `${FUGITIVE_TIMEOUT} seconds before it vanishes into the night. Go!`,
+    ]);
+  }
   G.audio.missionSting();
   G.wanted.addHeat(6, 'vigilante contract');
   return true;
@@ -126,7 +148,9 @@ function driveFugitive(G, dt) {
   const err = wrapAngle(want - f.heading);
   f.steerTarget = Math.max(-1, Math.min(1, err * 1.8));
   // The fugitive is fast but sloppy: full throttle, slower in hard turns.
-  const top = f.spec.topSpeed * 0.92;
+  // A stakeout target is the opposite: slow, steady, law-abiding — it must
+  // be followed, not caught.
+  const top = f.spec.topSpeed * (v.kind === 'stakeout' ? 0.35 : 0.92);
   f.throttleTarget = (Math.abs(err) > 1.0 && f.speed > 16) ? 0 : (f.speed < top ? 1 : 0);
 }
 
@@ -188,6 +212,24 @@ export function updateVigilante(G, dt) {
     const f = v.fugitive;
     driveFugitive(G, dt);
     const d = car ? Math.hypot(f.pos.x - car.pos.x, f.pos.z - car.pos.z) : 999;
+    // v5: the stakeout plays by different rules — distance is the weapon.
+    if (v.kind === 'stakeout') {
+      if (!car) { endVigilante(G, false, 'you left your car — the suspect drove off.'); return; }
+      if (d < 12) {
+        v.exposedTimer += dt;
+        G.hud.setObjectiveHint(`TOO CLOSE — back off! Spotted in ${Math.max(0, 3 - v.exposedTimer).toFixed(1)}s`);
+        if (v.exposedTimer > 3) { endVigilante(G, false, 'the suspect spotted you and burned off.'); return; }
+      } else if (d > 55) {
+        G.hud.setObjectiveHint(`Losing it — ${Math.round(d)}m away. Close the gap, quietly.`);
+      } else {
+        v.exposedTimer = 0;
+        v.tailTime += dt;
+        G.hud.setObjectiveHint(`STAKEOUT — tailing ${Math.round(d)}m back · ${Math.max(0, 20 - v.tailTime).toFixed(0)}s to the drop`);
+        if (v.tailTime >= 20) { endVigilante(G, true, 'Tailed the suspect all the way to the drop — the PD has the whole crew now.'); return; }
+      }
+      if (v.timer <= 0) { endVigilante(G, false, 'the suspect finished its errands and vanished.'); return; }
+      return;
+    }
     if (car && d < 4.5) {
       // Contact: count a ram when the closing speed is real, or pin it.
       const closing = Math.abs(car.speed - f.speed);

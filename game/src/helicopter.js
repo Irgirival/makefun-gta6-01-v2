@@ -221,9 +221,22 @@ export function updateHelicopter(G, dt) {
   h.spot.visible = beamOn;
   h.pool.visible = beamOn;
   if (beamOn) {
+    // v5: at 5 stars the beam stops sitting on her and sweeps — a slow
+    // circle around her position, searching. The heat only freezes while
+    // the sweep is actually passing over her, so a fast Mara can slip the
+    // light between passes.
+    let bx = target.x, bz = target.z;
+    let sweeping = false;
+    if (stars >= 5) {
+      const a = G.elapsed * 0.8;
+      bx = target.x + Math.sin(a) * 14;
+      bz = target.z + Math.cos(a) * 14;
+      sweeping = true;
+    }
     const t = h.group.userData.spotTarget;
-    t.position.set(target.x - h.pos.x, -h.pos.y, target.z - h.pos.z);
-    h.pool.position.set(target.x, 0.1, target.z);
-    G.wanted.lastSeenAt = G.elapsed;
+    t.position.set(bx - h.pos.x, -h.pos.y, bz - h.pos.z);
+    h.pool.position.set(bx, 0.1, bz);
+    const held = !sweeping || Math.hypot(bx - target.x, bz - target.z) < 6;
+    if (held) G.wanted.lastSeenAt = G.elapsed;
   }
 }

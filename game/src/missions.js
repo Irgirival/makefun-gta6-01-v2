@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { range } from './random.js';
+import { setGoldenHour } from './daynight.js';
 
 // Waypoint positions are fixed city landmarks so the player can learn them.
 // PLAZA is the central plaza (block centre 20,20); the others sit on road
@@ -163,6 +164,8 @@ export function startMission(G, index) {
   if (def.id === 'verde-heist') G.wanted.addHeat(20, 'heist heat');
   // v5: The Last Sunset starts warm too — the PD heard about the crate.
   if (def.id === 'last-sunset') G.wanted.addHeat(40, 'sunset heat');
+  // v5: and it starts in golden hour — the whole mission is shot in it.
+  if (def.id === 'last-sunset') setGoldenHour(G);
   if (def.steps[0].type === 'timed') { m.timer = def.steps[0].seconds; m.timerTotal = def.steps[0].seconds; }
 }
 

@@ -304,6 +304,38 @@ export function buildIslaVerde(G) {
         ISLA.boardwalk.x - 50 + ((i + 3) % 6) * 18, 0, ISLA.boardwalk.z + (i % 2 ? -2 : 2));
     }
   }
+  // v5: the Sunset Overlook by the lighthouse — a bench and a brass
+  // telescope facing the sea, where Mission 10's first step is watched.
+  // The telescope is the island's quietest photo spot.
+  {
+    const bench = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.18, 0.7), lambert(0x8a6a3a));
+    seat.position.y = 0.55;
+    bench.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.14), lambert(0x8a6a3a));
+    back.position.set(0, 1.0, -0.32);
+    bench.add(back);
+    for (const sx of [-1.0, 1.0]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.55, 0.6), lambert(0x3a3a3a));
+      leg.position.set(sx, 0.28, 0);
+      bench.add(leg);
+    }
+    bench.position.set(-192, 0, 556);
+    bench.rotation.y = Math.PI * 0.75;
+    G.scene.add(bench);
+    const scope = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.4, 8), lambert(0x3a3a3a));
+    post.position.y = 0.7;
+    scope.add(post);
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.6, 10), lambert(0xd8a03a));
+    tube.rotation.x = Math.PI / 2 - 0.35;
+    tube.position.set(0, 1.6, 0.2);
+    scope.add(tube);
+    scope.position.set(-189, 0, 558);
+    scope.rotation.y = -Math.PI / 4;
+    G.scene.add(scope);
+    addCollider(G, -192, 556, 2.6, 1.2);
+  }
   return G.isla;
 }
 

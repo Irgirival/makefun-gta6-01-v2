@@ -16,6 +16,16 @@ export const MOTORCYCLE_SPEC = {
   colors: [0xd81a2a, 0x1a6ad8, 0x222222, 0xffd23e],
 };
 
+// v5: the Boulevard Cruiser — slower than the Comet, steadier in the rain,
+// with saddlebags and a windshield for the long ride down the beach road.
+export const CRUISER_SPEC = {
+  name: 'Boulevard Cruiser',
+  topSpeed: 44,
+  accel: 26,
+  turn: 2.2,
+  colors: [0x2a2a2a, 0x6a1a2a, 0x1a3a5a],
+};
+
 const BIKE_SPOTS = [
   { x: 30, z: 44, heading: Math.PI / 2 },      // by the plaza fountain
   { x: -16, z: -88, heading: 0 },              // outside Vic's garage
@@ -23,7 +33,7 @@ const BIKE_SPOTS = [
   { x: -150, z: 512, heading: Math.PI / 2 },   // v3: on the Isla Verde boardwalk
 ];
 
-function buildBikeMesh(color) {
+function buildBikeMesh(color, cruiser = false) {
   const group = new THREE.Group();
   const mat = (c, opts = {}) => new THREE.MeshLambertMaterial({ color: c, ...opts });
   const bodyMat = mat(color);
@@ -91,6 +101,20 @@ function buildBikeMesh(color) {
   disc.rotation.z = Math.PI / 2;
   disc.position.set(0.1, 0.36, 1.05);
   group.add(disc);
+  // v5: the cruiser's kit — a tall windshield for the beach-road wind and
+  // leather saddlebags over the rear wheel.
+  if (cruiser) {
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.55, 0.06),
+      new THREE.MeshLambertMaterial({ color: 0x9fd8e8, transparent: true, opacity: 0.6 }));
+    shield.position.set(0, 1.35, 1.1);
+    shield.rotation.x = -0.25;
+    group.add(shield);
+    for (const sx of [-0.32, 0.32]) {
+      const bag = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.4, 0.6), mat(0x5a3a1a));
+      bag.position.set(sx, 0.62, -0.85);
+      group.add(bag);
+    }
+  }
   // Soft contact shadow.
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.8),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }));
@@ -103,9 +127,10 @@ function buildBikeMesh(color) {
 }
 
 export function createMotorcycle(G, x, z, heading, opts = {}) {
-  const spec = MOTORCYCLE_SPEC;
+  // v5: opts.cruiser picks the Boulevard Cruiser's steadier spec.
+  const spec = opts.cruiser ? CRUISER_SPEC : MOTORCYCLE_SPEC;
   const color = opts.color ?? pick(G.rng, spec.colors);
-  const mesh = buildBikeMesh(color);
+  const mesh = buildBikeMesh(color, !!opts.cruiser);
   mesh.position.set(x, 0, z);
   mesh.rotation.y = heading;
   G.scene.add(mesh);
@@ -135,6 +160,9 @@ export function spawnMotorcycles(G) {
   for (const spot of BIKE_SPOTS) {
     createMotorcycle(G, spot.x, spot.z, spot.heading, { parked: true });
   }
+  // v5: a Boulevard Cruiser parked outside the beach bar, for the long
+  // ride down the beach road.
+  createMotorcycle(G, -112, 344, Math.PI / 2, { parked: true, cruiser: true });
   // One Comet already out riding the traffic, for the player to chase down.
   const bike = createMotorcycle(G, -100, 60, Math.PI / 2, { driver: 'traffic', occupied: true });
   bike.speed = 16;

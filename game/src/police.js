@@ -100,8 +100,11 @@ export function updatePolice(G, dt) {
   const target = playerPos(G);
 
   // Heat decay: only while no police unit is close and no crime just happened.
+  // v5: the air unit's searchlight counts too — while the beam has seen her
+  // in the last two seconds, the heat cannot cool off at all.
   const nearestCop = nearestPoliceDistance(G);
-  if (w.stars > 0 && G.elapsed - w.lastCrimeAt > 8 && nearestCop > 55) {
+  const seenRecently = G.elapsed - w.lastSeenAt < 2;
+  if (w.stars > 0 && G.elapsed - w.lastCrimeAt > 8 && nearestCop > 55 && !seenRecently) {
     // v5: the Night Stalker outfit cools the heat 50% faster — the PD
     // loses a quiet woman in dark clothes much sooner.
     const decayMult = w.heatDecayMult || 1;

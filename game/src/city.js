@@ -278,6 +278,40 @@ export function buildCity(G) {
     group.add(cl);
   }
 
+  // ---- v5: the Sunset Viewpoint — a railed deck on the sand where photo
+  // mode shines, with a big SOLMAR sign for the postcard shot — and three
+  // glowing billboards down the beachfront road for the night race.
+  {
+    const deck = new THREE.Group();
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(14, 0.5, 8), mat(0x8a6a4a));
+    floor.position.y = 0.25; deck.add(floor);
+    for (let i = 0; i < 6; i++) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.1, 0.25), mat(0xd8d3c0));
+      post.position.set(-6.5 + i * 2.6, 1.0, -3.8); deck.add(post);
+    }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(14, 0.12, 0.12), mat(0xd8d3c0));
+    rail.position.set(0, 1.55, -3.8); deck.add(rail);
+    // The sign: gold letters on a deep blue board, facing the sea.
+    const board = new THREE.Mesh(new THREE.BoxGeometry(11, 2.6, 0.3),
+      new THREE.MeshLambertMaterial({ color: 0x1a3a6a, emissive: 0x0a1a44 }));
+    board.position.set(0, 3.6, -3.9); deck.add(board);
+    const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(0.9, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff8a3a }));
+    sunDisc.position.set(-3.6, 3.6, -3.72); deck.add(sunDisc);
+    deck.position.set(-60, 0, cfg.beachZ + 26);
+    deck.rotation.y = Math.PI; // face the city, sea at Mara's back
+    group.add(deck);
+    // Only the sign wall blocks movement — the deck itself is open sand.
+    colliders.push({ minX: -66, maxX: -54, minZ: cfg.beachZ + 29, maxZ: cfg.beachZ + 31 });
+  }
+  for (const [bx, label] of [[-20, 0xffd23e], [100, 0x2aff8a], [220, 0xd81a8a]]) {
+    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.6, 9, 0.6), mat(0x2a2a2a));
+    pole.position.set(bx, 4.5, 288); group.add(pole);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 0.3),
+      new THREE.MeshLambertMaterial({ color: label, emissive: label, emissiveIntensity: 0.35 }));
+    panel.position.set(bx, 9.5, 288); group.add(panel);
+  }
+
   G.scene.add(group);
 
   // Collision + road queries used by every moving system.

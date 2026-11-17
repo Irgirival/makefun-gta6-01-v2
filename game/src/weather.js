@@ -6,8 +6,8 @@
 
 import * as THREE from 'three';
 
-const MODES = ['clear', 'light', 'heavy'];
-const MODE_LABEL = { clear: 'Clear skies', light: 'Light rain', heavy: 'Heavy rain' };
+const MODES = ['clear', 'light', 'heavy', 'haze'];
+const MODE_LABEL = { clear: 'Clear skies', light: 'Light rain', heavy: 'Heavy rain', haze: 'Golden haze' };
 const DRY_ROAD = new THREE.Color(0x2e3138);
 const WET_ROAD = new THREE.Color(0x1c2126);
 const RAIN_COUNT = 900;
@@ -21,6 +21,9 @@ export function createWeather(G) {
     intensity: 0,        // 0 dry .. 1 heaviest, eased toward the mode target
     grip: 1,             // 1 dry .. 0.68 heavy rain (read by vehicles.js)
     chop: 0.1,           // v3: sea swell 0.1 calm .. 0.5 heavy rain (read by boats.js)
+    // v5: golden haze — a warm low fog that closes the horizon. daynight.js
+    // reads hazeFactor to pull the fog in; 0 means no haze at all.
+    hazeFactor: 0,
     nextAutoChange: 110, // seconds until the sky rolls its own dice
     rainTimer: 0,
     points: null,
@@ -85,9 +88,12 @@ export function updateWeather(G, dt) {
     }
   }
   // Ease the intensity toward the mode's target so rain fades in and out.
-  const target = w.mode === 'clear' ? 0 : w.mode === 'light' ? 0.5 : 1;
+  // Haze sits at a low intensity of its own: enough to close the horizon,
+  // never enough to count as rain.
+  const target = w.mode === 'clear' ? 0 : w.mode === 'light' ? 0.5 : w.mode === 'haze' ? 0.35 : 1;
   w.intensity += (target - w.intensity) * Math.min(1, dt * 0.7);
   if (w.intensity < 0.02 && target === 0) w.intensity = 0;
+  w.hazeFactor = w.mode === 'haze' ? Math.min(1, w.intensity / 0.35) : 0;
   w.grip = 1 - w.intensity * 0.32;
   // v3: the same storm chops up the sea — boats bob harder in heavy rain.
   w.chop = 0.1 + w.intensity * 0.4;
@@ -99,8 +105,8 @@ export function updateWeather(G, dt) {
     G.city.roadMat.color.copy(DRY_ROAD).lerp(WET_ROAD, wet * 0.8);
   }
 
-  // Rain sound: a soft hiss that swells with the downpour.
-  if (w.intensity > 0.15) {
+  // Rain sound: a soft hiss that swells with the downpour. Haze is silent.
+  if (w.intensity > 0.15 && (w.mode === 'light' || w.mode === 'heavy')) {
     w.rainTimer -= dt;
     if (w.rainTimer <= 0) {
       w.rainTimer = 0.45;
@@ -110,7 +116,8 @@ export function updateWeather(G, dt) {
 
   // Move the drops. The box is centred on the player, so the storm never
   // runs out of road; drops that hit the ground jump back to the top.
-  const raining = w.intensity > 0.03;
+  // Haze has no drops — it is fog, not rain.
+  const raining = w.intensity > 0.03 && (w.mode === 'light' || w.mode === 'heavy');
   w.points.visible = raining;
   if (!raining) {
     w.points.material.opacity = 0;
