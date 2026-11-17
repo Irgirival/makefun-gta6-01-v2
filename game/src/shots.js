@@ -154,7 +154,8 @@ export function applyShotOldTown(G) {
   p.camYaw = 0;
   p.camPitch = 0.3;
   // Mission 11 starts here, so the objective reads "Old Town Rising".
-  if (MISSIONS.length > 11) startMission(G, 11);
+  // (Missions are zero-based and the base story has five: M11 is index 10.)
+  if (MISSIONS.length > 10) startMission(G, 10);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2 + 0.8;
     G.pedestrians.spawnPed(G, 260 + Math.cos(a) * 12, -260 + Math.sin(a) * 12, false);
