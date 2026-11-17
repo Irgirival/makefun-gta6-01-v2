@@ -31,7 +31,8 @@ const MISSION_8 = {
   ],
   steps: [
     { type: 'goto', target: BANK, radius: 10, text: 'Case the Solmar National Bank downtown', hint: 'Downtown, east of the plaza. Walk the block first — the guards watch the door.' },
-    { type: 'timed', target: VAULT, radius: 6, seconds: 75, text: 'Crack the vault before the silent alarm resets', hint: '75 seconds. Reach the vault and hold the drill — the sparks mean it is working.' },
+    { type: 'timed', target: VAULT, radius: 6, seconds: 75, text: 'Reach the vault before the silent alarm resets', hint: '75 seconds. Get to the vault fast — the drill is waiting.' },
+    { type: 'dwell', target: VAULT, radius: 6, seconds: 6, text: 'Hold the drill on the vault — crack it open', hint: 'Stay on the vault while the drill works. Step away and the crack stalls.' },
     { type: 'drive', target: GARAGE, radius: 10, text: 'Get the take to Vic\'s garage', hint: 'Any car will do. The bag is worth more than the car.' },
     { type: 'wanted', target: PLAZA, radius: 12, text: 'Lose the police, then reach the plaza', hint: 'Break line of sight and stay hidden until the stars clear.' },
     { type: 'drive', target: PLAZA, radius: 10, text: 'Stand in the plaza — the job is done', hint: 'The city lights are all yours now.' },
@@ -121,12 +122,12 @@ export function registerHeist(G) {
   return heist;
 }
 
-// How far through the vault crack Mara is, 0..1, while the timed step runs.
+// How far through the vault crack Mara is, 0..1, while the dwell step runs.
 function crackProgress(G) {
   const m = G.missions;
-  if (m.index !== 7 || m.step !== 1 || !m.active) return -1;
-  if (!m.timerTotal) return 0;
-  return Math.max(0, Math.min(1, 1 - m.timer / m.timerTotal));
+  if (m.index !== 7 || m.step !== 2 || !m.active) return -1;
+  const total = MISSIONS[7].steps[2].seconds || 6;
+  return Math.max(0, Math.min(1, (m.dwell || 0) / total));
 }
 
 export function heistStatusText(G) {
@@ -171,10 +172,11 @@ export function updateHeist(G, dt) {
     h.lastIndex = m.index;
     h.lastStep = m.step;
     if (m.step !== 3) h.heatAddedForStep = -1;
+    if (!(m.index === 7 && m.step === 2)) h.crackShown = 0;
   }
 
-  // The vault drill only lives on Mission 8's timed vault step.
-  const cracking = m.active && m.index === 7 && m.step === 1;
+  // The vault drill only lives on Mission 8's dwell (vault-crack) step.
+  const cracking = m.active && m.index === 7 && m.step === 2;
   h.drill.visible = cracking;
   if (!cracking) {
     for (const s of h.sparks) s.mesh.visible = false;
@@ -221,5 +223,5 @@ export function updateHeist(G, dt) {
     s.vy -= 18 * dt;
   }
   G.hud.setObjectiveHint(
-    `Vault crack ${Math.round(p * 100)}% — ${Math.max(0, m.timer).toFixed(0)}s left on the alarm`);
+    `Vault crack ${Math.round(p * 100)}% — hold the drill on the vault${near ? '' : ' (get closer!)'}`);
 }

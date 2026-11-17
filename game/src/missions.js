@@ -152,6 +152,7 @@ export function startMission(G, index) {
   m.step = 0;
   m.active = true;
   m.timer = 0;
+  m.dwell = 0;
   G.hud.setMission(def.title, def.steps[0].text, def.steps[0].hint);
   G.hud.showDialogue(def.intro);
   G.save.save(G);
@@ -187,6 +188,7 @@ function advanceStep(G) {
   G.hud.setMission(def.title, step.text, step.hint);
   placeMarker(G, step.target);
   if (step.type === 'timed') { m.timer = step.seconds; m.timerTotal = step.seconds; }
+  m.dwell = 0;
   G.audio.missionSting();
 }
 
@@ -280,6 +282,18 @@ export function updateMissions(G, dt) {
     G.hud.setObjectiveHint(G.wanted.stars > 0
       ? `Lose the police first! (${G.wanted.stars}★) Then get to the marker.`
       : `${Math.round(d)}m to the marker.`);
+    return;
+  } else if (step.type === 'dwell') {
+    // v4: hold the spot — progress builds inside the radius and stalls
+    // (slowly decays) outside it. The step advances when the hold fills.
+    if (d <= step.radius) {
+      m.dwell = (m.dwell || 0) + dt;
+      if (m.dwell >= step.seconds) { m.dwell = 0; advanceStep(G); }
+      else G.hud.setObjectiveHint(`Holding… ${Math.round((m.dwell / step.seconds) * 100)}% — stay on the marker!`);
+    } else {
+      m.dwell = Math.max(0, (m.dwell || 0) - dt * 0.5);
+      G.hud.setObjectiveHint(`${Math.round(d)}m to the marker — get there and hold it.`);
+    }
     return;
   } else {
     G.hud.setObjectiveHint(`${Math.round(d)}m to the marker`);
