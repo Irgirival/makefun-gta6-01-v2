@@ -4,6 +4,8 @@
 // Rosa — through a full flop, turn and river. Cash out any time and the
 // chips come back as dollars. The table pauses the street while Mara plays.
 
+import { casinoNearDoor } from './casino.js';
+
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RED_SUIT = { '♥': true, '♦': true };
@@ -252,6 +254,12 @@ export function createPoker(G) {
 export function openPoker(G) {
   const p = G.poker;
   if (!p || p.open) return;
+  // The high-roller table is inside the Verde — Mara has to be at the gold
+  // doors (or already inside) to sit down, not out on the street.
+  if (!G.casino.open && !casinoNearDoor(G)) {
+    G.hud.toast('The poker table is inside the Verde Casino — head to the gold doors on the boardwalk.');
+    return;
+  }
   if (!p.boughtIn) {
     if (G.cash < 100) {
       G.hud.toast('The high-roller table needs a $100 buy-in — come back richer.');
