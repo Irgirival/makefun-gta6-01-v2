@@ -83,9 +83,12 @@ export function applyShot(G, name) {
     p.camYaw = 0;
     p.camPitch = 0.3;
     startMission(G, 6);
-    // Jump to the runway step so the objective matches the shot.
+    // Jump to the runway step so the objective matches the shot. The timer
+    // must be armed by hand: startMission only arms the FIRST step's timer.
     const def = MISSIONS[6];
     G.missions.step = 2;
+    G.missions.timer = def.steps[2].seconds;
+    G.missions.timerTotal = def.steps[2].seconds;
     G.hud.setMission(def.title, def.steps[2].text, def.steps[2].hint);
     placeMarker(G, def.steps[2].target);
     // A taxi and a van parked at the terminal, a couple of ground crew.

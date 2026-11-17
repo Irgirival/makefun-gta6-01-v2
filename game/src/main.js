@@ -82,6 +82,9 @@ const G = {
 };
 
 G.gameOver = (kind, cause) => gameOver(kind, cause);
+// v3: the live game context, for headless verification only (tests teleport
+// Mara, start races and read system state through it).
+window.__solmar = G;
 
 // ---- Renderer / scene ------------------------------------------------------
 const canvas = document.getElementById('scene');
