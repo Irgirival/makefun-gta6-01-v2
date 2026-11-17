@@ -36,6 +36,8 @@ export function createInput(canvas) {
     KeyN: 'radio',         // v3: cycle the radio station
     KeyV: 'vigilante',     // v3: take a vigilante contract
     KeyY: 'neon',          // v3: garage neon underglow
+    KeyB: 'photo',         // v5: photo mode (free camera + filters + snapshot)
+    KeyL: 'locker',        // v5: safehouse outfit shop + weapon locker
     KeyT: 'weather',
     KeyM: 'mute',
     KeyP: 'pause', Escape: 'pause',

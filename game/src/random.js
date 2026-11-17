@@ -47,3 +47,22 @@ export function hash2(x, z) {
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
+
+// v5: draw a fresh ordering of a list without mutating the original, and
+// take a small random handful from it — used by the radio bulletin picker,
+// the vendor stalls and the night-race rival shuffle.
+export function shuffle(rng, arr) {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}
+
+export function sampleN(rng, arr, n) {
+  if (n >= arr.length) return shuffle(rng, arr);
+  return shuffle(rng, arr).slice(0, n);
+}

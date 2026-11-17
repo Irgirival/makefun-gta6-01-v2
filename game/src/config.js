@@ -96,4 +96,13 @@ export const CONFIG = {
   vigilanteBounty: 600,
   finaleReward: 6000,
   missionRewardsV3: [400, 650, 900, 1200, 2500, 4000, 6000],
+
+  // v5: radio bulletins, Mission 10, night racing and photo mode.
+  bulletinInterval: 95,     // seconds between Solmar News bulletins while a station plays
+  mission10Reward: 9000,    // "The Last Sunset" pays for the whole story
+  nightRacePrizeMult: 1.5,  // night circuits pay half again as much
+  photoSnapCooldown: 2,     // seconds between photo-mode snapshots
+  outfitShopMarkup: 1,      // outfits sell at list price
+  vendorStalls: 3,          // street-vendor stalls around the plaza and boardwalk
+  performerSpots: 2,        // street performers drawing a crowd
 };

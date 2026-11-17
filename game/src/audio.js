@@ -103,6 +103,26 @@ export function createAudio(G) {
     },
     sirenBurst() { this.tone(700, 0.5, 'sine', 0.12, 1100); },
     engineStart() { this.tone(60, 0.4, 'sawtooth', 0.18, 140); this.noise(0.25, 0.2, 600); },
+    // v5: photo-mode shutter, casino chips, news-bulletin sting, roulette
+    // ball tick and a crowd going wild for a street performer.
+    cameraShutter() {
+      this.noise(0.05, 0.35, 3000, 'highpass');
+      setTimeout(() => this.noise(0.06, 0.3, 2200, 'highpass'), 90);
+    },
+    chipStack() {
+      this.tone(1500, 0.05, 'square', 0.1);
+      setTimeout(() => this.tone(1900, 0.05, 'square', 0.1), 70);
+      setTimeout(() => this.tone(2300, 0.07, 'square', 0.1), 140);
+    },
+    bulletinSting() {
+      [880, 1108, 1318].forEach((f, i) => setTimeout(() => this.tone(f, 0.16, 'triangle', 0.16), i * 100));
+      setTimeout(() => this.tone(660, 0.3, 'triangle', 0.14), 320);
+    },
+    rouletteTick() { this.tone(2400, 0.03, 'square', 0.05); },
+    crowdCheer() {
+      this.noise(0.5, 0.16, 900);
+      [523, 659, 784].forEach((f, i) => setTimeout(() => this.tone(f, 0.18, 'triangle', 0.1), i * 90));
+    },
 
     // --- continuous loops --------------------------------------------------
     engineStartLoop() {

@@ -262,3 +262,55 @@ export function updateSideMissions(G, dt) {
   if (G.side.courier.active) updateCourier(G, dt);
   updateStunts(G, dt);
 }
+
+// v5 — Mission 10, "The Last Sunset": the story coda after "King of
+// Solmar". Mara has the city; now she has to say goodbye to the old one.
+// One last drive that ties the districts together — the lighthouse at
+// golden hour, a sprint down the runway, the crate from the hangar, the
+// whole PD on her tail, and a toast at the beach bar where it all began.
+// It registers last, after the finale, so the story order never shifts.
+const LIGHTHOUSE = { x: -205, z: 565 };
+const BEACH_BAR_END = { x: -120, z: 360 };
+const SUNSET_PLATE = { x: -160, z: 540 };
+
+const MISSION_10 = {
+  id: 'last-sunset',
+  title: 'Mission 10 — The Last Sunset',
+  reward: 9000,
+  intro: ['LENA: "One last sunset, Mara. The lighthouse, golden hour. Then we decide what Solmar becomes."',
+    'VIC (phone): "The PD heard about the crate too. They will be waiting at the airfield — bring it home anyway."',
+    'MARA: "Then let\'s give them a sunset they\'ll never forget."'],
+  steps: [
+    { type: 'goto', target: LIGHTHOUSE, radius: 12, text: 'Watch the sunset from the Isla Verde lighthouse', hint: 'Across the causeway, south end of the island. Golden hour is now.' },
+    { type: 'timed', target: AIRPORT.terminal, radius: 12, seconds: 90, text: 'Race to the airfield terminal before the plane leaves', hint: '90 seconds. Causeway, beach road, then the runway apron.' },
+    { type: 'collect', target: AIRPORT.hangar, radius: 6, text: 'Grab the sunset crate from hangar A', hint: 'Walk into the glowing crate by the hangar door.' },
+    { type: 'wanted', target: PLAZA, radius: 14, text: 'Lose the police, then bring the crate to the plaza', hint: 'Break line of sight and stay hidden until the stars clear.' },
+    { type: 'dwell', target: BEACH_BAR_END, radius: 8, seconds: 6, text: 'Hold the toast at the beach bar — 6 seconds', hint: 'Stand on the marker and raise a glass to Solmar.' },
+  ],
+  outro: ['LENA: "To the city that made us — and the one we\'re about to build."',
+    'MARA: "Solmar City, population: us. The sunset was just the beginning."'],
+};
+
+export function registerMission10(G) {
+  if (!MISSIONS.some((m) => m.id === 'last-sunset')) {
+    MISSIONS.push(MISSION_10);
+  }
+  // The coda's centrepiece: a gold sunset crate waiting on the plaza's
+  // south edge, marking where the final toast happens.
+  if (!G.side.sunsetPlate) {
+    const plate = new THREE.Group();
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 3.4),
+      new THREE.MeshLambertMaterial({ color: 0xd8a03a, emissive: 0x332200 }));
+    slab.position.y = 0.15;
+    plate.add(slab);
+    const sun = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20),
+      new THREE.MeshBasicMaterial({ color: 0xff8a3a }));
+    sun.rotation.x = -Math.PI / 2;
+    sun.position.y = 0.32;
+    plate.add(sun);
+    plate.position.set(SUNSET_PLATE.x, 0, SUNSET_PLATE.z);
+    G.scene.add(plate);
+    G.side.sunsetPlate = plate;
+  }
+  return MISSION_10;
+}
