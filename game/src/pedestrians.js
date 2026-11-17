@@ -9,6 +9,26 @@ import { pick, range, rangeInt } from './random.js';
 const SHIRTS = [0x3a7ad8, 0xd83a5a, 0x3ad86a, 0xd8a03a, 0x8a3ad8, 0x3ad8c9, 0xe0e0e0, 0x333333];
 const SKINS = [0xc98d64, 0x8a5a3a, 0xe0b090, 0x6a4230];
 
+// v5: the landmarks tourists photograph — the plaza fountain, the Isla
+// Verde lighthouse and the beach bar where Mara's story keeps returning.
+const LANDMARKS = [
+  { x: 20, z: 20 },
+  { x: -205, z: 565 },
+  { x: -120, z: 360 },
+];
+
+// v5: the brief white pop of a tourist's camera flash.
+const photoFlashes = [];
+
+function spawnPhotoFlash(G, ped) {
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1 }));
+  flash.position.set(ped.pos.x, 1.9, ped.pos.z);
+  G.scene.add(flash);
+  photoFlashes.push({ mesh: flash, life: 0.18 });
+}
+
 function buildPedMesh(G, rng) {
   const group = new THREE.Group();
   const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
@@ -109,6 +129,40 @@ export function scarePeds(G, x, z, radius) {
 export function updatePedestrians(G, dt) {
   const playerPos = G.driving ? G.driving.pos : G.player.pos;
   for (const ped of G.peds) {
+    // v5: stationary street life — performers, vendors and their audiences
+    // hold their spot and play their part instead of strolling away.
+    if (ped.stationary) {
+      ped.walkPhase += dt * (ped.state === 'perform' ? 5 : 2);
+      const s = Math.sin(ped.walkPhase);
+      if (ped.kind === 'performer') {
+        // Strumming / drumming: one arm works, the other holds the beat.
+        ped.parts.armR.rotation.x = -0.9 + s * 0.5;
+        ped.parts.armL.rotation.x = -0.5 - s * 0.3;
+        ped.parts.legL.rotation.x = 0;
+        ped.parts.legR.rotation.x = 0;
+        ped.mesh.position.y = Math.abs(Math.cos(ped.walkPhase)) * 0.04;
+        // Every so often the little crowd cheers the player on.
+        if (ped.cheerTimer !== undefined) {
+          ped.cheerTimer -= dt;
+          if (ped.cheerTimer <= 0) {
+            ped.cheerTimer = 9 + G.rng() * 12;
+            const pd = Math.hypot(playerPos.x - ped.pos.x, playerPos.z - ped.pos.z);
+            if (pd < 60) G.audio.crowdCheer();
+          }
+        }
+      } else if (ped.kind === 'vendor') {
+        // Waving the goods at passers-by.
+        ped.parts.armR.rotation.x = -0.4 + Math.sin(ped.walkPhase * 0.7) * 0.25;
+        ped.parts.armL.rotation.x = -0.4 - Math.sin(ped.walkPhase * 0.7) * 0.25;
+      } else {
+        // The audience sways and claps along to the music.
+        ped.parts.armL.rotation.x = -0.6 + s * 0.35;
+        ped.parts.armR.rotation.x = -0.6 - s * 0.35;
+        ped.mesh.position.y = Math.abs(Math.sin(ped.walkPhase)) * 0.03;
+      }
+      ped.mesh.rotation.y = ped.heading;
+      continue;
+    }
     if (ped.state === 'flee') {
       ped.panic -= dt * 0.25;
       if (ped.panic <= 0) { ped.state = 'walk'; ped.speed = 1.6; pickSidewalkTarget(G, ped); }
@@ -142,9 +196,40 @@ export function updatePedestrians(G, dt) {
     ped.parts.armR.rotation.x = s * 0.7;
     ped.mesh.position.copy(ped.pos);
     ped.mesh.rotation.y = ped.heading;
+    // v5: tourists take photos at the landmarks — the plaza fountain, the
+    // lighthouse, the beach bar. A flash pops and the shutter clicks when
+    // Mara is close enough to hear it.
+    if (ped.kind === 'tourist') {
+      if (ped.photoTimer === undefined) ped.photoTimer = 4 + G.rng() * 8;
+      ped.photoTimer -= dt;
+      if (ped.photoTimer <= 0) {
+        ped.photoTimer = 5 + G.rng() * 8;
+        const nearLandmark = LANDMARKS.some((lm) =>
+          Math.hypot(lm.x - ped.pos.x, lm.z - ped.pos.z) < 45);
+        const pd = Math.hypot(playerPos.x - ped.pos.x, playerPos.z - ped.pos.z);
+        if (nearLandmark && pd < 70) {
+          spawnPhotoFlash(G, ped);
+          G.audio.cameraShutter();
+        }
+      }
+    }
+  }
+  // Camera flashes fade out fast.
+  for (let i = photoFlashes.length - 1; i >= 0; i--) {
+    const f = photoFlashes[i];
+    f.life -= dt;
+    if (f.life <= 0) {
+      G.scene.remove(f.mesh);
+      photoFlashes.splice(i, 1);
+    } else {
+      f.mesh.material.opacity = f.life / 0.18;
+      f.mesh.scale.setScalar(1 + (0.18 - f.life) * 6);
+    }
   }
   // Keep the crowd near the action: respawn peds that wandered too far.
+  // Stationary street life stays where it belongs.
   for (const ped of G.peds) {
+    if (ped.stationary) continue;
     const d = Math.hypot(ped.pos.x - playerPos.x, ped.pos.z - playerPos.z);
     if (d > 420) {
       const a = G.rng() * Math.PI * 2;

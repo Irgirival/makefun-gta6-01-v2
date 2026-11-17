@@ -146,6 +146,8 @@ export function spawnCrowds(G) {
     // Both start toward the same first target.
     b.target = a.target;
   }
+  // v5: performers, vendors and their crowds — the street life.
+  spawnStreetLife(G);
 }
 
 // Pairs stay together: the follower re-aims at the leader's target whenever
@@ -231,4 +233,205 @@ export function spawnBuses(G) {
     bus.route = { axis: s.axis, dir: s.dir, nextTurn: 160 };
     bus.cruiseSpeed = 9;
   }
+}
+
+// ---------------------------------------------------------------------------
+// v5 — street life: performers, vendors and their crowds. A guitarist on
+// the plaza and a drummer at the beach bar play for whoever stops to
+// listen (a little ring of onlookers sways along), and three vendor stalls
+// sell fruit, flowers and boardwalk snacks. Performers and vendors are
+// stationary peds — pedestrians.js animates them in place instead of
+// marching them down the sidewalk — and the stalls are real props with
+// colliders, so Mara can browse the goods but not walk through the counter.
+// ---------------------------------------------------------------------------
+
+const PERFORMER_SPOTS = [
+  { x: 28, z: 28, kind: 'guitar', name: 'Plaza guitarist' },
+  { x: -104, z: 352, kind: 'drums', name: 'Beach drummer' },
+];
+
+const VENDOR_STALLS = [
+  { x: 36, z: 12, goods: 'fruit', color: 0xff5a2a, name: 'Fruit stall' },
+  { x: -112, z: 352, goods: 'flowers', color: 0xd81a8a, name: 'Flower stall' },
+  { x: -150, z: 508, goods: 'snacks', color: 0x2a7ad8, name: 'Boardwalk snacks' },
+];
+
+function buildPerformerMesh(rng, kind) {
+  const group = new THREE.Group();
+  const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const shirt = pick(rng, [0x3a7ad8, 0xd83a5a, 0x2a7a3a, 0xd8a03a]);
+  const skin = pick(rng, SKINS);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.65, 0.3), mat(shirt));
+  torso.position.y = 1.12;
+  group.add(torso);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.32, 0.28), mat(skin));
+  head.position.y = 1.68;
+  group.add(head);
+  // A wide hat: the street performer's uniform.
+  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), mat(0x8a6a3a));
+  brim.position.y = 1.88;
+  group.add(brim);
+  const legL = limb(group, mat, 0.18, 0.72, 0.2, 0x2a3542, -0.14, 0.78);
+  const legR = limb(group, mat, 0.18, 0.72, 0.2, 0x2a3542, 0.14, 0.78);
+  const armL = limb(group, mat, 0.14, 0.55, 0.16, shirt, -0.36, 1.42);
+  const armR = limb(group, mat, 0.14, 0.55, 0.16, shirt, 0.36, 1.42);
+  if (kind === 'guitar') {
+    // A guitar across the chest, held by both hands.
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 10), mat(0x8a5a2a));
+    body.rotation.x = Math.PI / 2;
+    body.position.set(0, 1.15, 0.28);
+    group.add(body);
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.7), mat(0x5a3a1a));
+    neck.position.set(0.3, 1.3, 0.35);
+    neck.rotation.z = -0.5;
+    group.add(neck);
+  } else {
+    // A drum kit in front: two drums and a cymbal on stands.
+    for (const [dx, dy, dz, r] of [[-0.3, 0.75, 0.5, 0.28], [0.3, 0.75, 0.5, 0.28], [0, 1.15, 0.45, 0.22]]) {
+      const drum = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.25, 10), mat(0xd8d3c0));
+      drum.position.set(dx, dy, dz);
+      group.add(drum);
+    }
+    const stickL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.5), mat(0xe6d3a3));
+    stickL.position.set(-0.4, 1.5, 0.3);
+    group.add(stickL);
+    const stickR = stickL.clone();
+    stickR.position.x = 0.4;
+    group.add(stickR);
+  }
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.45, 10),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }));
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.05;
+  group.add(shadow);
+  return { group, legL, legR, armL, armR };
+}
+
+function spawnPerformer(G, spot) {
+  const rng = G.rng;
+  const mesh = buildPerformerMesh(rng, spot.kind);
+  mesh.group.position.set(spot.x, 0, spot.z);
+  G.scene.add(mesh.group);
+  const ped = {
+    mesh: mesh.group, parts: mesh,
+    pos: new THREE.Vector3(spot.x, 0, spot.z),
+    heading: range(rng, 0, Math.PI * 2),
+    speed: 0,
+    state: 'perform',
+    walkPhase: range(rng, 0, 6),
+    target: new THREE.Vector3(spot.x, 0, spot.z),
+    panic: 0,
+    retarget: 0,
+    kind: 'performer',
+    stationary: true,
+    instrument: spot.kind,
+    cheerTimer: 8 + rng() * 10,
+  };
+  G.peds.push(ped);
+  // The crowd: three onlookers in a loose ring, swaying to the music.
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + rng();
+    const ax = spot.x + Math.cos(a) * 4.5;
+    const az = spot.z + Math.sin(a) * 4.5;
+    const fan = spawnVariedPed(G, 'tourist', ax, az);
+    fan.stationary = true;
+    fan.state = 'watch';
+    fan.kind = 'audience';
+    fan.target = new THREE.Vector3(ax, 0, az);
+    fan.speed = 0;
+    fan.heading = Math.atan2(spot.x - ax, spot.z - az);
+  }
+  return ped;
+}
+
+function buildStall(G, stall) {
+  const group = new THREE.Group();
+  const mat = (c, opts = {}) => new THREE.MeshLambertMaterial({ color: c, ...opts });
+  // Counter and striped awning, in the stall's own colour.
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.1, 1.6), mat(0x8a6a4a));
+  counter.position.y = 0.55;
+  group.add(counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.12, 1.6), mat(stall.color));
+  top.position.y = 1.16;
+  group.add(top);
+  for (let i = 0; i < 4; i++) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 1.8),
+      mat(i % 2 === 0 ? 0xf0f0f0 : stall.color));
+    stripe.position.set(-1.2 + i * 0.8, 2.4, 0);
+    stripe.rotation.x = 0.25;
+    group.add(stripe);
+  }
+  for (const sx of [-1.5, 1.5]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), mat(0x5a5a5a));
+    pole.position.set(sx, 1.2, -0.7);
+    group.add(pole);
+  }
+  // The goods on the counter, by stall type.
+  const goodsColor = stall.goods === 'fruit' ? 0xff5a2a : stall.goods === 'flowers' ? 0xd81a8a : 0xffd23e;
+  for (let i = 0; i < 5; i++) {
+    const item = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mat(goodsColor));
+    item.position.set(-1.1 + i * 0.55, 1.35, (i % 2 === 0 ? 0.3 : -0.3));
+    group.add(item);
+  }
+  group.position.set(stall.x, 0, stall.z);
+  group.rotation.y = stall.x > 0 ? -Math.PI / 2 : Math.PI / 2;
+  G.scene.add(group);
+  G.city.colliders.push({
+    minX: stall.x - 1.8, maxX: stall.x + 1.8, minZ: stall.z - 1.2, maxZ: stall.z + 1.2,
+  });
+  return group;
+}
+
+function spawnVendor(G, stall) {
+  buildStall(G, stall);
+  const rng = G.rng;
+  const mesh = buildVariedPedMesh(rng, 'vendor', stall.color);
+  // Vendors stand behind their counter, facing the street.
+  const vx = stall.x + (stall.x > 0 ? 0 : 0);
+  const vz = stall.z - 1.4;
+  mesh.group.position.set(vx, 0, vz);
+  G.scene.add(mesh.group);
+  const ped = {
+    mesh: mesh.group, parts: mesh,
+    pos: new THREE.Vector3(vx, 0, vz),
+    heading: Math.PI,
+    speed: 0,
+    state: 'serve',
+    walkPhase: range(rng, 0, 6),
+    target: new THREE.Vector3(vx, 0, vz),
+    panic: 0,
+    retarget: 0,
+    kind: 'vendor',
+    stationary: true,
+    stall: stall.name,
+  };
+  G.peds.push(ped);
+  return ped;
+}
+
+export function spawnStreetLife(G) {
+  for (const spot of PERFORMER_SPOTS) spawnPerformer(G, spot);
+  for (const stall of VENDOR_STALLS) spawnVendor(G, stall);
+  G.streetLife = {
+    performers: PERFORMER_SPOTS.length,
+    stalls: VENDOR_STALLS.length,
+    tips: 0,
+  };
+}
+
+// A passer-by dropping a coin: the performer plays happier for a while and
+// the crowd cheers. Called by the interact prompt when Mara lingers near a
+// performer — the city rewards paying attention.
+export function tipPerformer(G, ped) {
+  if (!ped || ped.kind !== 'performer') return false;
+  if (G.cash < 5) {
+    G.hud.toast('No spare change — the guitarist plays on anyway.');
+    return false;
+  }
+  G.cash -= 5;
+  if (G.streetLife) G.streetLife.tips++;
+  ped.cheerTimer = 0.5;
+  G.audio.crowdCheer();
+  G.hud.toast(`You drop $5 in the hat — the ${ped.instrument === 'guitar' ? 'guitarist' : 'drummer'} grins and plays louder.`);
+  return true;
 }
