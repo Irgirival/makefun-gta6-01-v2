@@ -3,17 +3,163 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>Solmar City — Mara Solano</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1c2c;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #fff;
+    -webkit-user-select: none; user-select: none; }
+  #scene { position: fixed; inset: 0; display: block; }
+  .hidden { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #topRight { position: absolute; top: 14px; right: 16px; text-align: right; }
+  #stars { font-size: 30px; letter-spacing: 4px; color: #ffd23e;
+    text-shadow: 0 0 6px #000, 0 2px 2px #000; line-height: 1; }
+  #stars .off { color: rgba(255,255,255,.28); }
+  #cash { font-size: 26px; font-weight: 800; color: #7dff9a;
+    text-shadow: 0 0 6px #000, 0 2px 2px #000; margin-top: 4px; }
+  #clock { font-size: 15px; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 2px #000; margin-top: 2px; }
+  #wantedLabel { font-size: 13px; font-weight: 700; color: #ff5a5a;
+    text-shadow: 0 1px 2px #000; margin-top: 2px; }
+  #objective { position: absolute; top: 14px; left: 16px; max-width: 380px;
+    background: rgba(0,0,0,.55); border-left: 4px solid #ffd23e; padding: 10px 12px;
+    border-radius: 4px; }
+  #objective .mTitle { font-size: 13px; font-weight: 800; letter-spacing: 1px;
+    color: #ffd23e; text-transform: uppercase; }
+  #objective .mText { font-size: 15px; margin-top: 3px; line-height: 1.35; }
+  #objective .mHint { font-size: 12px; color: #bfe3ff; margin-top: 4px; }
+  #bottomLeft { position: absolute; left: 16px; bottom: 16px; width: 240px; }
+  .barRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .barLabel { font-size: 11px; font-weight: 800; width: 46px; letter-spacing: 1px; }
+  .bar { flex: 1; height: 12px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.35);
+    border-radius: 6px; overflow: hidden; }
+  .bar > div { height: 100%; }
+  #healthFill { background: linear-gradient(90deg, #2ee66b, #7dff9a); width: 100%; }
+  #armorFill { background: linear-gradient(90deg, #3aa7ff, #8fd0ff); width: 0%; }
+  #weaponBox { font-size: 15px; font-weight: 700; text-shadow: 0 1px 2px #000; margin-top: 8px; }
+  #bottomRight { position: absolute; right: 16px; bottom: 16px; text-align: right; }
+  #minimap { width: 220px; height: 220px; border: 2px solid rgba(255,255,255,.5);
+    border-radius: 50%; background: rgba(8,20,32,.85); box-shadow: 0 0 0 4px rgba(0,0,0,.35); }
+  #speed { font-size: 30px; font-weight: 800; text-shadow: 0 0 6px #000; margin-top: 6px; }
+  #speed small { font-size: 13px; font-weight: 600; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px;
+    margin: -11px 0 0 -11px; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff;
+    box-shadow: 0 0 3px #000; }
+  #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair::after { left: 0; top: 10px; width: 22px; height: 2px; }
+  #dialogue { position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%);
+    max-width: 560px; background: rgba(0,0,0,.62); padding: 10px 16px; border-radius: 6px;
+    font-size: 16px; line-height: 1.4; text-align: center; }
+  #dialogue .who { color: #ffd23e; font-weight: 800; }
+  #toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
+    font-size: 22px; font-weight: 800; letter-spacing: 1px; color: #fff;
+    text-shadow: 0 0 8px #000, 0 2px 3px #000; text-align: center; }
+  #damage { position: fixed; inset: 0; pointer-events: none; z-index: 6;
+    box-shadow: inset 0 0 90px 30px rgba(255,0,0,.55); opacity: 0; transition: opacity .12s; }
+  #interact { position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%);
+    background: rgba(0,0,0,.65); padding: 8px 14px; border-radius: 5px; font-size: 15px;
+    font-weight: 700; }
+  #interact b { color: #ffd23e; }
+
+  /* ---------- Menus ---------- */
+  .menu { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: linear-gradient(180deg, rgba(6,24,40,.82), rgba(6,24,40,.94)); }
+  .menu h1 { font-size: 64px; margin: 0; letter-spacing: 6px; font-weight: 900;
+    background: linear-gradient(180deg, #ffe98a, #ff9d2e); -webkit-background-clip: text;
+    background-clip: text; color: transparent; text-shadow: 0 4px 24px rgba(255,157,46,.25); }
+  .menu h2 { font-size: 20px; margin: 6px 0 0; letter-spacing: 4px; font-weight: 600; color: #bfe3ff; }
+  .menu p.sub { max-width: 620px; color: #d7e9f7; font-size: 16px; line-height: 1.55; margin: 18px 0 8px; }
+  .menu .btns { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; width: 300px; }
+  .menu button { pointer-events: auto; cursor: pointer; font-size: 17px; font-weight: 700;
+    padding: 12px 18px; border-radius: 6px; border: 1px solid #ffd23e; color: #1a1206;
+    background: linear-gradient(180deg, #ffe98a, #ffb52e); }
+  .menu button.ghost { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.4); }
+  .menu button:hover { filter: brightness(1.12); }
+  .menu .keys { margin-top: 26px; font-size: 13px; color: #9fc3dd; line-height: 1.9; }
+  .menu .keys b { color: #fff; }
+  .menu .foot { margin-top: 18px; font-size: 12px; color: #6f93ad; }
+  #endTitle { font-size: 58px; }
+  #endTitle.busted { color: #3aa7ff; }
+  #endTitle.wasted { color: #ff4d4d; }
+  #endTitle.done { color: #7dff9a; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="scene"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="objective"><div class="mTitle" id="mTitle">Solmar City</div>
+    <div class="mText" id="mText">Welcome to Solmar City.</div>
+    <div class="mHint" id="mHint"></div></div>
+  <div id="topRight">
+    <div id="stars"></div>
+    <div id="cash">$0</div>
+    <div id="clock">09:00</div>
+    <div id="wantedLabel"></div>
+  </div>
+  <div id="bottomLeft">
+    <div class="barRow"><span class="barLabel">HEALTH</span><div class="bar"><div id="healthFill"></div></div></div>
+    <div class="barRow"><span class="barLabel">ARMOR</span><div class="bar"><div id="armorFill"></div></div></div>
+    <div id="weaponBox">Fists</div>
+  </div>
+  <div id="bottomRight">
+    <canvas id="minimap" width="220" height="220"></canvas>
+    <div id="speed" class="hidden">0 <small>km/h</small></div>
+  </div>
+  <div id="crosshair" class="hidden"></div>
+  <div id="dialogue" class="hidden"></div>
+  <div id="toast"></div>
+  <div id="interact" class="hidden"></div>
+</div>
+<div id="damage"></div>
+
+<div id="title" class="menu">
+  <h1>SOLMAR CITY</h1>
+  <h2>MARA SOLANO &middot; AN OPEN-WORLD STORY</h2>
+  <p class="sub">Mara Solano came back to Solmar City with nothing but a borrowed jacket and a
+    score to settle. Steal cars, outrun the Solmar PD, run jobs for the people who
+    run this town — and take the city back, one mission at a time.</p>
+  <div class="btns">
+    <button id="btnNew">NEW GAME</button>
+    <button id="btnContinue" class="ghost hidden">CONTINUE</button>
+    <button id="btnHow" class="ghost">HOW TO PLAY</button>
+  </div>
+  <div class="keys" id="howKeys">
+    <b>WASD</b> move &nbsp;·&nbsp; <b>Mouse</b> look &nbsp;·&nbsp; <b>Space</b> jump &nbsp;·&nbsp; <b>Shift</b> sprint<br>
+    <b>E</b> enter / exit car &nbsp;·&nbsp; <b>F</b> punch &nbsp;·&nbsp; <b>Click</b> fire pistol &nbsp;·&nbsp; <b>Q</b> switch weapon<br>
+    <b>R</b> reload &nbsp;·&nbsp; <b>J</b> taxi job &nbsp;·&nbsp; <b>P / Esc</b> pause &nbsp;·&nbsp; <b>M</b> mute
+  </div>
+  <div class="foot">An original game. Solmar City, Mara Solano and every character are invented here —
+    no names, art or music from any other game. Progress saves automatically.</div>
+</div>
+
+<div id="pause" class="menu hidden">
+  <h1 style="font-size:44px">PAUSED</h1>
+  <p class="sub">Solmar City waits for no one — except right now.</p>
+  <div class="btns">
+    <button id="btnResume">RESUME</button>
+    <button id="btnSaveQuit" class="ghost">SAVE &amp; QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div id="end" class="menu hidden">
+  <h1 id="endTitle">BUSTED</h1>
+  <p class="sub" id="endText"></p>
+  <div class="btns">
+    <button id="btnRetry">TRY AGAIN</button>
+    <button id="btnEndTitle" class="ghost">BACK TO TITLE</button>
+  </div>
+</div>
+
 <p id="status" role="status" aria-live="polite"></p>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

@@ -1,61 +1,75 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// config.js — every tunable number for Solmar City lives here, in one place.
+// Nothing in this file imports anything: the rest of the game reads it through
+// the game context G. Change a value here and the whole city follows.
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
+export const CONFIG = {
+  // World layout: a grid of square blocks separated by roads.
+  cityHalf: 340,          // playable half-extent in world units (city is ~680 wide)
+  blockSize: 80,          // road centre-to-centre spacing
+  roadWidth: 14,          // asphalt width
+  sidewalkWidth: 5,
+  beachZ: 340,            // south edge: sand then water
+  waterZ: 420,            // water plane starts here
+  harborX: 300,           // east edge: docks and water
+  maxBuildingHeight: 64,
+  downtownRadius: 130,    // tall towers cluster near the centre
 
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
-export const STEP = 1 / 60;
+  // Player on foot.
+  walkSpeed: 7,
+  sprintSpeed: 12,
+  jumpSpeed: 9,
+  gravity: 24,
+  playerRadius: 0.6,
+  playerHeight: 1.8,
 
-export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+  // Driving (arcade physics, per vehicle type in vehicles.js).
+  driveAccel: 26,
+  driveBrake: 42,
+  driveReverse: 14,
+  driveMaxSpeed: 46,      // sports car top speed, units/s (~165 km/h feel)
+  driveGrip: 6.5,
+  driveTurn: 1.9,
+
+  // Wanted / police.
+  heatPerCrime: { steal: 18, punch: 10, shoot: 22, killCop: 40, hitPed: 14 },
+  heatDecayPerSec: 1.1,   // decays only while no police can see the player
+  heatPerStar: 20,
+  maxStars: 5,
+  copChaseSpeed: 34,
+  arrestDistance: 3.2,    // cop this close on foot starts the arrest timer
+  arrestTime: 2.2,        // seconds inside arrestDistance before BUSTED
+  bustedFine: 250,
+
+  // Combat.
+  playerHealth: 100,
+  playerArmor: 100,
+  pistolDamage: 34,
+  pistolMag: 12,
+  pistolReserve: 120,
+  punchDamage: 12,
+  punchRange: 2.2,
+  punchCooldown: 0.45,
+
+  // Economy.
+  startCash: 120,
+  taxiFareBase: 45,
+  taxiFarePerUnit: 0.35,
+  packageReward: 250,
+  missionRewards: [400, 650, 900, 1200, 2500],
+
+  // Time of day: the clock starts at 09:00 and one game minute is one real second.
+  clockStartMinutes: 9 * 60,
+  clockRate: 1,
+
+  // Traffic and crowds.
+  trafficCars: 14,
+  pedestrians: 26,
+  policeCruisersMax: 6,
+  policeFootMax: 4,
+
+  // Collectibles.
+  packageCount: 12,
+
+  // Minimap.
+  minimapRange: 190,      // world units shown across the minimap diameter
 };
-
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
-};
-
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
-};
-
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
-
-export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
-};
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
