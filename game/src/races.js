@@ -61,6 +61,30 @@ export const RACE_CIRCUITS = [
       { x: -110, z: 540 }, { x: -160, z: 540 }, { x: -160, z: 300 }, { x: -100, z: 300 },
     ],
   },
+  // v5: two more circuits. Uptown is a fast northern rectangle past the
+  // museum and the airfield fence; Midnight Beach runs the beachfront road
+  // under the streetlights, headlights on, with a 1.5x purse.
+  {
+    id: 'uptown',
+    name: 'Uptown Loop',
+    laps: 2,
+    prize: [2000, 1000, 500, 250],
+    points: [
+      { x: -20, z: -180 }, { x: 60, z: -180 }, { x: 140, z: -180 }, { x: 140, z: -260 },
+      { x: 60, z: -260 }, { x: -20, z: -260 }, { x: -100, z: -260 }, { x: -100, z: -180 },
+    ],
+  },
+  {
+    id: 'midnight-beach',
+    name: 'Midnight Beach Run',
+    laps: 2,
+    night: true,
+    prize: [3600, 1800, 900, 450],
+    points: [
+      { x: 60, z: 300 }, { x: 140, z: 300 }, { x: 220, z: 300 }, { x: 220, z: 220 },
+      { x: 140, z: 220 }, { x: 60, z: 220 },
+    ],
+  },
 ];
 
 export const RACE_START = { x: 20, z: 60 };
@@ -94,8 +118,9 @@ export function createRaces(G) {
     raceTime: 0,
     finishedCount: 0,
     results: [],
-    ladder: { wins: 0, podiums: 0, races: 0, best: null, bestTimes: {} },
+    ladder: { wins: 0, podiums: 0, races: 0, best: null, bestTimes: {}, nightWins: 0 },
     startBanner: null,
+    savedClock: null, // v5: a night race borrows the midnight sky, then gives it back
   };
   // A chequered start banner over the plaza start line, built from boxes.
   const banner = new THREE.Group();
@@ -129,8 +154,23 @@ export function raceLadderText(G) {
     .map(([id, t]) => `${RACE_CIRCUITS.find((c) => c.id === id)?.name || id}: ${t.toFixed(1)}s`)
     .join(' · ');
   return `Street racing — ${l.wins} wins · ${l.podiums} podiums · ${l.races} races` +
+    (l.nightWins ? ` · ${l.nightWins} night wins` : '') +
     (l.best ? ` · best ${l.best}` : '') +
     (bests ? ` · fastest laps — ${bests}` : '');
+}
+
+// v5: a night circuit runs under the real night sky — the clock jumps to
+// 22:30 for the race and comes back when the chequered flag falls, so the
+// day/night cycle, the headlights and the streetlights all play along.
+export function applyNightRace(G, on) {
+  const r = G.races;
+  if (on) {
+    if (r.savedClock === null) r.savedClock = G.clockMinutes;
+    G.clockMinutes = 22.5 * 60;
+  } else if (r.savedClock !== null) {
+    G.clockMinutes = r.savedClock;
+    r.savedClock = null;
+  }
 }
 
 export function recordBestTime(G) {
@@ -197,6 +237,11 @@ export function startRace(G) {
   r.player = { lap: 1, cp: 0, distToNext: 0, finished: false, finishTime: 0 };
   spawnRivals(G);
   nextCheckpoint(G);
+  // v5: a night circuit borrows the midnight sky for the whole race.
+  if (r.circuit.night) {
+    applyNightRace(G, true);
+    G.hud.toast('Night race — headlights on, the beachfront is yours.');
+  }
   G.hud.showDialogue([
     `RACE — ${r.circuit.name} (${r.circuit.laps} laps)`,
     'Beat Rico, Tasha and Benny to the line. First place pays $' + r.circuit.prize[0] + '.',
@@ -231,11 +276,16 @@ function endRace(G) {
     return b.prog - a.prog;
   });
   const myPlace = entries.findIndex((e) => e.me) + 1;
-  const prize = r.circuit.prize[myPlace - 1] || 0;
+  // v5: a night race pays half again as much — the purse matches the risk.
+  const nightMult = r.circuit.night ? (G.config.nightRacePrizeMult || 1.5) : 1;
+  const prize = Math.round((r.circuit.prize[myPlace - 1] || 0) * nightMult);
   G.cash += prize;
   r.ladder.races++;
   if (myPlace === 1) { r.ladder.wins++; r.ladder.best = r.circuit.name; }
+  if (myPlace === 1 && r.circuit.night) r.ladder.nightWins++;
   if (myPlace <= 3) r.ladder.podiums++;
+  // v5: the borrowed midnight goes back, whatever the result.
+  applyNightRace(G, false);
   const best = recordBestTime(G);
   const bestLine = best
     ? (best.prev === undefined
@@ -322,6 +372,7 @@ export function updateRaces(G, dt) {
     // Mara bailed out mid-race: the race is over, rivals keep the purse.
     G.hud.toast('You left the car — race abandoned.');
     r.active = false;
+    applyNightRace(G, false);
     hideMarker(G);
     for (const rv of r.rivals) { rv.car.driver = null; rv.car.parked = true; }
     r.rivals = [];

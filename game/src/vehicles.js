@@ -14,6 +14,11 @@ export const VEHICLE_TYPES = {
   van:     { name: 'Harbor Van',     topSpeed: 26, accel: 16, turn: 1.4, colors: [0x5a6a5a, 0xc9c9c9, 0x8a6a4a] },
   police:  { name: 'Solmar PD Cruiser', topSpeed: 40, accel: 28, turn: 2.0, colors: [0x1a1a22] },
   bus:     { name: 'Solmar City Bus', topSpeed: 24, accel: 12, turn: 1.2, colors: [0x2a7a3a, 0xd8a03a] },
+  // v5: two heavyweight steals. The armored van is slow, shrugs off bumps
+  // and carries the bank's money; the limousine is long, low and built for
+  // the boardwalk — both parked in the open, both stealable.
+  armored: { name: 'Solmar Armored Van', topSpeed: 30, accel: 18, turn: 1.5, colors: [0x3a4a3a, 0x5a5a5a] },
+  limo:    { name: 'Verde Limousine', topSpeed: 38, accel: 24, turn: 1.5, colors: [0x1a1a22, 0xf0f0f0, 0x6a1a2a] },
 };
 
 function buildCarMesh(type, color, rng) {
@@ -23,12 +28,49 @@ function buildCarMesh(type, color, rng) {
   const isPolice = type === 'police';
   const bodyLen = isVan ? 5.2 : 4.4;
   const bodyH = isVan ? 1.5 : 0.85;
+  const isArmored = type === 'armored';
+  const isLimo = type === 'limo';
+  const limoLen = isLimo ? 6.8 : bodyLen;
+  const limoH = isLimo ? 1.0 : bodyH;
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, bodyH, bodyLen), mat(color));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, limoH, isArmored ? 5.4 : limoLen), mat(color));
   body.position.y = 0.75; group.add(body);
   const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, isVan ? 2.6 : 2.0),
     mat(isVan ? color : 0x1a2a3a));
-  cabin.position.set(0, bodyH + 0.55, isVan ? 0.3 : -0.2); group.add(cabin);
+  cabin.position.set(0, limoH + 0.55, isVan ? 0.3 : -0.2); group.add(cabin);
+  if (isArmored) {
+    // Plated sides, a roof hatch and a bull bar: the bank's van does not
+    // apologise to anything it meets.
+    for (const sx of [-1.02, 1.02]) {
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 4.6), mat(0x2a2a2a));
+      plate.position.set(sx, 0.9, 0);
+      group.add(plate);
+    }
+    const hatch = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.18, 1.0), mat(0x1a1a1a));
+    hatch.position.set(0, limoH + 0.1, 0.8);
+    group.add(hatch);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.5, 0.3), mat(0x3a3a3a));
+    bar.position.set(0, 0.55, 2.85);
+    group.add(bar);
+    const vault = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.2),
+      new THREE.MeshLambertMaterial({ color: 0xffd23e, emissive: 0x332200 }));
+    vault.position.set(0, 1.0, -2.75);
+    group.add(vault);
+  }
+  if (isLimo) {
+    // Long body, privacy glass, a divider stripe and a chauffeur's cap
+    // on the roof: the Verde Limousine is a party with four wheels.
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(1.84, 0.55, 3.4),
+      new THREE.MeshLambertMaterial({ color: 0x0a0a12, emissive: 0x111122 }));
+    glass.position.set(0, limoH + 0.5, 0.4);
+    group.add(glass);
+    const divider = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.18, 0.12), mat(0xd8a03a));
+    divider.position.set(0, 1.15, 1.2);
+    group.add(divider);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.12, 10), mat(0x222222));
+    cap.position.set(0, limoH + 0.95, -2.4);
+    group.add(cap);
+  }
   if (isPolice) {
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.28, bodyLen * 0.9), mat(0xf0f0f0));
     stripe.position.y = 0.85; group.add(stripe);
@@ -47,20 +89,23 @@ function buildCarMesh(type, color, rng) {
       new THREE.MeshLambertMaterial({ color: 0xffe98a, emissive: 0xaa8800 }));
     sign.position.set(0, bodyH + 1.05, -0.2); group.add(sign);
   }
-  // Headlights and tail lights.
+  // Headlights and tail lights — at the real nose and tail, so the long
+  // limousine and the armored van light up where they actually end.
+  const effLen = isArmored ? 5.4 : limoLen;
   const headMat = new THREE.MeshLambertMaterial({ color: 0xfff2b0, emissive: 0x888844 });
   for (const sx of [-0.65, 0.65]) {
     const h = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.22, 0.1), headMat);
-    h.position.set(sx, 0.75, bodyLen / 2 + 0.02); group.add(h);
+    h.position.set(sx, 0.75, effLen / 2 + 0.02); group.add(h);
     const t = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.22, 0.1),
       new THREE.MeshLambertMaterial({ color: 0xcc2222, emissive: 0x660000 }));
-    t.position.set(sx, 0.75, -bodyLen / 2 - 0.02); group.add(t);
+    t.position.set(sx, 0.75, -effLen / 2 - 0.02); group.add(t);
   }
-  // Wheels.
+  // Wheels — the limousine's axles sit wide apart, like the city bus.
   const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 10);
   const wheelMat = mat(0x181818);
   const wheels = [];
-  for (const [wx, wz] of [[-0.95, 1.45], [0.95, 1.45], [-0.95, -1.45], [0.95, -1.45]]) {
+  const axle = isLimo ? 2.4 : 1.45;
+  for (const [wx, wz] of [[-0.95, axle], [0.95, axle], [-0.95, -axle], [0.95, -axle]]) {
     const w = new THREE.Mesh(wheelGeo, wheelMat);
     w.rotation.z = Math.PI / 2;
     w.position.set(wx, 0.38, wz);
@@ -68,12 +113,12 @@ function buildCarMesh(type, color, rng) {
     wheels.push(w);
   }
   // Soft contact shadow.
-  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.6, bodyLen + 0.8),
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.6, effLen + 0.8),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.04;
   group.add(shadow);
   group.userData.wheels = wheels;
-  group.userData.bodyLen = bodyLen;
+  group.userData.bodyLen = effLen;
   return group;
 }
 
@@ -123,6 +168,10 @@ export function spawnParkedCars(G) {
   }
   // A sports car waiting near the plaza, for the first mission.
   createVehicle(G, 'sports', 36, 34, Math.PI / 2, { parked: true });
+  // v5: the armored van waits outside the museum bank block, and the
+  // limousine outside the Verde Casino — both parked, both stealable.
+  createVehicle(G, 'armored', 145.2, 128, 0, { parked: true });
+  createVehicle(G, 'limo', -152, 512, Math.PI / 2, { parked: true });
 }
 
 export function updateVehicle(G, v, dt, input) {
@@ -178,7 +227,8 @@ export function updateVehicle(G, v, dt, input) {
   if (v.crashCooldown > 0) v.crashCooldown -= dt;
   const hitWall = G.city.collideCircle(v.pos, v.radius);
   if (hitWall) {
-    v.speed *= 0.45; // scrape the wall, lose speed
+    // v5: the armored van shrugs off walls — plated sides, heavy frame.
+    v.speed *= v.type === 'armored' ? 0.72 : 0.45; // scrape the wall, lose speed
     if (isPlayer && Math.abs(v.speed) > 6 && v.crashCooldown <= 0) {
       G.audio.crash();
       v.crashCooldown = 1.5;
@@ -251,6 +301,15 @@ export function enterCar(G, v) {
   } else if (v.parked) {
     G.hud.toast(`You took the ${v.spec.name}.`);
     G.audio.doorSlam();
+    // v5: stealing the bank's armored van is a bigger statement than
+    // taking a sedan — the PD hears about it at once.
+    if (v.type === 'armored') {
+      G.wanted.addHeat(14, 'stole the armored van');
+      G.hud.toast('The bank\'s armored van — the PD will notice this one.');
+    }
+    if (v.type === 'limo') {
+      G.hud.toast('The Verde Limousine — arrive everywhere like you own it.');
+    }
   }
   v.driver = 'player';
   v.parked = false;
