@@ -11,6 +11,8 @@ import { createVehicle } from './vehicles.js';
 import { placeMarker, hideMarker } from './missions.js';
 
 // Each circuit is a loop of checkpoints on road intersections. Two laps.
+// Road centrelines run at -340 + 80k (…, -180, -100, -20, 60, 140, 220,
+// 300) — checkpoints MUST sit on them, or cars spear into buildings.
 export const RACE_CIRCUITS = [
   {
     id: 'downtown',
@@ -18,8 +20,9 @@ export const RACE_CIRCUITS = [
     laps: 2,
     prize: [1500, 800, 400, 200],
     points: [
-      { x: 0, z: 80 }, { x: 80, z: 80 }, { x: 80, z: 0 }, { x: 80, z: -80 },
-      { x: 0, z: -80 }, { x: -80, z: -80 }, { x: -80, z: 0 }, { x: -80, z: 80 },
+      { x: 60, z: 60 }, { x: 140, z: 60 }, { x: 140, z: -20 }, { x: 140, z: -100 },
+      { x: 60, z: -100 }, { x: -20, z: -100 }, { x: -100, z: -100 }, { x: -100, z: -20 },
+      { x: -100, z: 60 }, { x: -20, z: 60 },
     ],
   },
   {
@@ -28,8 +31,8 @@ export const RACE_CIRCUITS = [
     laps: 2,
     prize: [1800, 900, 450, 250],
     points: [
-      { x: 160, z: 80 }, { x: 240, z: 80 }, { x: 240, z: 0 }, { x: 240, z: -80 },
-      { x: 160, z: -80 }, { x: 160, z: -160 }, { x: 240, z: -160 }, { x: 240, z: -240 },
+      { x: 220, z: 60 }, { x: 300, z: 60 }, { x: 300, z: -20 }, { x: 220, z: -20 },
+      { x: 220, z: -100 }, { x: 300, z: -100 }, { x: 300, z: -180 }, { x: 220, z: -180 },
     ],
   },
   {
@@ -38,8 +41,8 @@ export const RACE_CIRCUITS = [
     laps: 2,
     prize: [2200, 1100, 550, 300],
     points: [
-      { x: -160, z: -160 }, { x: -240, z: -160 }, { x: -240, z: -240 },
-      { x: -160, z: -240 }, { x: -80, z: -240 }, { x: -80, z: -160 },
+      { x: -260, z: -180 }, { x: -340, z: -180 }, { x: -340, z: -260 },
+      { x: -260, z: -260 }, { x: -180, z: -260 }, { x: -180, z: -180 },
     ],
   },
 ];

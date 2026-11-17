@@ -20,12 +20,13 @@ function wrapAngle(a) {
 }
 
 function pickEscapeRoute(G) {
-  // A long loop of road intersections the fugitive flees along.
+  // A long loop of road intersections the fugitive flees along. Roads run
+  // at -340 + 80k, so every point here sits on asphalt, never in a block.
   const pts = [
-    { x: 80, z: 80 }, { x: 160, z: 80 }, { x: 240, z: 80 }, { x: 240, z: -80 },
-    { x: 160, z: -160 }, { x: 80, z: -160 }, { x: 0, z: -160 }, { x: -80, z: -80 },
-    { x: -160, z: -80 }, { x: -160, z: 80 }, { x: -80, z: 160 }, { x: 0, z: 240 },
-    { x: 80, z: 240 }, { x: 160, z: 160 },
+    { x: 60, z: 60 }, { x: 140, z: 60 }, { x: 220, z: 60 }, { x: 220, z: -20 },
+    { x: 220, z: -100 }, { x: 140, z: -100 }, { x: 60, z: -100 }, { x: -20, z: -100 },
+    { x: -100, z: -100 }, { x: -100, z: -20 }, { x: -100, z: 60 }, { x: -20, z: 60 },
+    { x: 60, z: 140 }, { x: 140, z: 140 }, { x: 140, z: 220 }, { x: 60, z: 220 },
   ];
   return pts;
 }
