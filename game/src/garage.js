@@ -6,6 +6,7 @@
 // Upgrades bite through the driving model via the boost the vehicle carries.
 
 import * as THREE from 'three';
+import { refillNitro } from './nitro.js';
 
 export const GARAGE_POS = { x: -20, z: -100 };
 
@@ -23,8 +24,13 @@ const PAINTS = [
 const PAINT_PRICE = 150;
 const ENGINE_PRICE = 500;
 const ARMOR_PRICE = 400;
+const NEON_PRICE = 300;
 const ENGINE_MAX = 3;
 const ARMOR_MAX = 2;
+
+// Neon underglow colours, cycled with the paint rack's spirit: one colour
+// per buy, glowing from beneath the car at night and in the shade.
+const NEON_COLORS = [0x1a6ad8, 0xd81a8a, 0x2aff8a, 0xffd23e, 0xff5a2a];
 
 export function createGarage(G) {
   const garage = {
@@ -32,6 +38,8 @@ export function createGarage(G) {
     paintIndex: 0,
     engineLevel: 0,
     armorLevel: 0,
+    neon: false,
+    neonColor: 0,
     ownedId: null,
     ownedType: null,
     hintCooldown: 0,
@@ -104,13 +112,49 @@ export function applyGarageToCar(G, car) {
   if (G.garage.ownedId === car.id) {
     repaint(G, car, PAINTS[G.garage.paintIndex % PAINTS.length]);
     applyBoost(car, G.garage.engineLevel);
+    applyNeon(G, car);
   }
+}
+
+function applyNeon(G, car) {
+  // A glowing plane under the chassis. One per car: remove the old glow
+  // before adding a new one so re-entering never stacks them.
+  if (car.mesh.userData.neonGlow) {
+    car.mesh.remove(car.mesh.userData.neonGlow);
+    car.mesh.userData.neonGlow = null;
+  }
+  if (!G.garage.neon) return;
+  const color = NEON_COLORS[G.garage.neonColor % NEON_COLORS.length];
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.2, 5.6),
+    new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false,
+    }));
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.y = 0.12;
+  car.mesh.add(glow);
+  car.mesh.userData.neonGlow = glow;
+  car.mesh.userData.neonColor = color;
+}
+
+export function buyNeon(G) {
+  const car = ownedCar(G);
+  if (!car) { G.hud.toast('Get in a car and bring it to Vic\'s garage first.'); return; }
+  if (G.cash < NEON_PRICE) { G.hud.toast(`Neon underglow is $${NEON_PRICE} — you're short.`); return; }
+  G.cash -= NEON_PRICE;
+  G.garage.neon = true;
+  G.garage.neonColor = (G.garage.neonColor + 1) % NEON_COLORS.length;
+  applyNeon(G, car);
+  G.audio.pickup();
+  G.hud.toast(`Neon underglow fitted — the car glows at night now. ${garageStatusText(G)}`);
+  G.save.save(G);
 }
 
 export function garageStatusText(G) {
   const g = G.garage;
   const paint = PAINTS[g.paintIndex % PAINTS.length];
   return `Garage — ${paint.name} · Engine Lv${g.engineLevel}/${ENGINE_MAX} · Armor Lv${g.armorLevel}/${ARMOR_MAX}` +
+    (g.neon ? ' · Neon on' : '') +
     (g.ownedType ? ` · your ${g.ownedType}` : ' · no car tuned yet');
 }
 
@@ -135,8 +179,9 @@ function tryEngine(G) {
   G.cash -= ENGINE_PRICE;
   G.garage.engineLevel++;
   applyBoost(car, G.garage.engineLevel);
+  refillNitro(G); // engine work includes a full nitro tank, on the house
   G.audio.missionSting();
-  G.hud.toast(`Engine Lv${G.garage.engineLevel} fitted — +8% top speed. ${garageStatusText(G)}`);
+  G.hud.toast(`Engine Lv${G.garage.engineLevel} fitted — +8% top speed, nitro tank full. ${garageStatusText(G)}`);
   G.save.save(G);
 }
 
@@ -162,10 +207,11 @@ export function updateGarage(G, dt) {
   if (G.input.pressed('paint')) tryPaint(G);
   else if (G.input.pressed('engine')) tryEngine(G);
   else if (G.input.pressed('armor')) tryArmor(G);
+  else if (G.input.pressed('neon')) buyNeon(G);
   else if (g.hintCooldown <= 0) {
     g.hintCooldown = 6;
     G.hud.setInteract(
-      `<b>U</b> paint $${PAINT_PRICE} · <b>I</b> engine $${ENGINE_PRICE} · <b>O</b> armor $${ARMOR_PRICE} — ${garageStatusText(G)}`);
+      `<b>U</b> paint $${PAINT_PRICE} · <b>I</b> engine $${ENGINE_PRICE} · <b>O</b> armor $${ARMOR_PRICE} · <b>Y</b> neon $${NEON_PRICE} — ${garageStatusText(G)}`);
   }
   if (g.hintCooldown > 0) g.hintCooldown -= dt;
 }

@@ -27,11 +27,28 @@ const STATION_BASS = {
 };
 const STATION_STEP = { 'solmar-fm': 0.42, verde: 0.3, talk: 0.6 };
 
+// What the DJ says when you tune in — each station has a voice.
+const DJ_IDENTS = {
+  'solmar-fm': [
+    'NEON NIGHTS (Solmar FM): "You\'re riding with Neon Nights — synthwave for the midnight avenues."',
+    'NEON NIGHTS: "That bass is for everyone doing 90 down the harbor road right now."',
+  ],
+  verde: [
+    'DJ MARISOL (Radio Verde): "¡Buenas noches, Solmar! Salsa for the boardwalk, straight from Isla Verde."',
+    'DJ MARISOL: "If your hips aren\'t moving, turn it up — the lighthouse can hear you."',
+  ],
+  talk: [
+    'HOST CAL (Talk Solmar): "Line 2, you\'re on the air — yes, the mayor\'s boat is real, and no, I won\'t say whose."',
+    'HOST CAL: "Caller says the pigeons downtown are government drones. Caller, I believe you."',
+  ],
+};
+
 export function createRadio(G) {
   const radio = {
     index: 0,
     timer: null,
     step: 0,
+    identCount: 0, // which DJ greeting plays next, per station visit
     station() { return STATIONS[this.index]; },
   };
   G.radio = radio;
@@ -138,6 +155,12 @@ export function cycleRadio(G) {
     G.audio.stopMusic();
     if (G.audio.ensure()) startStation(G, station);
     G.hud.toast(`${station.name} — ${station.blurb} (N to change station)`);
+    // The DJ greets you on tune-in, alternating lines per visit.
+    const lines = DJ_IDENTS[station.id] || [];
+    if (lines.length) {
+      const pick = lines[G.radio.identCount++ % lines.length];
+      G.hud.showDialogue([pick, `${station.name} — ${station.blurb}`]);
+    }
   }
   G.save.save(G);
 }

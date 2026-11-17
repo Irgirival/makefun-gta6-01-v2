@@ -37,11 +37,13 @@ export function createSave(G) {
             wins: G.races.ladder.wins, podiums: G.races.ladder.podiums,
             races: G.races.ladder.races, best: G.races.ladder.best,
             circuitIndex: G.races.circuitIndex,
+            bestTimes: G.races.ladder.bestTimes || {},
           } : null,
           garage: G.garage ? {
             paintIndex: G.garage.paintIndex, engineLevel: G.garage.engineLevel,
             armorLevel: G.garage.armorLevel, ownedId: G.garage.ownedId,
             ownedType: G.garage.ownedType,
+            neon: G.garage.neon, neonColor: G.garage.neonColor,
           } : null,
           radioIndex: G.radio ? G.radio.index : 0,
           vigilante: G.vigilante ? {

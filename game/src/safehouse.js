@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { restockAmmo } from './combat.js';
+import { refillNitro } from './nitro.js';
 
 const OUTFITS = [
   { name: 'Red Jacket', color: 0x8a2f2f },
@@ -119,6 +120,7 @@ export function updateSafehouse(G, dt) {
     restockAmmo(G);
   }
   const outfit = changeOutfit(G);
+  refillNitro(G); // the safehouse tops up the nitro tank too
   G.audio.missionComplete();
   G.hud.showDialogue([
     `SAFEHOUSE — Mara slips inside, changes into her ${outfit.name.toLowerCase()}, and breathes.`,

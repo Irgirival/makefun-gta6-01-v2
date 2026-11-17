@@ -46,6 +46,8 @@ import { createSafehouse, updateSafehouse } from './safehouse.js';
 import { createRadio, updateRadio } from './radio.js';
 import { createVigilante, updateVigilante } from './vigilante.js';
 import { registerFinale, updateFinale, EPILOGUE_TEXT } from './finale.js';
+// v3: nitro boost for Mara's tuned car, and the harbor boat tour.
+import { createNitro, updateNitro, refillNitro } from './nitro.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -151,6 +153,7 @@ createSafehouse(G);
 createRadio(G);
 createVigilante(G);
 registerFinale(G);
+createNitro(G);
 
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
@@ -165,6 +168,7 @@ if (G.saveData) {
       podiums: G.saveData.races.podiums ?? 0,
       races: G.saveData.races.races ?? 0,
       best: G.saveData.races.best ?? null,
+      bestTimes: G.saveData.races.bestTimes ?? {},
     });
     G.races.circuitIndex = G.saveData.races.circuitIndex ?? 0;
   }
@@ -175,6 +179,8 @@ if (G.saveData) {
       armorLevel: G.saveData.garage.armorLevel ?? 0,
       ownedId: G.saveData.garage.ownedId ?? null,
       ownedType: G.saveData.garage.ownedType ?? null,
+      neon: G.saveData.garage.neon ?? false,
+      neonColor: G.saveData.garage.neonColor ?? 0,
     });
   }
   if (G.saveData.radioIndex) G.radio.index = G.saveData.radioIndex;
@@ -335,6 +341,7 @@ function stepWorld(dt) {
   updateRadio(G, dt);
   updateFinale(G, dt);
   updateIslaVerde(G, dt);
+  updateNitro(G, dt);
 }
 
 function frame() {

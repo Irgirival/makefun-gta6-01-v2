@@ -2,6 +2,8 @@
 // mission objective, dialogue lines, toasts, damage flash and the interact
 // prompt. All DOM; the 3D scene never touches these elements directly.
 
+import { nitroStatusText } from './nitro.js';
+
 export function createHud(G) {
   const $ = (id) => document.getElementById(id);
   const hud = {
@@ -99,7 +101,10 @@ export function createHud(G) {
       if (G.driving) {
         this.speed.classList.remove('hidden');
         const kmh = Math.round(Math.abs(G.driving.speed) * 3.6);
-        this.speed.innerHTML = `${kmh} <small>km/h</small>`;
+        // v3: the nitro meter rides under the speedo in Mara's tuned car.
+        const nitro = (G.nitro && G.garage && G.garage.ownedId === G.driving.id)
+          ? `<br><small>${nitroStatusText(G)}</small>` : '';
+        this.speed.innerHTML = `${kmh} <small>km/h</small>${nitro}`;
       } else if (G.boating) {
         // v3: the speedo reads knots of boat speed while sailing.
         this.speed.classList.remove('hidden');

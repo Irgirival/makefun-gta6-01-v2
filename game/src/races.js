@@ -78,7 +78,7 @@ export function createRaces(G) {
     raceTime: 0,
     finishedCount: 0,
     results: [],
-    ladder: { wins: 0, podiums: 0, races: 0, best: null },
+    ladder: { wins: 0, podiums: 0, races: 0, best: null, bestTimes: {} },
     startBanner: null,
   };
   // A chequered start banner over the plaza start line, built from boxes.
@@ -109,8 +109,26 @@ export function createRaces(G) {
 
 export function raceLadderText(G) {
   const l = G.races.ladder;
+  const bests = Object.entries(l.bestTimes || {})
+    .map(([id, t]) => `${RACE_CIRCUITS.find((c) => c.id === id)?.name || id}: ${t.toFixed(1)}s`)
+    .join(' · ');
   return `Street racing — ${l.wins} wins · ${l.podiums} podiums · ${l.races} races` +
-    (l.best ? ` · best ${l.best}` : '');
+    (l.best ? ` · best ${l.best}` : '') +
+    (bests ? ` · fastest laps — ${bests}` : '');
+}
+
+export function recordBestTime(G) {
+  // The player's finish time becomes the circuit's best when it beats the
+  // stored one; the ladder (and the save) keep it forever.
+  const r = G.races;
+  if (!r.player.finished) return null;
+  const id = r.circuit.id;
+  const prev = r.ladder.bestTimes[id];
+  if (prev === undefined || r.player.finishTime < prev) {
+    r.ladder.bestTimes[id] = r.player.finishTime;
+    return { id, time: r.player.finishTime, beaten: prev !== undefined, prev };
+  }
+  return { id, time: r.player.finishTime, beaten: false, prev };
 }
 
 function nextCheckpoint(G) {
@@ -202,11 +220,20 @@ function endRace(G) {
   r.ladder.races++;
   if (myPlace === 1) { r.ladder.wins++; r.ladder.best = r.circuit.name; }
   if (myPlace <= 3) r.ladder.podiums++;
+  const best = recordBestTime(G);
+  const bestLine = best
+    ? (best.prev === undefined
+      ? `First recorded time on ${r.circuit.name}: ${best.time.toFixed(1)}s — the time to beat.`
+      : best.beaten
+        ? `New best time on ${r.circuit.name}: ${best.time.toFixed(1)}s (was ${best.prev.toFixed(1)}s)!`
+        : `Your time: ${best.time.toFixed(1)}s — the circuit best stands.`)
+    : '';
   const board = entries.map((e, i) => `${i + 1}. ${e.name}${e.me ? ' (you)' : ''}`).join('  ');
   G.hud.showDialogue([
     `RACE OVER — ${r.circuit.name}: you finished ${myPlace}${myPlace === 1 ? 'st' : myPlace === 2 ? 'nd' : myPlace === 3 ? 'rd' : 'th'}!`,
     board,
     prize > 0 ? `Prize: $${prize}. ${raceLadderText(G)}` : 'No prize this time. The ladder remembers — come back faster.',
+    ...(bestLine ? [bestLine] : []),
   ]);
   G.audio.missionComplete();
   // Rivals cruise on and fade out of the race: park them where they are.

@@ -35,6 +35,7 @@ export function createInput(canvas) {
     KeyO: 'armor',         // v3: garage armor plating
     KeyN: 'radio',         // v3: cycle the radio station
     KeyV: 'vigilante',     // v3: take a vigilante contract
+    KeyY: 'neon',          // v3: garage neon underglow
     KeyT: 'weather',
     KeyM: 'mute',
     KeyP: 'pause', Escape: 'pause',

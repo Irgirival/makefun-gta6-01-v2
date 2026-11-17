@@ -80,6 +80,18 @@ export function createMinimap(G) {
           if (x < 0 || y < 0 || x > W || y > H) continue;
           ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
         }
+        // v3: the next harbor-tour buoy, as an orange diamond.
+        const tour = G.boats.tour;
+        if (tour && tour.cooldown <= 0) {
+          const buoy = tour.buoys[tour.next];
+          if (buoy) {
+            const [x, y] = toMap(buoy.x, buoy.z);
+            ctx.fillStyle = '#ff5a2a';
+            ctx.beginPath();
+            ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 6, y);
+            ctx.closePath(); ctx.fill();
+          }
+        }
       }
 
       // Buildings as faint blocks (only those in view).

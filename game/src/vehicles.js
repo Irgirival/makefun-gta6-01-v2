@@ -166,8 +166,9 @@ export function updateVehicle(G, v, dt, input) {
   if (brake) v.speed -= Math.sign(v.speed) * 42 * dt;
   v.speed -= v.speed * 0.55 * dt; // rolling drag
   if (Math.abs(v.speed) < 0.15 && throttle === 0) v.speed = 0;
-  // v3 garage tuning: an owned, upgraded car is genuinely faster.
-  const topSpeed = spec.topSpeed * (v.upgradeBoost || 1);
+  // v3 garage tuning: an owned, upgraded car is genuinely faster. Nitro
+  // stacks on top while it burns (nitro.js sets v.nitroBoost).
+  const topSpeed = spec.topSpeed * (v.upgradeBoost || 1) * (v.nitroBoost || 1);
   v.speed = Math.max(-topSpeed * 0.45, Math.min(topSpeed, v.speed));
 
   const nx = v.pos.x + Math.sin(v.heading) * v.speed * dt;

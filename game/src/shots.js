@@ -36,8 +36,10 @@ export function applyShot(G, name) {
     }
   } else if (name === 'drive') {
     // Behind the wheel of the Vortex GT on the main avenue, traffic ahead.
-    const car = createVehicle(G, 'sports', 0, 120, Math.PI, { parked: false });
-    p.pos.set(0, 0, 120);
+    // v3: the avenue is road x=60 (roads run at -340+80k) — the car, the
+    // traffic and the Comet all sit on asphalt now, not on the grass.
+    const car = createVehicle(G, 'sports', 60, 120, Math.PI, { parked: false });
+    p.pos.set(60, 0, 120);
     enterCar(G, car);
     car.speed = 22;
     G.input.keys.add('forward');
@@ -48,15 +50,15 @@ export function applyShot(G, name) {
     G.hud.setMission(def.title, def.steps[2].text, def.steps[2].hint);
     placeMarker(G, def.steps[2].target);
     // Traffic ahead in both lanes so the avenue feels alive.
-    const t1 = createVehicle(G, 'sedan', 3.4, 60, Math.PI, { driver: 'traffic', occupied: true });
+    const t1 = createVehicle(G, 'sedan', 63.4, 60, Math.PI, { driver: 'traffic', occupied: true });
     t1.speed = 12; t1.route = { axis: 'z', dir: -1, nextTurn: 200 }; t1.cruiseSpeed = 12;
-    const t2 = createVehicle(G, 'taxi', -3.4, 30, 0, { driver: 'traffic', occupied: true });
+    const t2 = createVehicle(G, 'taxi', 56.6, 30, 0, { driver: 'traffic', occupied: true });
     t2.speed = 11; t2.route = { axis: 'z', dir: 1, nextTurn: 200 }; t2.cruiseSpeed = 11;
-    const t3 = createVehicle(G, 'van', 3.4, 20, Math.PI, { driver: 'traffic', occupied: true });
+    const t3 = createVehicle(G, 'van', 63.4, 20, Math.PI, { driver: 'traffic', occupied: true });
     t3.speed = 10; t3.route = { axis: 'z', dir: -1, nextTurn: 200 }; t3.cruiseSpeed = 10;
     // A yellow Comet 900 in the left lane ahead of the car, so the bike
     // reads clearly against the asphalt without blocking the drive.
-    createMotorcycle(G, -6, 55, 0, { parked: true, color: 0xffd23e });
+    createMotorcycle(G, 56, 55, 0, { parked: true, color: 0xffd23e });
   } else if (name === 'chase') {
     // Four stars on the westbound avenue: two cruisers on Mara's tail and
     // the PD air unit holding ahead-left in the searchlight.
