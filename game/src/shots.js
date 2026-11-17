@@ -77,7 +77,7 @@ export function applyShot(G, name) {
   } else if (name === 'mission') {
     // Mission 6 at the airfield: Mara on foot by the terminal, the runway
     // and a parked plane behind her, the gold marker on the terminal door.
-    p.pos.set(-235, 0, -268);
+    p.pos.set(-235, 0, -262);
     p.heading = Math.PI;
     p.camYaw = 0;
     p.camPitch = 0.3;

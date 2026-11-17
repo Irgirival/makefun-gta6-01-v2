@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { MISSIONS, placeMarker, hideMarker } from './missions.js';
 import { range } from './random.js';
 
-const AIRPORT = { terminal: { x: -235, z: -286 }, hangar: { x: -312, z: -286 }, runwayEast: { x: -201, z: -260 } };
+const AIRPORT = { terminal: { x: -235, z: -276 }, hangar: { x: -312, z: -276 }, runwayEast: { x: -201, z: -260 } };
 const PLAZA = { x: 20, z: 20 };
 
 const MISSION_6 = {
