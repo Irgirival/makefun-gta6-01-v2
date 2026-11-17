@@ -8,6 +8,8 @@
 // whole floor is DOM, so it needs no new art and no network: the game
 // keeps running behind it, and E (or the cash-out button) closes it.
 
+import * as THREE from 'three';
+
 const CASINO_DOOR = { x: -160, z: 520 };
 const SPIN_COST = 25;
 const CARD_BET = 50;
