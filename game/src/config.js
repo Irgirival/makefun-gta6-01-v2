@@ -55,7 +55,20 @@ export const CONFIG = {
   taxiFareBase: 45,
   taxiFarePerUnit: 0.35,
   packageReward: 250,
-  missionRewards: [400, 650, 900, 1200, 2500],
+  missionRewards: [400, 650, 900, 1200, 2500, 4000],
+
+  // Police air unit: a helicopter lifts off at 4 stars and leaves below 2.
+  heliMinStars: 4,
+  heliStandDownStars: 2,
+  heliHoverHeight: 58,
+
+  // Weather: rain cuts grip (1 = dry asphalt, 0.68 = heavy rain).
+  rainGripMin: 0.68,
+
+  // v2 additions: parked motorcycles, extra varied pedestrians, buses.
+  motorcycles: 3,
+  crowdExtra: 14,
+  cityBuses: 2,
 
   // Time of day: the clock starts at 09:00 and one game minute is one real second.
   clockStartMinutes: 9 * 60,

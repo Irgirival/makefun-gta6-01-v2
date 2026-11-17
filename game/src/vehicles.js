@@ -13,6 +13,7 @@ export const VEHICLE_TYPES = {
   sports:  { name: 'Vortex GT',     topSpeed: 48, accel: 30, turn: 2.1, colors: [0xd81a2a, 0x1a6ad8, 0xf0f0f0] },
   van:     { name: 'Harbor Van',     topSpeed: 26, accel: 16, turn: 1.4, colors: [0x5a6a5a, 0xc9c9c9, 0x8a6a4a] },
   police:  { name: 'Solmar PD Cruiser', topSpeed: 40, accel: 28, turn: 2.0, colors: [0x1a1a22] },
+  bus:     { name: 'Solmar City Bus', topSpeed: 24, accel: 12, turn: 1.2, colors: [0x2a7a3a, 0xd8a03a] },
 };
 
 function buildCarMesh(type, color, rng) {
@@ -145,16 +146,18 @@ export function updateVehicle(G, v, dt, input) {
     steerTarget = v.steerTarget ?? 0;
   }
 
-  // Steering eases toward the target; faster cars turn less.
+  // Steering eases toward the target; faster cars turn less. Rain cuts the
+  // grip, so steering and acceleration both soften when the roads are wet.
+  const grip = G.weather ? G.weather.grip : 1;
   const steerRate = 4.5;
   v.steer += (steerTarget - v.steer) * Math.min(1, dt * steerRate);
-  const steerEffect = v.steer * spec.turn * Math.min(1, Math.abs(v.speed) / 8 + 0.15);
+  const steerEffect = v.steer * spec.turn * (0.65 + 0.35 * grip) * Math.min(1, Math.abs(v.speed) / 8 + 0.15);
   // Turn rate scales with speed; reverse flips the steering.
   if (v.speed !== 0) v.heading += steerEffect * dt * (v.speed > 0 ? 1 : -1);
 
   // Longitudinal physics: accelerate, brake, drag.
-  if (throttle > 0) v.speed += spec.accel * throttle * dt;
-  if (throttle < 0) v.speed += spec.accel * throttle * 0.7 * dt;
+  if (throttle > 0) v.speed += spec.accel * throttle * dt * grip;
+  if (throttle < 0) v.speed += spec.accel * throttle * 0.7 * dt * grip;
   if (brake) v.speed -= Math.sign(v.speed) * 42 * dt;
   v.speed -= v.speed * 0.55 * dt; // rolling drag
   if (Math.abs(v.speed) < 0.15 && throttle === 0) v.speed = 0;
@@ -204,8 +207,9 @@ export function updateVehicle(G, v, dt, input) {
     }
   }
 
-  // Mesh follows the physics; wheels spin and steer.
-  v.mesh.position.set(v.pos.x, 0, v.pos.z);
+  // Mesh follows the physics; wheels spin and steer. jumpY lifts the mesh
+  // off the ground during a stunt jump (missions2.js sets it).
+  v.mesh.position.set(v.pos.x, v.jumpY || 0, v.pos.z);
   v.mesh.rotation.y = v.heading;
   const wheels = v.mesh.userData.wheels;
   for (let i = 0; i < wheels.length; i++) {

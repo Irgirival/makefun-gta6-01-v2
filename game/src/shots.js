@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { createVehicle, enterCar } from './vehicles.js';
+import { createMotorcycle } from './motorcycle.js';
 import { startMission, MISSIONS, placeMarker } from './missions.js';
 
 export const SHOT_NAMES = ['start', 'drive', 'chase', 'mission'];
@@ -53,14 +54,17 @@ export function applyShot(G, name) {
     t2.speed = 11; t2.route = { axis: 'z', dir: 1, nextTurn: 200 }; t2.cruiseSpeed = 11;
     const t3 = createVehicle(G, 'van', 3.4, 20, Math.PI, { driver: 'traffic', occupied: true });
     t3.speed = 10; t3.route = { axis: 'z', dir: -1, nextTurn: 200 }; t3.cruiseSpeed = 10;
+    // A Comet 900 parked in the left lane, so the bike reads in the shot.
+    createMotorcycle(G, -6.5, 70, 0, { parked: true });
   } else if (name === 'chase') {
-    // Three stars on the westbound avenue: two cruisers on Mara's tail.
+    // Four stars on the westbound avenue: two cruisers on Mara's tail and
+    // the PD air unit holding ahead-left in the searchlight.
     const car = createVehicle(G, 'sports', 180, -20, -Math.PI / 2, { parked: false });
     p.pos.set(180, 0, -20);
     enterCar(G, car);
     car.speed = 26;
     G.input.keys.add('forward');
-    G.wanted.addHeat(62, 'shot setup');
+    G.wanted.addHeat(82, 'shot setup');
     startMission(G, 2);
     const c1 = createVehicle(G, 'police', 205, -20, -Math.PI / 2, { driver: 'police', occupied: true });
     c1.speed = 30;
@@ -71,17 +75,18 @@ export function applyShot(G, name) {
     const ct = createVehicle(G, 'sedan', 60, -16.6, -Math.PI / 2, { driver: 'traffic', occupied: true });
     ct.speed = 12; ct.route = { axis: 'x', dir: -1, nextTurn: 200 }; ct.cruiseSpeed = 12;
   } else if (name === 'mission') {
-    // Mission 3 at the harbor: Mara on foot, the gold marker, docks and water.
-    p.pos.set(278, 0, -62);
-    p.heading = Math.PI / 2;
-    p.camYaw = -Math.PI / 2;
+    // Mission 6 at the airfield: Mara on foot by the terminal, the runway
+    // and a parked plane behind her, the gold marker on the terminal door.
+    p.pos.set(-235, 0, -268);
+    p.heading = Math.PI;
+    p.camYaw = 0;
     p.camPitch = 0.3;
-    startMission(G, 2);
-    // A taxi and a van parked at the docks, a couple of dock workers.
-    createVehicle(G, 'taxi', 292, -40, Math.PI, { parked: true });
-    createVehicle(G, 'van', 268, -96, 0, { parked: true });
-    G.pedestrians.spawnPed(G, 292, -70, false);
-    G.pedestrians.spawnPed(G, 284, -88, false);
+    startMission(G, 5);
+    // A taxi and a van parked at the terminal, a couple of ground crew.
+    createVehicle(G, 'taxi', -218, -272, Math.PI, { parked: true });
+    createVehicle(G, 'van', -252, -272, 0, { parked: true });
+    G.pedestrians.spawnPed(G, -228, -272, false);
+    G.pedestrians.spawnPed(G, -242, -272, false);
   }
   G.shotFrames = 0;
 }
@@ -100,10 +105,12 @@ export function poseShotCamera(G) {
     cam.lookAt(v.pos.x, 1.4, v.pos.z - 28);
   } else if (G.shot === 'chase') {
     const v = G.driving;
-    cam.position.set(v.pos.x + 11, 5.5, v.pos.z + 13);
-    cam.lookAt(v.pos.x - 6, 1.4, v.pos.z - 24);
+    // Wider and tilted up: the air unit holds ahead-left, high in the frame.
+    cam.position.set(v.pos.x + 14, 6.5, v.pos.z + 14);
+    cam.lookAt(v.pos.x - 8, 12, v.pos.z - 30);
   } else if (G.shot === 'mission') {
+    // From the apron, looking north at the terminal, the runway to the right.
     cam.position.set(p.pos.x - 12, 4.6, p.pos.z + 12);
-    cam.lookAt(p.pos.x + 10, 1.4, p.pos.z - 14);
+    cam.lookAt(p.pos.x + 10, 2.5, p.pos.z - 16);
   }
 }

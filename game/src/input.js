@@ -28,6 +28,8 @@ export function createInput(canvas) {
     KeyQ: 'weapon',
     KeyR: 'reload',
     KeyJ: 'taxi',
+    KeyC: 'courier',
+    KeyT: 'weather',
     KeyM: 'mute',
     KeyP: 'pause', Escape: 'pause',
   };

@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { makeRng, pick, range, rangeInt, chance, hash2 } from './random.js';
+import { AIRFIELD_BLOCKS } from './airport.js';
 
 const ROAD_COLORS = { asphalt: 0x2e3138, line: 0xd8d3c0, sidewalk: 0x9aa0a3, curb: 0x6e7276 };
 const BUILDING_PALETTE = [
@@ -147,6 +148,8 @@ export function buildCity(G) {
     for (let bz = -cfg.cityHalf + cfg.blockSize / 2; bz <= cfg.cityHalf - cfg.blockSize / 2; bz += cfg.blockSize) {
       const key = `${bx},${bz}`;
       const distCenter = Math.hypot(bx, bz);
+      // The airfield owns these four north-west blocks: no buildings here.
+      if (AIRFIELD_BLOCKS.has(key)) continue;
       // Harbor strip: east edge blocks become docks, not buildings.
       if (bx >= cfg.harborX - cfg.blockSize) {
         // Working docks: piers, sheds, stacked containers and a crane.
@@ -280,6 +283,8 @@ export function buildCity(G) {
   // Collision + road queries used by every moving system.
   const city = {
     group, colliders, roads,
+    // Materials the day/night and weather systems tune at runtime.
+    roadMat, lampMat, windowMat,
     isRoad(x, z) {
       const half = cfg.roadWidth / 2 + 1;
       for (const c of roads.xs) if (Math.abs(x - c) < half) return true;

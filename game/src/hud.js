@@ -10,6 +10,7 @@ export function createHud(G) {
     cash: $('cash'),
     clock: $('clock'),
     wantedLabel: $('wantedLabel'),
+    weatherLabel: $('weatherLabel'),
     mTitle: $('mTitle'),
     mText: $('mText'),
     mHint: $('mHint'),
@@ -80,6 +81,14 @@ export function createHud(G) {
       const hh = String(Math.floor(mins / 60)).padStart(2, '0');
       const mm = String(mins % 60).padStart(2, '0');
       this.clock.textContent = `${hh}:${mm}`;
+      // Time of day + weather, under the clock.
+      const tod = mins >= 300 && mins < 420 ? 'Dawn'
+        : mins >= 420 && mins < 1020 ? 'Day'
+        : mins >= 1020 && mins < 1140 ? 'Dusk'
+        : mins >= 1140 && mins < 1380 ? 'Night' : 'Late night';
+      const wmode = G.weather ? G.weather.mode : 'clear';
+      const wlabel = wmode === 'light' ? 'Light rain' : wmode === 'heavy' ? 'Heavy rain' : 'Clear';
+      this.weatherLabel.textContent = `${tod} · ${wlabel}`;
       this.healthFill.style.width = `${Math.max(0, G.health)}%`;
       this.armorFill.style.width = `${Math.max(0, G.armor)}%`;
       const c = G.combat;

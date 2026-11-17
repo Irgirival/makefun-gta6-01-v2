@@ -21,8 +21,15 @@ import {
 } from './pedestrians.js';
 import { createWanted, updatePolice, nearestPoliceDistance } from './police.js';
 import {
-  createMissions, startMission, updateMissions, retryMission, currentMission,
+  createMissions, startMission, updateMissions, retryMission, currentMission, MISSIONS,
 } from './missions.js';
+import { createHelicopter, updateHelicopter } from './helicopter.js';
+import { createDayNight, updateDayNight } from './daynight.js';
+import { buildAirport } from './airport.js';
+import { spawnMotorcycles, updateMotorcycles } from './motorcycle.js';
+import { createWeather, updateWeather } from './weather.js';
+import { registerExtraMissions, updateSideMissions } from './missions2.js';
+import { spawnCrowds, spawnBuses, updateCrowds } from './crowds.js';
 import { createCombat, updateCombat, damagePlayer } from './combat.js';
 import { createHud } from './hud.js';
 import { createMinimap } from './minimap.js';
@@ -83,6 +90,9 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff0c0, 1.6);
 sun.position.set(-200, 320, -160);
 scene.add(sun);
+// The day/night cycle moves these lights; keep them on the game context.
+G.sun = sun;
+G.hemi = hemi;
 
 G.scene = scene;
 G.camera = camera;
@@ -109,6 +119,15 @@ createMissions(G);
 spawnParkedCars(G);
 spawnTraffic(G);
 spawnPedestrians(G);
+// v2 systems, created last so the v1 placements above keep their seeds.
+buildAirport(G);
+createDayNight(G);
+createWeather(G);
+createHelicopter(G);
+registerExtraMissions(G);
+spawnMotorcycles(G);
+spawnCrowds(G);
+spawnBuses(G);
 
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
@@ -158,7 +177,7 @@ function startGame(fresh) {
   G.mode = 'playing';
   G.audio.ensure();
   G.audio.sirenStop();
-  if (!G.missions.active && G.missions.index < 5) startMission(G, G.missions.index);
+  if (!G.missions.active && G.missions.index < MISSIONS.length) startMission(G, G.missions.index);
   else if (!G.missions.active) G.hud.setMission('Solmar City', 'Free roam — every mission complete.', 'Press J for a taxi fare, or find the hidden packages.');
 }
 
@@ -212,7 +231,7 @@ function resumeFromEnd() {
   G.player.group.position.copy(G.player.pos);
   G.mode = 'playing';
   G.hud.show();
-  if (!G.missions.active && G.missions.index < 5) startMission(G, G.missions.index);
+  if (!G.missions.active && G.missions.index < MISSIONS.length) startMission(G, G.missions.index);
 }
 
 $('btnNew').addEventListener('click', () => startGame(true));
@@ -243,9 +262,15 @@ function stepWorld(dt) {
       updateVehicle(G, v, dt, v.driver === 'player' ? G.input : null);
     }
   }
+  updateMotorcycles(G, dt);
   updatePedestrians(G, dt);
+  updateCrowds(G, dt);
   updatePolice(G, dt);
+  updateHelicopter(G, dt);
+  updateDayNight(G, dt);
+  updateWeather(G, dt);
   updateMissions(G, dt);
+  updateSideMissions(G, dt);
 }
 
 function frame() {

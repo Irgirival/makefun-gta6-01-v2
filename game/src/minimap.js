@@ -51,6 +51,15 @@ export function createMinimap(G) {
         ctx.beginPath(); ctx.moveTo(-10, y1); ctx.lineTo(W + 10, y1); ctx.stroke();
       }
 
+      // Airfield runway: a grey strip in the north-west corner.
+      if (G.airport) {
+        const [rx1, ry1] = toMap(G.airport.runway.x0, G.airport.runway.z);
+        const [rx2] = toMap(G.airport.runway.x1, G.airport.runway.z);
+        ctx.strokeStyle = '#8a8f94';
+        ctx.lineWidth = Math.max(3, 16 * scale);
+        ctx.beginPath(); ctx.moveTo(rx1, ry1); ctx.lineTo(rx2, ry1); ctx.stroke();
+      }
+
       // Buildings as faint blocks (only those in view).
       ctx.fillStyle = 'rgba(200,200,190,0.35)';
       for (const b of G.city.colliders) {
@@ -99,6 +108,14 @@ export function createMinimap(G) {
       for (const o of G.policeFoot) {
         const [x, y] = toMap(o.pos.x, o.pos.z);
         ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Police helicopter: a big flashing orange dot.
+      if (G.heli && G.heli.active) {
+        const [x, y] = toMap(G.heli.pos.x, G.heli.pos.z);
+        ctx.fillStyle = Math.sin(G.elapsed * 8) > 0 ? '#ff9d2e' : '#ff5a2a';
+        ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
       }
 
       // Player: white arrow pointing along the heading.

@@ -1,5 +1,11 @@
-// Solmar City — Mara Solano: a complete 3D open-world crime game for the
-// make.fun gta6-01 bounty (Node 22, standard library only).
+// Solmar City v2 — Mara Solano: a complete 3D open-world crime game for the
+// make.fun gta6-01 bounty (Node 22, standard library only). v2 expands the
+// v1 city with a police helicopter that hunts Mara at 4-5 stars, a full
+// day/night cycle with streetlights and car headlights, the Solmar Airfield
+// district (runway, terminal, tower, hangars, parked planes), a rideable
+// motorcycle, rain weather with wet-road grip loss, a sixth story mission
+// ("The Long Runway"), courier runs, stunt-jump ramps, city buses and a
+// more varied crowd — joggers, tourists, elders and friends in pairs.
 //
 // The game lives in this directory's game/ folder as plain static files a
 // desktop browser loads fully offline: game/index.html plus its ES modules
@@ -9,14 +15,16 @@
 // synthesis, so there are no audio files at all).
 //
 // What the player gets: a procedural sun-soaked city ("Solmar City") with a
-// beach, harbor, parks and a central plaza; Mara Solano on foot (WASD +
-// mouse-look, jump, sprint) and behind the wheel (five vehicle types, arcade
-// physics, car stealing with E); traffic AI and pedestrians; a 0-5 star
-// wanted system with pursuing cruisers, roadblocks and arrests; punch and
-// pistol combat; five story missions with dialogue, waypoints and cash
-// rewards, a repeatable taxi job and twelve hidden packages; a HUD with
-// health/armor, cash, wanted stars, clock and a canvas minimap; title,
-// pause, busted/wasted and mission-complete screens; and localStorage saves.
+// beach, harbor, parks, a central plaza and the new airfield; Mara Solano on
+// foot (WASD + mouse-look, jump, sprint) and behind the wheel (six vehicle
+// types plus the Comet 900 motorcycle, arcade physics, car stealing with E);
+// traffic AI, buses and pedestrians; a 0-5 star wanted system with pursuing
+// cruisers, a searchlight helicopter, roadblocks and arrests; punch and
+// pistol combat; six story missions with dialogue, waypoints and cash
+// rewards, a repeatable taxi job, courier runs, stunt jumps and twelve hidden
+// packages; a HUD with health/armor, cash, wanted stars, clock, weather and
+// a canvas minimap; title, pause, busted/wasted and mission-complete
+// screens; and localStorage saves.
 //
 // This program hands the entry in: it copies game/ and screenshots/ from
 // beside this file to /output and writes /output/dossier.json, the summary
@@ -28,7 +36,9 @@
 //
 // The program is deterministic: given the same repository it writes the same
 // bytes every run, because it only copies files and builds the dossier from
-// them — no timestamps, no randomness, no network.
+// them — no timestamps, no randomness, no network. Before handing in, check
+// the entry with the kit's own gate first (`makefun check`), so a bad local
+// run fails loudly instead of handing in an entry the scorer would refuse.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
