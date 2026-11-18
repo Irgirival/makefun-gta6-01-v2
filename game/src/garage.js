@@ -287,3 +287,112 @@ export function updateGarage(G, dt) {
   }
   if (g.hintCooldown > 0) g.hintCooldown -= dt;
 }
+
+// v7: turbo, bulletproof tires and hydraulics — Vic's second shelf.
+// Turbo is a bigger, louder answer to the same question as the engine:
+// +12% top speed per level, two levels, and the exhaust note changes.
+// Bulletproof tires shrug off spike strips (the vigilante's worst
+// enemy) and hydraulics let Mara bounce the car on its suspension for
+// the crowd — pure show, and the crowd at the plaza pays for show.
+
+export function createGarageV7(G) {
+  const g7 = {
+    turboLevel: 0,
+    tires: false,
+    hydraulics: false,
+    bouncePhase: 0,
+    repairs: 0,
+  };
+  G.garageV7 = g7;
+  return g7;
+}
+
+export function buyTurbo(G) {
+  const g = G.garage;
+  const g7 = G.garageV7;
+  if (!g || !g7) return false;
+  if (g7.turboLevel >= 2) {
+    G.hud.toast('The turbo is already maxed — Vic has nothing bigger to fit.');
+    return false;
+  }
+  if (G.cash < (G.config.turboPrice || 900)) {
+    G.hud.toast(`Turbo is $${G.config.turboPrice || 900} — Vic does not do credit.`);
+    return false;
+  }
+  G.cash -= G.config.turboPrice || 900;
+  g7.turboLevel += 1;
+  G.hud.toast(`Turbo Lv${g7.turboLevel} fitted — +12% top speed, and the exhaust sings now.`);
+  return true;
+}
+
+export function buyBulletproofTires(G) {
+  const g7 = G.garageV7;
+  if (!g7) return false;
+  if (g7.tires) {
+    G.hud.toast('Bulletproof tires are already on the car.');
+    return false;
+  }
+  if (G.cash < (G.config.tirePrice || 600)) {
+    G.hud.toast(`Bulletproof tires are $${G.config.tirePrice || 600}.`);
+    return false;
+  }
+  G.cash -= G.config.tirePrice || 600;
+  g7.tires = true;
+  G.hud.toast('Bulletproof tires fitted — spike strips are somebody else\'s problem now.');
+  return true;
+}
+
+export function buyHydraulics(G) {
+  const g7 = G.garageV7;
+  if (!g7) return false;
+  if (g7.hydraulics) {
+    G.hud.toast('Hydraulics are already fitted — bounce away.');
+    return false;
+  }
+  if (G.cash < (G.config.hydraulicsPrice || 450)) {
+    G.hud.toast(`Hydraulics are $${G.config.hydraulicsPrice || 450}.`);
+    return false;
+  }
+  G.cash -= G.config.hydraulicsPrice || 450;
+  g7.hydraulics = true;
+  G.hud.toast('Hydraulics fitted — bounce the car at the plaza and the crowd will pay for the show.');
+  return true;
+}
+
+// v7: the turbo bites through the driving model — the garage's apply
+// hook adds the turbo multiplier on top of the engine boost.
+export function turboMultiplier(G) {
+  const g7 = G.garageV7;
+  if (!g7) return 1;
+  return 1 + 0.12 * g7.turboLevel;
+}
+
+// v7: repair the wear — Vic patches the smoking engine back to new for
+// $100 per 25 wear, and the car stops coughing.
+export function repairAtGarage(G) {
+  const car = G.driving;
+  const g7 = G.garageV7;
+  if (!car || !g7) return false;
+  const wear = car.wear || 0;
+  if (wear <= 0) {
+    G.hud.toast('The car is clean — nothing for Vic to fix.');
+    return false;
+  }
+  const price = Math.ceil(wear / 25) * 100;
+  if (G.cash < price) {
+    G.hud.toast(`Repairs are $${price} — the engine will have to keep coughing.`);
+    return false;
+  }
+  G.cash -= price;
+  car.wear = 0;
+  car.smoking = false;
+  g7.repairs += 1;
+  G.hud.toast(`Vic patched the car up for $${price} — good as new.`);
+  return true;
+}
+
+export function garageV7Summary(G) {
+  const g7 = G.garageV7;
+  if (!g7) return 'Vic\'s second shelf is closed.';
+  return `Turbo Lv${g7.turboLevel}${g7.tires ? ' · bulletproof tires' : ''}${g7.hydraulics ? ' · hydraulics' : ''} · ${g7.repairs} repairs.`;
+}

@@ -171,3 +171,97 @@ export function militarySummary(G) {
   if (!m) return 'Military — not deployed.';
   return `Guard deployments ${m.apcSpawns} · escapes ${m.escapes}`;
 }
+
+// v7: the Guard checkpoint and the curfew. At five stars the Guard stops
+// chasing and starts owning the streets: a checkpoint goes up on the
+// plaza avenue — sandbags, a barrier and a searchlight — and every car
+// through it gets stopped, searched, and waved on only if it is not
+// Mara. A curfew toast goes out at 22:00 while the Guard is deployed:
+// the streets empty of pedestrians, the traffic thins, and the city
+// holds its breath until the stars fall.
+
+export function createMilitaryV7(G) {
+  const m7 = {
+    checkpoint: null,
+    checkpointAt: null,
+    curfewAnnouncedDay: -1,
+    stops: 0,
+    escapesThrough: 0,
+    lastStopAt: -999,
+  };
+  // The checkpoint: sandbags, a striped barrier and a searchlight pole.
+  const group = new THREE.Group();
+  const mat = (c, opts = {}) => new THREE.MeshLambertMaterial({ color: c, ...opts });
+  const bagGeo = new THREE.BoxGeometry(1.2, 0.6, 0.8);
+  for (let i = 0; i < 6; i++) {
+    const bag = new THREE.Mesh(bagGeo, mat(0x8a7a5a));
+    bag.position.set(-3 + (i % 3) * 1.3, 0.3 + Math.floor(i / 3) * 0.6, i % 2 ? 1.5 : -1.5);
+    group.add(bag);
+  }
+  const barrier = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 0.3), mat(0xd8d3c0));
+  barrier.position.set(0, 1.1, 0);
+  group.add(barrier);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(6, 0.18, 0.32),
+    new THREE.MeshBasicMaterial({ color: 0xd81a1a }));
+  stripe.position.set(0, 1.35, 0);
+  group.add(stripe);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 8), mat(0x333333));
+  pole.position.set(3.4, 2.5, 0);
+  group.add(pole);
+  const light = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xfff0c0 }));
+  light.position.set(3.4, 5.1, 0);
+  group.add(light);
+  group.position.set(20, 0, 60);
+  group.visible = false;
+  G.scene.add(group);
+  m7.checkpoint = group;
+  m7.checkpointAt = { x: 20, z: 60 };
+  G.militaryV7 = m7;
+  return m7;
+}
+
+export function updateMilitaryV7(G, dt) {
+  const m7 = G.militaryV7;
+  const mil = G.military;
+  if (!m7 || !mil) return;
+  const stars = G.wanted.stars;
+  // The checkpoint goes up at five stars and comes down below three.
+  const want = stars >= 5;
+  if (want !== m7.checkpoint.visible) {
+    m7.checkpoint.visible = want;
+    if (want) G.hud.toast('National Guard checkpoint on the plaza avenue — every car gets stopped.');
+    else G.hud.toast('The Guard checkpoint is coming down. The avenue is yours again.');
+  }
+  if (!want) return;
+  // Driving through the checkpoint in Mara's car: the Guard stops her —
+  // speed is cut and the heat jumps, unless she threads the gap at speed.
+  const p = G.driving ? G.driving.pos : null;
+  if (p && Math.hypot(p.x - m7.checkpointAt.x, p.z - m7.checkpointAt.z) < 6
+    && G.elapsed - m7.lastStopAt > 6) {
+    m7.lastStopAt = G.elapsed;
+    if (Math.abs(G.driving.speed) > 30) {
+      m7.escapesThrough += 1;
+      G.hud.toast('Blew straight through the checkpoint! The Guard is furious.');
+      G.wanted.addHeat(10, 'checkpoint');
+    } else if (G.driving.speed < 12) {
+      m7.stops += 1;
+      G.driving.speed = 0;
+      G.hud.toast('Guard checkpoint: stopped and searched. They let you go — this time.');
+      if (G.wanted) G.wanted.addHeat(5, 'checkpoint');
+    }
+  }
+  // Curfew: at 22:00 with the Guard out, the streets empty.
+  const day = Math.floor(G.clockMinutes / (24 * 60));
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  if (mins >= 22 * 60 && mins < 22 * 60 + 2 && m7.curfewAnnouncedDay !== day) {
+    m7.curfewAnnouncedDay = day;
+    G.hud.toast('CURFEW: the Guard orders everyone indoors. The streets are empty tonight.');
+  }
+}
+
+export function militaryV7Summary(G) {
+  const m7 = G.militaryV7;
+  if (!m7) return 'The Guard has not set up a checkpoint.';
+  return `Checkpoint ${m7.checkpoint.visible ? 'UP' : 'down'} · ${m7.stops} stops · ${m7.escapesThrough} blow-throughs.`;
+}

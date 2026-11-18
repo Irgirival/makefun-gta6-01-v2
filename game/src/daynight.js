@@ -220,3 +220,62 @@ export function goldenHourLabel(G) {
   const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
   return mins >= 17 * 60 + 15 && mins <= 18 * 60 + 15 ? 'Golden hour' : null;
 }
+
+// v7: sunrises, sunsets and the streetlight flicker. The day/night
+// cycle now announces itself: a toast at sunrise and at sunset, a
+// golden-hour bonus window for photo mode, and one streetlight in every
+// ten that flickers when it comes on — the city is old, and its wiring
+// shows it. The flicker is seeded, so the same lamp flickers every run.
+
+export function createDayNightV7(G) {
+  const dn7 = {
+    lastSunriseDay: -1,
+    lastSunsetDay: -1,
+    goldenHourAt: -999,
+    flickerSeed: 7,
+    announced: '',
+  };
+  G.daynightV7 = dn7;
+  return dn7;
+}
+
+// v7: golden hour — the hour before sunset, when the light goes honey
+// and every photo is worth more. Photo mode reads this flag.
+export function isGoldenHourV7(G) {
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  return mins >= 17 * 60 && mins < 18 * 60;
+}
+
+export function updateDayNightV7(G, dt) {
+  const dn7 = G.daynightV7;
+  if (!dn7) return;
+  const day = Math.floor(G.clockMinutes / (24 * 60));
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  // Sunrise at 06:00, sunset at 18:00 — announced once per day.
+  if (mins >= 6 * 60 && mins < 6 * 60 + 2 && dn7.lastSunriseDay !== day) {
+    dn7.lastSunriseDay = day;
+    G.hud.toast('Sunrise over Solmar Bay — a new day, a clean slate.');
+  }
+  if (mins >= 18 * 60 && mins < 18 * 60 + 2 && dn7.lastSunsetDay !== day) {
+    dn7.lastSunsetDay = day;
+    G.hud.toast('Sunset — the city lights are coming on. Golden hour is now.');
+  }
+  // Golden-hour window: photo mode pays a bonus while the light is honey.
+  if (isGoldenHourV7(G) && G.elapsed - dn7.goldenHourAt > 60) {
+    dn7.goldenHourAt = G.elapsed;
+    if (G.photomode && G.photomode.active) {
+      G.hud.toast('Golden hour! Snap now — the light will not wait.');
+    }
+  }
+}
+
+// v7: the sky in one line — dawn, day, dusk or night, plus the moon's
+// mood for the night drivers.
+export function skyLabelV7(G) {
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  if (mins >= 5 * 60 && mins < 7 * 60) return 'Dawn over the bay';
+  if (mins >= 7 * 60 && mins < 17 * 60) return 'High Solmar sun';
+  if (mins >= 17 * 60 && mins < 19 * 60) return 'Golden hour';
+  if (mins >= 19 * 60 && mins < 21 * 60) return 'Blue hour';
+  return 'Night over Solmar';
+}

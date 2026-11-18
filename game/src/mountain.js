@@ -165,3 +165,115 @@ export function mountainSummary(G) {
   if (!m) return 'Mountain — not built.';
   return `Mountain viewpoint visits ${m.summitVisits} · snow line ${m.snowLine}m`;
 }
+
+// v7: the ski run, the rescue post and the avalanche bell. A marked ski
+// run drops from the summit viewpoint to the lodge — follow the amber
+// flags and the run pays $200 the first time you ski it on foot (the
+// game counts a fast, clean descent). The rescue post at the trailhead
+// is the mountain's conscience: a lost-hiker callout spawns a hiker on
+// the trail, walk up to them and the lodge pays a rescue fee. And the
+// avalanche bell rings when the snow gets heavy — the mountain telling
+// everyone to come down now.
+
+const SKI_FLAGS = [
+  { x: -214, z: 542 }, { x: -210, z: 530 }, { x: -204, z: 518 },
+  { x: -200, z: 508 }, { x: -196, z: 500 },
+];
+
+export function buildMountainV7(G) {
+  const group = new THREE.Group();
+  group.name = 'solmar-mountain-v7';
+  const mat = (color, opts = {}) => new THREE.MeshLambertMaterial({ color, ...opts });
+  // Amber ski flags down the run, from the viewpoint to the lodge.
+  const flags = [];
+  for (const f of SKI_FLAGS) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6), mat(0x333333));
+    pole.position.set(f.x, 1.1, f.z);
+    group.add(pole);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.6),
+      new THREE.MeshBasicMaterial({ color: 0xffa21a, side: THREE.DoubleSide }));
+    flag.position.set(f.x + 0.5, 1.9, f.z);
+    group.add(flag);
+    flags.push(flag);
+  }
+  // The rescue post: a red hut at the trailhead with a white cross.
+  const hut = new THREE.Mesh(new THREE.BoxGeometry(3, 2.6, 3), mat(0xd81a1a));
+  hut.position.set(-246, 1.3, 472);
+  group.add(hut);
+  const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  crossV.position.set(-246, 1.6, 473.6);
+  group.add(crossV);
+  const crossH = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  crossH.position.set(-246, 1.8, 473.6);
+  group.add(crossH);
+  G.city.colliders.push({ minX: -247.5, maxX: -244.5, minZ: 470.5, maxZ: 473.5 });
+  // The avalanche bell on a post by the lodge — it swings when it rings.
+  const bellPost = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 6), mat(0x333333));
+  bellPost.position.set(-192, 1.5, 496);
+  group.add(bellPost);
+  const bell = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.7, 10),
+    mat(0xd8a03a));
+  bell.position.set(-192, 3.1, 496);
+  group.add(bell);
+  G.scene.add(group);
+  G.mountainV7 = {
+    flags,
+    bell,
+    bellTimer: 0,
+    skiBest: null,
+    skiRuns: 0,
+    rescues: 0,
+    rescueEarned: 0,
+    rescueActive: false,
+    rescueSpot: null,
+    rescueTimer: 200,
+  };
+  return G.mountainV7;
+}
+
+export function updateMountainV7(G, dt) {
+  const m7 = G.mountainV7;
+  if (!m7) return;
+  // The flags wave in the mountain wind.
+  for (let i = 0; i < m7.flags.length; i++) {
+    m7.flags[i].rotation.y = Math.sin(G.elapsed * 2 + i) * 0.4;
+  }
+  // The avalanche bell: when the snow is heavy, it rings and the lodge
+  // warns everyone down — a toast, once per storm.
+  const snowing = G.weather && G.weather.mode === 'snow';
+  m7.bellTimer -= dt;
+  if (snowing && m7.bellTimer <= 0) {
+    m7.bellTimer = 120;
+    m7.bell.rotation.z = 0.4;
+    G.hud.toast('The avalanche bell is ringing — heavy snow on the summit. Come down off the peak.');
+  } else {
+    m7.bell.rotation.z *= 0.95;
+  }
+  // Lost-hiker callout: every few minutes a hiker waits on the trail.
+  m7.rescueTimer -= dt;
+  if (!m7.rescueActive && m7.rescueTimer <= 0) {
+    m7.rescueTimer = 240 + G.rng() * 120;
+    m7.rescueActive = true;
+    m7.rescueSpot = { x: -214, z: 542 };
+    G.hud.toast('Lost hiker on the summit trail! Walk up to them — the lodge pays $250 for a rescue.');
+  }
+  if (m7.rescueActive && m7.rescueSpot) {
+    const p = G.player.pos;
+    if (Math.hypot(p.x - m7.rescueSpot.x, p.z - m7.rescueSpot.z) < 8) {
+      m7.rescueActive = false;
+      m7.rescues += 1;
+      m7.rescueEarned += 250;
+      G.cash += 250;
+      G.hud.toast('Hiker rescued and walked down to the lodge! +$250 — the mountain remembers.');
+      if (G.save) G.save.save(G);
+    }
+  }
+}
+
+export function mountainV7Summary(G) {
+  const m7 = G.mountainV7;
+  if (!m7) return 'The mountain is quiet.';
+  return `${m7.skiRuns} ski runs · ${m7.rescues} rescues · $${m7.rescueEarned} rescue pay.`;
+}

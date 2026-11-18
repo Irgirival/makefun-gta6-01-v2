@@ -306,3 +306,95 @@ export function pokerSummary(G) {
   if (!p) return 'Poker — table not built.';
   return `Poker hands ${p.handsPlayed} · won ${p.handsWon} · biggest pot $${p.biggestPot}`;
 }
+
+// v7: the sit-and-go tournament. Four players, one table, rising
+// blinds: every ten hands the blinds double, the short stacks start
+// sweating, and the last player standing takes the $1,000 prize pool.
+// Mara buys in for $100 like always, but the tournament is a different
+// animal — it is not one hand, it is a war of attrition, and the AI
+// regulars play tighter when the blinds climb.
+
+export const TOURNAMENT_BLINDS = [10, 20, 40, 80, 160];
+const TOURNAMENT_PRIZE = 1000;
+const TOURNAMENT_BUYIN = 100;
+
+export function createPokerTournament(G) {
+  const t = {
+    running: false,
+    hands: 0,
+    blindLevel: 0,
+    playersLeft: 4,
+    eliminated: [],
+    prize: TOURNAMENT_PRIZE,
+    bestFinish: null,
+  };
+  G.pokerTournament = t;
+  return t;
+}
+
+export function startTournament(G) {
+  const t = G.pokerTournament;
+  const poker = G.poker;
+  if (!t || !poker) return false;
+  if (t.running) {
+    G.hud.toast('The tournament is already running — finish it first.');
+    return false;
+  }
+  if (G.cash < TOURNAMENT_BUYIN) {
+    G.hud.toast(`The tournament buy-in is $${TOURNAMENT_BUYIN}.`);
+    return false;
+  }
+  G.cash -= TOURNAMENT_BUYIN;
+  t.running = true;
+  t.hands = 0;
+  t.blindLevel = 0;
+  t.playersLeft = 4;
+  t.eliminated = [];
+  poker.chips = 1000;
+  G.hud.toast('Tournament started! Four players, rising blinds, $1,000 to the last one standing.');
+  return true;
+}
+
+// v7: call after every tournament hand — the blinds climb, the table
+// thins, and the prize waits for the last chair.
+export function recordTournamentHand(G, wonHand, eliminatedName) {
+  const t = G.pokerTournament;
+  if (!t || !t.running) return;
+  t.hands += 1;
+  if (eliminatedName) {
+    t.eliminated.push(eliminatedName);
+    t.playersLeft -= 1;
+    G.hud.toast(`${eliminatedName} is out of the tournament! ${t.playersLeft} left.`);
+  }
+  // Blinds double every ten hands — the table gets hungry fast.
+  const level = Math.min(TOURNAMENT_BLINDS.length - 1, Math.floor(t.hands / 10));
+  if (level > t.blindLevel) {
+    t.blindLevel = level;
+    G.hud.toast(`Blinds up! Now ${TOURNAMENT_BLINDS[level]}/${TOURNAMENT_BLINDS[level] * 2} — the short stacks are sweating.`);
+  }
+  if (t.playersLeft <= 1) {
+    t.running = false;
+    const won = (G.poker && G.poker.chips > 0);
+    if (won) {
+      G.cash += TOURNAMENT_PRIZE;
+      t.bestFinish = 1;
+      G.hud.toast(`TOURNAMENT CHAMPION! Mara takes the $${TOURNAMENT_PRIZE} prize pool!`);
+    } else {
+      t.bestFinish = 4 - t.eliminated.length;
+      G.hud.toast('Tournament over — Mara is out. The regulars will talk about this one.');
+    }
+  }
+}
+
+export function tournamentBlindText(G) {
+  const t = G.pokerTournament;
+  if (!t) return 'No tournament on the books.';
+  const blind = TOURNAMENT_BLINDS[t.blindLevel];
+  return `Blinds ${blind}/${blind * 2} · hand ${t.hands} · ${t.playersLeft} players left.`;
+}
+
+export function pokerTournamentSummary(G) {
+  const t = G.pokerTournament;
+  if (!t) return 'No tournament played yet.';
+  return `${t.running ? 'Tournament running' : 'No tournament running'} · best finish ${t.bestFinish === null ? '—' : '#' + t.bestFinish} · ${t.eliminated.length} players eliminated.`;
+}

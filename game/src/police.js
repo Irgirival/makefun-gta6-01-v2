@@ -267,3 +267,139 @@ export function policeSurge(G) {
   G.audio.sirenBurst();
   return spawned;
 }
+
+// v7: PIT maneuvers and the K9 unit. At two stars the cruisers stop
+// just chasing and start hunting: the nearest cruiser pulls alongside
+// Mara's car and swings into her rear quarter — a PIT — spinning her
+// car and bleeding her speed. At four stars the foot chase gets a dog:
+// a K9 unit that runs faster than any officer, holds Mara down for a
+// second and a half, and ends the chase with a BUSTED if she cannot
+// break free by sprinting clear.
+
+export function createK9Unit(G) {
+  const k9 = {
+    active: false,
+    dog: null,
+    holdTimer: 0,
+    captures: 0,
+    pitTimer: 0,
+    pitAttempts: 0,
+    pitHits: 0,
+    lastPitAt: -999,
+  };
+  // The dog: a dark, low, fast shape with a red collar and a nose for
+  // trouble. It is a scene object first, a game mechanic second.
+  const group = new THREE.Group();
+  const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.35), mat(0x2a2018));
+  body.position.y = 0.55;
+  group.add(body);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.3), mat(0x2a2018));
+  head.position.set(0.55, 0.75, 0);
+  group.add(head);
+  const earL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.12), mat(0x1a1410));
+  earL.position.set(0.5, 0.95, 0.12);
+  group.add(earL);
+  const earR = earL.clone();
+  earR.position.z = -0.12;
+  group.add(earR);
+  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.38),
+    new THREE.MeshBasicMaterial({ color: 0xd81a1a }));
+  collar.position.set(0.32, 0.72, 0);
+  group.add(collar);
+  const legGeo = new THREE.BoxGeometry(0.12, 0.5, 0.12);
+  const legs = [];
+  for (const [lx, lz] of [[0.32, 0.12], [0.32, -0.12], [-0.32, 0.12], [-0.32, -0.12]]) {
+    const leg = new THREE.Mesh(legGeo, mat(0x1a1410));
+    leg.position.set(lx, 0.25, lz);
+    group.add(leg);
+    legs.push(leg);
+  }
+  group.visible = false;
+  G.scene.add(group);
+  k9.dog = { group, legs, pos: new THREE.Vector3(0, 0, 0), heading: 0, legPhase: 0 };
+  G.k9 = k9;
+  return k9;
+}
+
+function playerPosV7(G) {
+  return G.driving ? G.driving.pos : G.player.pos;
+}
+
+export function updatePoliceV7(G, dt) {
+  const k9 = G.k9;
+  if (!k9) return;
+  const stars = G.wanted.stars;
+  const p = playerPosV7(G);
+
+  // PIT maneuver: only while Mara drives, only at 2+ stars, once per 14 s.
+  if (G.driving && stars >= (G.config.pitMinStars || 2)
+    && G.elapsed - k9.lastPitAt > (G.config.pitCooldown || 14)) {
+    let best = null;
+    let bestD = Infinity;
+    for (const car of G.policeCars) {
+      if (!car || car.wrecked) continue;
+      const d = Math.hypot(car.pos.x - p.x, car.pos.z - p.z);
+      if (d < bestD) { bestD = d; best = car; }
+    }
+    if (best && bestD < 26) {
+      k9.lastPitAt = G.elapsed;
+      k9.pitAttempts += 1;
+      // The cruiser swings into Mara's rear quarter: her speed drops by
+      // a third and her heading is shoved sideways — a spin, not a crash.
+      G.driving.speed *= 0.66;
+      G.driving.heading += (G.rng() < 0.5 ? 1 : -1) * 0.55;
+      k9.pitHits += 1;
+      G.hud.toast('PIT maneuver! The cruiser spun you — get your speed back!');
+      if (G.audio.crash) G.audio.crash();
+      if (G.vehicles && typeof addWear === 'function') { /* wear lives in vehicles.js */ }
+    }
+  }
+
+  // K9: joins at 4+ stars while Mara is on foot, leaves below 3.
+  const dog = k9.dog;
+  if (stars >= (G.config.k9MinStars || 4) && !G.driving && G.mode === 'playing') {
+    if (!k9.active) {
+      k9.active = true;
+      dog.group.visible = true;
+      dog.pos.set(p.x + 30, 0, p.z + 30);
+      G.hud.toast('K9 unit released! The dog is faster than you — keep moving!');
+    }
+    const d = Math.hypot(p.x - dog.pos.x, p.z - dog.pos.z);
+    const speed = G.config.k9Speed || 13;
+    const dirX = (p.x - dog.pos.x) / (d || 1);
+    const dirZ = (p.z - dog.pos.z) / (d || 1);
+    dog.pos.x += dirX * speed * dt;
+    dog.pos.z += dirZ * speed * dt;
+    dog.heading = Math.atan2(dirX, dirZ);
+    dog.group.position.copy(dog.pos);
+    dog.group.rotation.y = dog.heading;
+    dog.legPhase += dt * 14;
+    for (let i = 0; i < dog.legs.length; i++) {
+      dog.legs[i].rotation.x = Math.sin(dog.legPhase + (i % 2 ? Math.PI : 0)) * 0.6;
+    }
+    if (d < 1.6) {
+      k9.holdTimer += dt;
+      if (k9.holdTimer > (G.config.k9CaptureTime || 1.4)) {
+        k9.captures += 1;
+        k9.active = false;
+        dog.group.visible = false;
+        k9.holdTimer = 0;
+        G.gameOver('busted', 'The K9 unit pinned you down.');
+      }
+    } else {
+      k9.holdTimer = Math.max(0, k9.holdTimer - dt * 2);
+    }
+  } else if (k9.active && (stars < 3 || G.driving)) {
+    k9.active = false;
+    k9.holdTimer = 0;
+    dog.group.visible = false;
+    G.hud.toast('The K9 unit lost the trail.');
+  }
+}
+
+export function policeV7Summary(G) {
+  const k9 = G.k9;
+  if (!k9) return 'The PD is quiet.';
+  return `${k9.pitAttempts} PIT attempts · ${k9.pitHits} PIT hits · ${k9.captures} K9 captures.`;
+}

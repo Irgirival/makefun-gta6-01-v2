@@ -96,6 +96,11 @@
   #endTitle.wasted { color: #ff4d4d; }
   #endTitle.done { color: #7dff9a; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* ---------- v7 ---------- */
+  #v7note { font-size: 13px; color: #ffd23e; margin-top: 12px; line-height: 1.6; max-width: 460px; }
+  #v7note b { color: #fff; }
+  #seasonBadge { display: inline-block; margin-top: 10px; padding: 4px 10px; border: 1px solid #ffd23e;
+    border-radius: 20px; font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #ffd23e; }
 </style>
 </head>
 <body>
@@ -142,7 +147,13 @@
     VIP jobs and parcel runs; Texas Hold'em poker at the Verde; the National Guard at
     five stars; a five-car collection with a garage showroom; a snow-capped mountain
     with a ski lodge; a charter flight, a harbor ferry, a drivable fire engine and
-    city bus; and a fourth radio station that follows your rap sheet.</p>
+    city bus; and a fourth radio station that follows your rap sheet.
+    New in v7: Missions 13–14 — the Harbor Ledger and the Queen of the Bay; Solmar
+    Express parcel runs that pay more the longer your streak holds; race season 2
+    with the Mountain Pass and the Night Market Dash; PIT maneuvers and a K9 unit
+    at four stars; the Bay Regatta; fire callouts for the engine; a unicorn-car
+    hunt; fog banks and hail; a fortune teller in Old Town; and a dodge roll for
+    the sprint (Shift + Space).</p>
   <div class="btns">
     <button id="btnNew">NEW GAME</button>
     <button id="btnContinue" class="ghost hidden">CONTINUE</button>
@@ -156,6 +167,7 @@
     <b>U / I / O</b> garage paint, engine, armor &nbsp;·&nbsp; <b>Y</b> neon underglow &nbsp;·&nbsp; <b>H</b> suspension &nbsp;·&nbsp; <b>K</b> nitro tank &nbsp;·&nbsp; <b>Shift</b> nitro (engine Lv1+)<br>
     <b>B</b> photo mode (Q filter · R hide HUD · Space snap) &nbsp;·&nbsp; <b>L</b> safehouse wardrobe &amp; weapon locker<br>
     <b>X</b> VIP / parcel job (rating pays) &nbsp;·&nbsp; <b>Z</b> Verde poker table ($100 buy-in) &nbsp;·&nbsp; <b>N</b> time of day in photo mode<br>
+    <b>7</b> Solmar Express delivery board &nbsp;·&nbsp; <b>Shift + Space</b> dodge roll (on a road) &nbsp;·&nbsp; walk into a blue depot crate to take a parcel run<br>
     safehouse clears the heat &nbsp;·&nbsp; Isla Verde across the bridge &nbsp;·&nbsp; harbor tour buoys pay $500, marina tour $750<br>
     pause for Mara's career stats &nbsp;·&nbsp; Isla Verde GP is the richest race circuit<br>
     the Verde Casino now runs roulette and blackjack on the table floor &nbsp;·&nbsp; night races pay 1.5x
@@ -167,7 +179,11 @@
 <div id="pause" class="menu hidden">
   <h1 style="font-size:44px">PAUSED</h1>
   <p class="sub">Solmar City waits for no one — except right now.</p>
+  <div id="seasonBadge">SEASON 2 · MOUNTAIN PASS &amp; NIGHT MARKET DASH</div>
   <div id="statsPanel" class="statsPanel"></div>
+  <p id="v7note"><b>v7 — what is new:</b> Missions 13–14 · Solmar Express parcels (key <b>7</b>) ·
+    K9 unit &amp; PIT maneuvers · Bay Regatta · fire callouts · unicorn cars ·
+    fog &amp; hail · dodge roll (<b>Shift + Space</b>) · shotgun at the locker.</p>
   <div class="btns">
     <button id="btnResume">RESUME</button>
     <button id="btnCallCar" class="ghost">CALL COLLECTED CAR</button>

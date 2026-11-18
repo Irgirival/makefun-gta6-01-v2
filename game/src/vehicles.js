@@ -412,3 +412,92 @@ export function updateDriveCamera(G, dt) {
   cam.position.z += (tz - cam.position.z) * Math.min(1, dt * 5);
   cam.lookAt(v.pos.x + Math.sin(v.heading) * 6, 1.2, v.pos.z + Math.cos(v.heading) * 6);
 }
+
+// v7: wear and tear, the food truck and the Sun Taxi Mk II. Every car
+// now carries a wear meter: hard hits add wear, wear over 60 makes the
+// engine smoke and cough, wear over 85 caps the top speed until Vic
+// patches it up at the garage. The food truck is a slow, wide, beloved
+// steal — it smells like tacos and it handles like a fridge — and the
+// Mk II taxi is the fastest cab in Solmar, for drivers who bill by the
+// minute and drive like it.
+
+VEHICLE_TYPES.foodtruck = {
+  name: 'Solmar Food Truck', topSpeed: 24, accel: 14, turn: 1.2,
+  colors: [0xffd23e, 0x2aff8a, 0xff5a2a],
+};
+VEHICLE_TYPES.taxi2 = {
+  name: 'Sun Taxi Mk II', topSpeed: 38, accel: 26, turn: 2.0,
+  colors: [0xffc21a, 0x1a1a22],
+};
+
+export function spawnV7Vehicles(G) {
+  // The food truck parks by the harbor gate food-truck court; the Mk II
+  // taxi waits outside the plaza hotel for its first fare of the day.
+  const truck = createVehicle(G, 'foodtruck', 300, 44, Math.PI / 2, { parked: true, color: 0xffd23e });
+  truck.name = 'Taco Truck';
+  const cab = createVehicle(G, 'taxi2', 28, 66, 0, { parked: true, color: 0xffc21a });
+  cab.name = 'Sun Taxi Mk II';
+  G.v7vehicles = { truck, cab };
+  return G.v7vehicles;
+}
+
+// v7: wear — call it whenever a car takes a hard hit. Wear is per car,
+// persists on the car, and shows as smoke once the engine is tired.
+export function addWear(G, v, amount) {
+  if (!v) return 0;
+  v.wear = Math.min(100, (v.wear || 0) + amount);
+  if (v.wear >= 60 && !v.smoking) {
+    v.smoking = true;
+    G.hud.toast(`The ${v.spec ? v.spec.name : 'car'} is smoking — Vic can patch it at the garage.`);
+  }
+  return v.wear;
+}
+
+export function repairWear(G, v) {
+  if (!v) return;
+  v.wear = 0;
+  v.smoking = false;
+}
+
+// v7: a tired engine coughs — top speed falls with wear, and a smoking
+// car leaves a little grey puff behind it every second.
+export function updateVehicleWear(G, dt) {
+  for (const v of G.vehicles) {
+    if (!v || !v.wear) continue;
+    if (v.wear >= 85) v.speed = Math.min(v.speed, (v.spec.topSpeed || 30) * 0.55);
+    else if (v.wear >= 60) v.speed = Math.min(v.speed, (v.spec.topSpeed || 30) * 0.8);
+    if (v.smoking) {
+      v.smokeTimer = (v.smokeTimer || 0) - dt;
+      if (v.smokeTimer <= 0) {
+        v.smokeTimer = 1;
+        if (v.group && v.group.position) {
+          // A puff is a cheap grey sphere that fades — the mesh pool is
+          // small because each puff is removed after a second.
+          const puff = new THREE.Mesh(new THREE.SphereGeometry(0.5, 6, 5),
+            new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 }));
+          puff.position.set(v.pos.x, 1.6, v.pos.z);
+          G.scene.add(puff);
+          v.puffs = v.puffs || [];
+          v.puffs.push({ mesh: puff, life: 1 });
+        }
+      }
+    }
+    if (v.puffs) {
+      for (const puff of v.puffs) {
+        puff.life -= dt;
+        puff.mesh.material.opacity = Math.max(0, puff.life * 0.5);
+        puff.mesh.position.y += dt * 1.5;
+        puff.mesh.scale.multiplyScalar(1 + dt * 0.8);
+      }
+      const alive = v.puffs.filter((p) => p.life > 0);
+      for (const p of v.puffs) if (p.life <= 0) G.scene.remove(p.mesh);
+      v.puffs = alive;
+    }
+  }
+}
+
+export function vehicleV7Summary(G) {
+  const worn = G.vehicles.filter((v) => (v.wear || 0) >= 60).length;
+  const total = G.vehicles.length;
+  return `${total} cars on the road · ${worn} smoking · food truck and Mk II taxi parked and waiting.`;
+}

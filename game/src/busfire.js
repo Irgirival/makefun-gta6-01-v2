@@ -135,3 +135,106 @@ export function busfireSummary(G) {
   if (!s) return 'Bus & fire — depots not built.';
   return `Bus fares ${s.fares} riders · $${s.fareEarned} · hydrants popped ${s.hydrantHits}`;
 }
+
+// v7: fire callouts — the city catches fire, and the fire engine is the
+// answer. Every couple of minutes a building throws a smoke column
+// somewhere in Solmar; drive the engine within range and the crew
+// knocks the fire down, the smoke clears, and the city pays a callout
+// fee. Three callouts in one shift and the station captain starts
+// trusting Mara with the big ones — a warehouse blaze that pays triple.
+
+export const FIRE_SPOTS = [
+  { x: 60, z: -20, name: 'the downtown tower' },
+  { x: 140, z: 60, name: 'the plaza hotel' },
+  { x: -100, z: 60, name: 'the westside flats' },
+  { x: 220, z: 60, name: 'the harbor gate offices' },
+  { x: -20, z: -180, name: 'the uptown clinic' },
+  { x: 260, z: -212, name: 'the Old Town market' },
+];
+
+const CALLOUT_PAY = 300;
+const BIG_FIRE_PAY = 900;
+
+export function createFireCallouts(G) {
+  const fc = {
+    active: false,
+    spot: null,
+    smoke: null,
+    timer: 90 + G.rng() * 60,
+    callouts: 0,
+    earned: 0,
+    bigFires: 0,
+    shiftStreak: 0,
+  };
+  G.fireCallouts = fc;
+  return fc;
+}
+
+function buildSmoke(G, x, z) {
+  const group = new THREE.Group();
+  const puffs = [];
+  for (let i = 0; i < 5; i++) {
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(1.6 + i * 0.5, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.55 }));
+    puff.position.set((G.rng() - 0.5) * 2, 4 + i * 2.2, (G.rng() - 0.5) * 2);
+    group.add(puff);
+    puffs.push(puff);
+  }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.6, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
+  flame.position.y = 1.3;
+  group.add(flame);
+  group.position.set(x, 0, z);
+  G.scene.add(group);
+  return { group, puffs, flame };
+}
+
+export function updateFireCallouts(G, dt) {
+  const fc = G.fireCallouts;
+  if (!fc) return;
+  if (!fc.active) {
+    fc.timer -= dt;
+    if (fc.timer <= 0) {
+      fc.timer = 120 + G.rng() * 90;
+      const spot = FIRE_SPOTS[Math.floor(G.rng() * FIRE_SPOTS.length)];
+      const big = fc.shiftStreak >= 3 && G.rng() < 0.4;
+      fc.active = true;
+      fc.spot = spot;
+      fc.big = big;
+      fc.smoke = buildSmoke(G, spot.x, spot.z);
+      G.hud.toast(big
+        ? `BIG FIRE at ${spot.name}! Warehouse blaze — the engine is needed, $900 if you knock it down.`
+        : `Fire callout at ${spot.name}! Bring the fire engine — $300 to knock it down.`);
+    }
+    return;
+  }
+  // The smoke billows while the fire burns.
+  const t = G.elapsed;
+  for (let i = 0; i < fc.smoke.puffs.length; i++) {
+    const puff = fc.smoke.puffs[i];
+    puff.position.y = 4 + i * 2.2 + Math.sin(t * 1.5 + i) * 0.4;
+    puff.material.opacity = 0.4 + Math.sin(t * 2 + i * 2) * 0.15;
+  }
+  fc.smoke.flame.scale.y = 1 + Math.sin(t * 6) * 0.25;
+  // Extinguish: the fire engine within 14 units, engine running (driving).
+  const truck = G.busfire && G.busfire.truck;
+  if (G.driving === truck && Math.hypot(G.driving.pos.x - fc.spot.x, G.driving.pos.z - fc.spot.z) < 14) {
+    fc.active = false;
+    G.scene.remove(fc.smoke.group);
+    fc.smoke = null;
+    const pay = fc.big ? BIG_FIRE_PAY : CALLOUT_PAY;
+    G.cash += pay;
+    fc.callouts += 1;
+    fc.earned += pay;
+    fc.shiftStreak += 1;
+    if (fc.big) fc.bigFires += 1;
+    G.hud.toast(`Fire out at ${fc.spot.name}! +$${pay} — the station captain salutes you.`);
+    if (G.save) G.save.save(G);
+  }
+}
+
+export function fireCalloutSummary(G) {
+  const fc = G.fireCallouts;
+  if (!fc) return 'No fire station on the radio.';
+  return `${fc.callouts} fires out · $${fc.earned} earned · ${fc.bigFires} warehouse blazes · streak ${fc.shiftStreak}.`;
+}

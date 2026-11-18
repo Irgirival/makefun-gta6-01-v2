@@ -45,6 +45,7 @@ export function createInput(canvas) {
     KeyZ: 'poker',
     KeyT: 'weather',
     KeyM: 'mute',
+    Digit7: 'delivery',   // v7: Solmar Express job board
     KeyP: 'pause', Escape: 'pause',
   };
 
@@ -124,4 +125,37 @@ export function createInput(canvas) {
   };
 
   return input;
+}
+
+// v7: the binding table — the pause menu's help line and any headless
+// test that wants to press the right key without guessing. (The Digit7
+// delivery binding itself lives in the KEYMAP inside createInput.)
+export const V7_BINDINGS = [
+  ['W A S D', 'Move / drive'],
+  ['Mouse', 'Look around'],
+  ['Space', 'Jump (sprint + jump = dodge roll)'],
+  ['Shift', 'Sprint / nitro'],
+  ['E', 'Enter or exit a car, boat, heli or jet ski'],
+  ['F', 'Punch'],
+  ['Q', 'Switch weapon'],
+  ['R', 'Reload'],
+  ['J', 'Taxi job'],
+  ['C', 'Courier run'],
+  ['G', 'Street race'],
+  ['U / I / O', 'Garage: paint / engine / armor'],
+  ['H / K', 'Garage: suspension / nitro tank'],
+  ['N', 'Cycle radio'],
+  ['V', 'Vigilante contract'],
+  ['B', 'Photo mode'],
+  ['L', 'Safehouse locker'],
+  ['X', 'VIP / parcel job'],
+  ['Z', 'Poker table'],
+  ['T', 'Cycle weather'],
+  ['M', 'Mute'],
+  ['7', 'Delivery job board'],
+  ['P / Esc', 'Pause'],
+];
+
+export function bindingHelpText() {
+  return V7_BINDINGS.map(([k, what]) => `${k} — ${what}`).join('\n');
 }

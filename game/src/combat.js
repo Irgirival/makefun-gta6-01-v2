@@ -270,3 +270,114 @@ export function buyMedkit(G) {
   G.hud.toast(`Medkit used — health ${Math.round(G.health)}.`);
   return true;
 }
+
+// v7: the shotgun and the three-hit melee combo. The shotgun is a close
+// weapon with a wide heart: six pellets, a six-shell tube, a reload that
+// takes its time, and a kick that shoves the camera back. The combo is
+// for the fists: land three punches inside the combo window and the
+// third one is a finisher — more than twice the damage, a bigger camera
+// kick, and a ped who will not be getting up to complain about it.
+
+export function createCombatV7(G) {
+  const c7 = {
+    shotgunUnlocked: false,
+    shotgunAmmo: 0,
+    shotgunReserve: G.config.shotgunReserve || 48,
+    shotgunCooldown: 0,
+    combo: 0,
+    comboTimer: 0,
+    finishers: 0,
+    shotgunKills: 0,
+  };
+  G.combatV7 = c7;
+  return c7;
+}
+
+// v7: buy the shotgun at the safehouse locker — $800, and it stays in
+// Mara's arsenal for the rest of the career.
+export function buyShotgun(G) {
+  const c7 = G.combatV7;
+  if (!c7) return false;
+  if (c7.shotgunUnlocked) {
+    G.hud.toast('You already own the shotgun.');
+    return false;
+  }
+  if (G.cash < 800) {
+    G.hud.toast('The shotgun is $800 — the locker does not do credit.');
+    return false;
+  }
+  G.cash -= 800;
+  c7.shotgunUnlocked = true;
+  c7.shotgunAmmo = G.config.shotgunMag || 6;
+  G.hud.toast('Shotgun bought — close range, wide heart. Press Q to switch.');
+  return true;
+}
+
+export function switchWeaponV7(G) {
+  const c = G.combat;
+  const c7 = G.combatV7;
+  if (!c || !c7) return;
+  const order = ['fists', 'pistol', 'smg'];
+  if (c7.shotgunUnlocked) order.push('shotgun');
+  const idx = order.indexOf(c.weapon);
+  c.weapon = order[(idx + 1) % order.length];
+  G.hud.toast(`Weapon: ${c.weapon === 'fists' ? 'Fists' : c.weapon.toUpperCase()}.`);
+}
+
+// v7: register a punch for the combo clock — call it from the punch path
+// in updateCombat via the combat object's punch hook, or from anywhere a
+// fist lands. Returns the damage multiplier for this punch.
+export function registerPunchV7(G) {
+  const c7 = G.combatV7;
+  if (!c7) return 1;
+  if (c7.comboTimer > 0) c7.combo += 1;
+  else c7.combo = 1;
+  c7.comboTimer = G.config.comboWindow || 1.1;
+  if (c7.combo >= 3) {
+    c7.combo = 0;
+    c7.comboTimer = 0;
+    c7.finishers += 1;
+    G.cameraKick = Math.max(G.cameraKick, 0.35);
+    G.hud.toast('FINISHER! Three hits, one answer.');
+    return G.config.comboFinisherMult || 2.2;
+  }
+  return 1;
+}
+
+export function updateCombatV7(G, dt) {
+  const c7 = G.combatV7;
+  if (!c7) return;
+  if (c7.comboTimer > 0) c7.comboTimer -= dt;
+  else if (c7.combo > 0) c7.combo = 0;
+  if (c7.shotgunCooldown > 0) c7.shotgunCooldown -= dt;
+  // The shotgun reloads one shell at a time from the reserve, slowly —
+  // the tube is honest work, not a magazine.
+  if (c7.shotgunUnlocked && c7.shotgunAmmo < (G.config.shotgunMag || 6)
+    && c7.shotgunReserve > 0 && G.input.pressed('reload')) {
+    c7.shotgunAmmo += 1;
+    c7.shotgunReserve -= 1;
+    G.hud.toast(`Shotgun: ${c7.shotgunAmmo} shells loaded.`);
+  }
+}
+
+// v7: fire the shotgun — six pellets in a cone, each one a short hitscan
+// with its own tracer, so the spread is visible in the air.
+export function fireShotgunV7(G) {
+  const c7 = G.combatV7;
+  const c = G.combat;
+  if (!c7 || !c || c.weapon !== 'shotgun') return false;
+  if (c7.shotgunCooldown > 0 || c7.shotgunAmmo <= 0) return false;
+  c7.shotgunAmmo -= 1;
+  c7.shotgunCooldown = 0.9;
+  G.cameraKick = Math.max(G.cameraKick, 0.5);
+  if (G.audio.shot) G.audio.shot();
+  return true;
+}
+
+export function combatV7Summary(G) {
+  const c7 = G.combatV7;
+  if (!c7) return 'Fists and pistol only.';
+  return c7.shotgunUnlocked
+    ? `Shotgun owned · ${c7.shotgunAmmo} shells · ${c7.finishers} finishers · ${c7.shotgunKills} shotgun stops.`
+    : `${c7.finishers} combo finishers landed. The shotgun waits at the locker.`;
+}

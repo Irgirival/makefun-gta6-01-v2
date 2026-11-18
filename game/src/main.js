@@ -2,7 +2,10 @@
 // system together (city, player, vehicles, traffic, pedestrians, police,
 // missions, combat, HUD, minimap, audio, saves, screenshot poses), runs the
 // frame loop, and owns the game state machine: title -> playing -> paused /
-// busted / wasted / mission failed / story complete.
+// busted / wasted / mission failed / story complete. v7 adds Missions
+// 13-14, Solmar Express parcel runs, race season 2, the K9 unit, PIT
+// maneuvers, the Bay Regatta, fire callouts, the unicorn hunt, fog banks
+// and hail, the night market's second row, and the photo walk.
 
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
@@ -48,7 +51,43 @@ import { createVigilante, updateVigilante } from './vigilante.js';
 import { registerFinale, updateFinale, EPILOGUE_TEXT } from './finale.js';
 // v3: nitro boost for Mara's tuned car, and the harbor boat tour.
 import { createNitro, updateNitro, refillNitro } from './nitro.js';
-import { createStats, updateStats } from './stats.js';
+import { createStats, updateStats, renderV7Stats } from './stats.js';
+import { registerMissions13And14, updateMissions4 } from './missions4.js';
+import { createDeliveryJobs, updateDeliveryJobs, deliverySummary, deliveryRank } from './deliveryjobs.js';
+import { buildV7District, updateV7District } from './city.js';
+import { updatePlayerV7 } from './player.js';
+import { spawnV7Vehicles, updateVehicleWear } from './vehicles.js';
+import { createTrafficV7, updateTrafficV7 } from './traffic.js';
+import { createK9Unit, updatePoliceV7 } from './police.js';
+import { createCombatV7, updateCombatV7 } from './combat.js';
+import { createCourierRush, createStuntSeason } from './missions2.js';
+import { createMissionRecords } from './missions3.js';
+import { buildAirportV7, updateAirportV7 } from './airport.js';
+import { playCrashV7, playHonkV7, playBellV7, playBarkV7, playCashV7, playStingV7, playCheerV7 } from './audio.js';
+import { createRegatta, updateRegatta } from './boats.js';
+import { createFireCallouts, updateFireCallouts } from './busfire.js';
+import { createUnicornHunt, updateUnicornHunt, checkUnicornFind } from './carcollection.js';
+import { spawnPerformersV7, updatePerformersV7 } from './crowds.js';
+import { createDayNightV7, updateDayNightV7 } from './daynight.js';
+import { createGarageV7 } from './garage.js';
+import { createHeliV7, updateHeliV7 } from './helicopter.js';
+import { buildIslaV7, updateIslaV7 } from './islaverde.js';
+import { createMilitaryV7, updateMilitaryV7 } from './military.js';
+import { drawMinimapV7 } from './minimap.js';
+import { spawnStuntBike, createBikeStunts, updateBikeStuntsV7 } from './motorcycle.js';
+import { buildMountainV7, updateMountainV7 } from './mountain.js';
+import { createNitroV7 } from './nitro.js';
+import { buildOldTownV7, updateOldTownV7 } from './oldtown.js';
+import { spawnPedGroup, updatePedGroupsV7, updatePedReactionsV7 } from './pedestrians.js';
+import { createPhotoChallenges } from './photomode.js';
+import { createPhotoWalk } from './photomode2.js';
+import { createPokerTournament } from './poker.js';
+import { createRaceSeason2 } from './races.js';
+import { createSafehouseV7 } from './safehouse.js';
+import { applyShotSeason } from './shots.js';
+import { createWeatherV7, updateWeatherV7 } from './weather.js';
+import { createVipJobV7 } from './vipjob.js';
+import { createVigilanteV7 } from './vigilante.js';
 // v4 systems: the heist arc (Missions 8-9), flyable helicopters, the
 // street-race league, jet skis, the Verde Casino, street events and
 // fog + thunderstorms.
@@ -214,6 +253,54 @@ spawnMarketShoppers(G);
 spawnOldTownTourists(G);
 createOldTownSafehouse(G);
 
+// v7 systems, created last so the v1–v6 placements above keep their seeds.
+buildV7District(G);
+registerMissions13And14(G);
+createDeliveryJobs(G);
+buildAirportV7(G);
+createRegatta(G);
+createFireCallouts(G);
+createUnicornHunt(G);
+spawnPerformersV7(G);
+createDayNightV7(G);
+createGarageV7(G);
+createHeliV7(G);
+buildIslaV7(G);
+createMilitaryV7(G);
+spawnStuntBike(G);
+createBikeStunts(G);
+buildMountainV7(G);
+createNitroV7(G);
+buildOldTownV7(G);
+createPhotoChallenges(G);
+createPhotoWalk(G);
+createPokerTournament(G);
+createRaceSeason2(G);
+createSafehouseV7(G);
+createTrafficV7(G);
+createK9Unit(G);
+createCombatV7(G);
+createCourierRush(G);
+createStuntSeason(G);
+createMissionRecords(G);
+createWeatherV7(G);
+createVipJobV7(G);
+createVigilanteV7(G);
+spawnV7Vehicles(G);
+// v7: walking groups — three groups of friends strolling the plaza and
+// the beach road, so the streets feel lived-in from the first frame.
+spawnPedGroup(G, 20, 40, 3);
+spawnPedGroup(G, -100, 220, 2);
+spawnPedGroup(G, 140, 60, 3);
+// v7: the synthesized sound effects the new systems call by name.
+G.audio.crash = () => playCrashV7(G);
+G.audio.honk = () => playHonkV7(G);
+G.audio.bell = () => playBellV7(G);
+G.audio.bark = () => playBarkV7(G);
+G.audio.cash = () => playCashV7(G);
+G.audio.sting = () => playStingV7(G);
+G.audio.cheer = () => playCheerV7(G);
+
 // Restore a save, or start fresh at the plaza.
 if (G.saveData) {
   G.cash = G.saveData.cash ?? CONFIG.startCash;
@@ -302,6 +389,28 @@ if (G.saveData) {
     fareEarned: G.saveData.busfire.fareEarned ?? 0,
     hydrantHits: G.saveData.busfire.hydrantHits ?? 0,
   });
+  // v7: restore the delivery career, season 2, the K9 record and the
+  // mission replays with the rest of the save.
+  if (G.saveData.v7) {
+    if (G.saveData.v7.deliveries && G.delivery) Object.assign(G.delivery, {
+      done: G.saveData.v7.deliveries.done ?? 0,
+      earned: G.saveData.v7.deliveries.earned ?? 0,
+      bestStreak: G.saveData.v7.deliveries.bestStreak ?? 0,
+    });
+    if (G.saveData.v7.season2 && G.season2) Object.assign(G.season2, {
+      points: G.saveData.v7.season2.points ?? 0,
+      rounds: G.saveData.v7.season2.rounds ?? 0,
+      wins: G.saveData.v7.season2.wins ?? 0,
+      champion: G.saveData.v7.season2.champion ?? false,
+    });
+    if (G.saveData.v7.k9 && G.k9) Object.assign(G.k9, {
+      captures: G.saveData.v7.k9.captures ?? 0,
+      pitHits: G.saveData.v7.k9.pitHits ?? 0,
+    });
+    if (G.saveData.v7.missions4 && G.missions4) {
+      G.missions4.replays = G.saveData.v7.missions4.replays ?? 0;
+    }
+  }
   if (G.saveData.pos) {
     G.player.pos.set(G.saveData.pos.x, 0, G.saveData.pos.z);
     G.player.group.position.copy(G.player.pos);
@@ -373,6 +482,12 @@ function startGame(fresh) {
     if (G.military) { G.military.apcSpawns = 0; G.military.escapes = 0; }
     if (G.mountain) G.mountain.summitVisits = 0;
     if (G.busfire) { G.busfire.fares = 0; G.busfire.fareEarned = 0; G.busfire.hydrantHits = 0; }
+    // v7: a fresh start clears the new career too — deliveries, season 2,
+    // the K9 record and the mission replays.
+    if (G.delivery) { G.delivery.done = 0; G.delivery.earned = 0; G.delivery.streak = 0; G.delivery.bestStreak = 0; }
+    if (G.season2) { G.season2.points = 0; G.season2.rounds = 0; G.season2.wins = 0; G.season2.champion = false; }
+    if (G.k9) { G.k9.captures = 0; G.k9.pitHits = 0; G.k9.pitAttempts = 0; }
+    if (G.missions4) G.missions4.replays = 0;
   }
   titleEl.classList.add('hidden');
   pauseEl.classList.add('hidden');
@@ -521,6 +636,29 @@ function stepWorld(dt) {
   updateJetSkis(G, dt);
   updateStreetEvents(G, dt);
   updateStorm(G, dt);
+  // v7 systems ride the same fixed step as the rest of the living city.
+  updateMissions4(G, dt);
+  updateDeliveryJobs(G, dt);
+  updateV7District(G, dt);
+  updateTrafficV7(G, dt);
+  updatePoliceV7(G, dt);
+  updateCombatV7(G, dt);
+  updateAirportV7(G, dt);
+  updateRegatta(G, dt);
+  updateFireCallouts(G, dt);
+  updateUnicornHunt(G, dt);
+  updatePerformersV7(G, dt);
+  updateDayNightV7(G, dt);
+  updateHeliV7(G, dt);
+  updateIslaV7(G, dt);
+  updateMilitaryV7(G, dt);
+  updateBikeStuntsV7(G, dt);
+  updateMountainV7(G, dt);
+  updateOldTownV7(G, dt);
+  updatePedGroupsV7(G, dt);
+  updatePedReactionsV7(G, dt);
+  updateWeatherV7(G, dt);
+  updateVehicleWear(G, dt);
 }
 
 function frame() {
@@ -560,7 +698,7 @@ function frame() {
             if (boat) enterBoat(G, boat);
             else {
               const car = nearestEnterableCar(G);
-              if (car) { enterCar(G, car); applyGarageToCar(G, car); registerCollectedCar(G, car); }
+              if (car) { enterCar(G, car); applyGarageToCar(G, car); registerCollectedCar(G, car); checkUnicornFind(G, car); }
               else G.hud.toast('No car close enough — get nearer and press E.');
             }
           }
@@ -575,12 +713,18 @@ function frame() {
         G.mode = 'paused';
         pauseEl.classList.remove('hidden');
         updateStats(G); // the career scorecard is fresh every time you pause
+        renderV7Stats(G); // v7: the second page of the scorecard
         document.exitPointerLock?.();
       }
     }
     if (G.input.pressed('mute')) {
       G.audio.setMuted(!G.audio.muted);
       G.hud.toast(G.audio.muted ? 'Sound muted.' : 'Sound on.');
+    }
+    // v7: the delivery job board — 7 shows the Solmar Express summary
+    // and the dispatcher's trust rank.
+    if (G.input.pressed('delivery') && G.delivery) {
+      G.hud.toast(`${deliverySummary(G)} — Rank: ${deliveryRank(G)}.`);
     }
 
     if (G.boating) {
@@ -602,6 +746,7 @@ function frame() {
       // touches the camera while Mara is behind the lens.
     } else {
       updatePlayer(G, dt);
+      updatePlayerV7(G, dt); // v7: dodge roll, slide and second wind
       G.audio.engineStop();
     }
 
@@ -645,6 +790,7 @@ function frame() {
     if (G.shot) poseShotCamera(G);
     G.hud.update(G, dt);
     G.minimap.draw(G);
+    drawMinimapV7(G); // v7: job blips and the damage compass
 
     // Camera kick from firing.
     if (G.cameraKick > 0) {
@@ -681,6 +827,8 @@ window.__game = G;
 // is wired the same way so the quarter can be verified headlessly.
 if (shotName === 'oldtown') {
   applyShotOldTown(G);
+} else if (shotName === 'season') {
+  applyShotSeason(G);
 } else if (shotName && SHOT_NAMES.includes(shotName)) {
   applyShot(G, shotName);
 } else {

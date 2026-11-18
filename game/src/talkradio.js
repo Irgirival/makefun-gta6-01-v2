@@ -108,3 +108,66 @@ export function talkradioSummary(G) {
   if (!t) return 'Talk radio — off air.';
   return `Talk radio: ${t.reportCount} crime reports · ${t.sportsCount} sports calls`;
 }
+
+// v7: the delivery desk, the season desk and the dog desk — three new
+// line banks for Host Dana, because the city got three new things to
+// talk about. The delivery desk follows the parcel streak, the season
+// desk follows the race table, and the dog desk follows the K9 unit.
+// The bulletin system picks the bank that matches whatever Mara did
+// most recently, so the radio sounds like it is actually watching her.
+
+const DELIVERY_LINES = [
+  'HOST DANA: "Solmar Express has a new name on the board — a courier in a red jacket, and the parcels are arriving early."',
+  'HOST DANA: "Three clean drops in a row, Solmar. The dispatcher is calling her the reliable one. Imagine that."',
+  'HOST DANA: "A fragile box made it across the whole city without a scratch. Somebody out there drives like they care."',
+];
+
+const SEASON_LINES = [
+  'HOST DANA: "Season 2, Solmar! The Mountain Pass is open, the Night Market Dash is lit, and the points table is a fistfight."',
+  'HOST DANA: "Rosa says the new circuits favour the brave. The brave, she says, wear red jackets."',
+  'HOST DANA: "The Verde GP Hour has the season table — and the woman at the top of it is not slowing down."',
+];
+
+const K9_LINES = [
+  'HOST DANA: "The PD has a new officer, Solmar — four legs, no badge, and it runs faster than any cruiser on the force."',
+  'HOST DANA: "Caller says the K9 unit just missed her by a whisker on the beach road. The dog, folks, is not joking."',
+  'HOST DANA: "If you hear barking on the avenue, get out of the way. The dog is working, and the dog is fast."',
+];
+
+const MARKET_LINES = [
+  'HOST DANA: "The Night Market is open and the plaza smells like spice, fish and fresh bread. Go hungry, leave happy."',
+  'HOST DANA: "The fortune teller in Old Town says the city belongs to whoever keeps driving like they mean it. Make of that what you will."',
+  'HOST DANA: "The food trucks at the harbor gate are doing a roaring trade — the taco truck has a line around the block."',
+];
+
+export function talkDeliveryLine(G) {
+  const d = G.delivery;
+  if (!d || d.done === 0) return null;
+  return DELIVERY_LINES[Math.floor(G.rng() * DELIVERY_LINES.length)];
+}
+
+export function talkSeasonLine(G) {
+  const s2 = G.season2;
+  if (!s2 || s2.rounds === 0) return null;
+  return SEASON_LINES[Math.floor(G.rng() * SEASON_LINES.length)];
+}
+
+export function talkK9Line(G) {
+  const k9 = G.k9;
+  if (!k9 || (!k9.active && k9.captures === 0)) return null;
+  return K9_LINES[Math.floor(G.rng() * K9_LINES.length)];
+}
+
+export function talkMarketLine(G) {
+  return MARKET_LINES[Math.floor(G.rng() * MARKET_LINES.length)];
+}
+
+// v7: the desk picker — one function the bulletin timer calls, which
+// returns the most relevant line for whatever Mara just did.
+export function talkV7Line(G) {
+  if (G.k9 && G.k9.active) return talkK9Line(G);
+  if (G.delivery && G.delivery.active) return talkDeliveryLine(G);
+  if (G.season2 && G.season2.rounds > 0) return talkSeasonLine(G);
+  if (G.cityV7 && G.cityV7.marketOn) return talkMarketLine(G);
+  return null;
+}

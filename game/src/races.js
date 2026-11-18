@@ -441,3 +441,99 @@ export function updateRaces(G, dt) {
     endRace(G);
   }
 }
+
+// v7: race season 2 — a second championship with its own circuits,
+// its own points table and its own rivals. The Mountain Pass is a
+// climb from the island bridge to the ski lodge; the Night Market Dash
+// threads the Old Town lanes after dark. Season 2 runs four rounds:
+// win the season and the Verde GP trophy case gets a second cup, and
+// Mara gets $8,000 and a rival who finally admits she is faster.
+
+export const RACE_SEASON2_CIRCUITS = [
+  {
+    id: 'mountain-pass',
+    name: 'Mountain Pass',
+    laps: 2,
+    prize: [2200, 1100, 550, 300],
+    points: [
+      { x: -160, z: 420 }, { x: -160, z: 505 }, { x: -160, z: 540 },
+      { x: -196, z: 500 }, { x: -214, z: 542 }, { x: -160, z: 505 },
+    ],
+  },
+  {
+    id: 'night-market',
+    name: 'Night Market Dash',
+    laps: 2,
+    prize: [2000, 1000, 500, 250],
+    points: [
+      { x: 220, z: -180 }, { x: 220, z: -100 }, { x: 220, z: -20 },
+      { x: 140, z: -20 }, { x: 140, z: -100 }, { x: 220, z: -100 },
+    ],
+  },
+];
+
+const SEASON2_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+
+export function createRaceSeason2(G) {
+  const s2 = {
+    points: 0,
+    rounds: 0,
+    wins: 0,
+    champion: false,
+    rivals: [
+      { name: 'Rosa', points: 0 },
+      { name: 'Vic', points: 0 },
+      { name: 'Lena', points: 0 },
+    ],
+    circuitIndex: 0,
+  };
+  G.season2 = s2;
+  return s2;
+}
+
+// v7: score a season-2 round — Mara's points, the rivals' points, and
+// the championship call after four rounds.
+export function recordSeason2Round(G, position) {
+  const s2 = G.season2;
+  if (!s2) return;
+  const table = G.config.season2Points || SEASON2_POINTS;
+  s2.points += table[position - 1] || 0;
+  s2.rounds += 1;
+  if (position === 1) s2.wins += 1;
+  // The rivals score behind her: the table is seeded, so the season is
+  // the same every run for the same seed.
+  const rng = G.rng;
+  for (const rival of s2.rivals) {
+    const rp = 1 + Math.floor(rng() * 4);
+    rival.points += table[rp - 1] || 0;
+  }
+  s2.circuitIndex = (s2.circuitIndex + 1) % RACE_SEASON2_CIRCUITS.length;
+  G.hud.toast(`Season 2 round ${s2.rounds} done — P${position}, ${s2.points} points. ${4 - s2.rounds} rounds to go.`);
+  if (s2.rounds >= (G.config.season2Rounds || 4)) {
+    const best = s2.rivals.reduce((a, b) => (a.points > b.points ? a : b));
+    if (s2.points >= best.points) {
+      s2.champion = true;
+      G.cash += G.config.season2ChampionPrize || 8000;
+      G.hud.toast(`SEASON 2 CHAMPION! Mara takes the cup and $${G.config.season2ChampionPrize || 8000}!`);
+    } else {
+      G.hud.toast(`Season 2 goes to ${best.name} with ${best.points} points — Mara had ${s2.points}. Next season, then.`);
+    }
+    s2.rounds = 0;
+    s2.points = 0;
+    for (const rival of s2.rivals) rival.points = 0;
+  }
+}
+
+export function season2Standings(G) {
+  const s2 = G.season2;
+  if (!s2) return 'Season 2 has not started.';
+  const rows = [{ name: 'Mara', points: s2.points }, ...s2.rivals]
+    .sort((a, b) => b.points - a.points);
+  return rows.map((r, i) => `${i + 1}. ${r.name} ${r.points}pts`).join(' · ');
+}
+
+export function raceSeason2Summary(G) {
+  const s2 = G.season2;
+  if (!s2) return 'Season 2 is not on the calendar.';
+  return `${s2.wins} season-2 wins · ${s2.rounds}/4 rounds · champion: ${s2.champion ? 'YES' : 'not yet'}.`;
+}

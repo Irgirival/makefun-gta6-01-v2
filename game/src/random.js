@@ -82,3 +82,89 @@ export function pickExcept(rng, arr, exclude) {
   const pool = arr.filter((x) => x !== exclude);
   return pool.length ? pick(rng, pool) : arr[0];
 }
+
+// v7: more small draws for the new systems — a lerp for eased motion, a
+// smoothstep for fades, a coin flip, a dice roll, a bell-curve-free
+// triangular draw for tips and fares, and a string seed so a name can
+// seed its own little pocket of randomness (a shopkeeper's mood, a
+// performer's set list). Nothing here allocates per call except the tiny
+// arrays the callers already build.
+
+export function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+export function smoothstep(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
+}
+
+export function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
+
+export function coinFlip(rng) {
+  return rng() < 0.5;
+}
+
+export function rollDie(rng, sides = 6) {
+  return 1 + Math.floor(rng() * sides);
+}
+
+export function rollDice(rng, count, sides = 6) {
+  let total = 0;
+  for (let i = 0; i < count; i++) total += rollDie(rng, sides);
+  return total;
+}
+
+// Triangular draw: peaks in the middle, tails at the edges — fares,
+// tips and small random payouts feel fair instead of spiky.
+export function triangular(rng, min, max) {
+  return min + (rng() + rng()) * 0.5 * (max - min);
+}
+
+// A stable 32-bit hash of a short string, for seeding per-name randomness.
+export function hashString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// A seeded RNG from a name — the same name always draws the same sequence,
+// so a shopkeeper's mood is stable across sessions for the same seed.
+export function rngFromName(seed, name) {
+  return makeRng((seed ^ hashString(name)) >>> 0);
+}
+
+// Draw n distinct items from an array without mutating it, in random
+// order — the shop rotation, the race rival shuffle, the radio request
+// line all roll on this.
+export function drawDistinct(rng, arr, n) {
+  const pool = arr.slice();
+  const out = [];
+  while (pool.length && out.length < n) {
+    out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+  }
+  return out;
+}
+
+// Exponential draw: mostly small, occasionally large — the size of a
+// traffic jam, the length of a fog bank, the wait for a charter seat.
+export function exponential(rng, mean = 1) {
+  const u = Math.max(1e-9, rng());
+  return -Math.log(u) * mean;
+}
+
+// Round to a friendly number: fares and tips land on 5s, not on $137.
+export function roundTo(v, step = 5) {
+  return Math.round(v / step) * step;
+}
+
+// v7: pick with a fallback — when the pool is empty the fallback keeps
+// the caller from ever seeing undefined.
+export function pickOr(rng, arr, fallback) {
+  return arr.length ? pick(rng, arr) : fallback;
+}

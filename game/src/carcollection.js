@@ -97,3 +97,89 @@ export function collectionSummary(G) {
   const names = c.owned.map((o) => o.name).join(', ') || 'nothing yet';
   return `Collection ${c.owned.length}/${COLLECTION_MAX}: ${names} · calls ${c.calls}`;
 }
+
+// v7: the unicorn hunt — rare cars that only spawn under conditions.
+// A chrome Comet 900 appears on the Isla Verde boardwalk at midnight,
+// a gold limousine parks outside the casino on Friday nights (in-game),
+// and a matte-black Vortex GT haunts the airfield runway at dawn. Each
+// one is a one-of-one: steal it, and the collection gains a tier —
+// Common, Rare, Epic, Legendary — with a cash bonus for the find.
+
+export const UNICORN_CARS = [
+  { type: 'sports', color: 0xd8d8d8, name: 'Chrome Comet', spot: { x: -160, z: 505 }, when: 'midnight', tier: 'Epic', bonus: 800 },
+  { type: 'limo', color: 0xd8a03a, name: 'Golden Limo', spot: { x: 300, z: 60 }, when: 'night', tier: 'Rare', bonus: 500 },
+  { type: 'sports', color: 0x1a1a22, name: 'Midnight Vortex', spot: { x: -196, z: -260 }, when: 'dawn', tier: 'Legendary', bonus: 1500 },
+];
+
+const TIER_RANK = { Common: 0, Rare: 1, Epic: 2, Legendary: 3 };
+
+export function createUnicornHunt(G) {
+  const uh = {
+    spawned: {},
+    found: [],
+    bonusEarned: 0,
+    checkTimer: 0,
+  };
+  G.unicornHunt = uh;
+  return uh;
+}
+
+function timeMatches(G, when) {
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = mins / 60;
+  if (when === 'midnight') return h >= 0 && h < 2;
+  if (when === 'dawn') return h >= 5 && h < 7;
+  if (when === 'night') return h >= 20 || h < 5;
+  return true;
+}
+
+// v7: check the clock once a minute — a unicorn whose window is open and
+// which has not been found yet spawns at its spot, glowing faintly.
+export function updateUnicornHunt(G, dt) {
+  const uh = G.unicornHunt;
+  if (!uh) return;
+  uh.checkTimer -= dt;
+  if (uh.checkTimer > 0) return;
+  uh.checkTimer = 60;
+  for (const uni of UNICORN_CARS) {
+    if (uh.found.includes(uni.name)) continue;
+    if (uh.spawned[uni.name]) continue;
+    if (!timeMatches(G, uni.when)) continue;
+    const car = createVehicle(G, uni.type, uni.spot.x, uni.spot.z, 0, { parked: true, color: uni.color });
+    car.name = uni.name;
+    car.unicorn = uni;
+    uh.spawned[uni.name] = car;
+    G.hud.toast(`A ${uni.tier} unicorn was spotted: the ${uni.name}! Go steal it before its window closes.`);
+  }
+}
+
+// v7: call when Mara enters any car — a unicorn find pays the bonus and
+// joins the collection at its tier.
+export function checkUnicornFind(G, car) {
+  const uh = G.unicornHunt;
+  if (!uh || !car || !car.unicorn) return false;
+  const uni = car.unicorn;
+  if (uh.found.includes(uni.name)) return false;
+  uh.found.push(uni.name);
+  uh.bonusEarned += uni.bonus;
+  G.cash += uni.bonus;
+  G.hud.toast(`${uni.tier} unicorn found: the ${uni.name}! +$${uni.bonus} finder bonus.`);
+  return true;
+}
+
+export function collectionTier(G) {
+  const c = G.collection;
+  if (!c || !c.owned.length) return 'Empty garage';
+  const uh = G.unicornHunt;
+  const found = uh ? uh.found.length : 0;
+  if (found >= 3) return 'Legendary Collector';
+  if (found >= 2) return 'Epic Collector';
+  if (found >= 1) return 'Rare Collector';
+  return c.owned.length >= 5 ? 'Full House' : 'Growing Collection';
+}
+
+export function collectionV7Summary(G) {
+  const uh = G.unicornHunt;
+  if (!uh) return 'The unicorn hunt has not begun.';
+  return `${uh.found.length}/3 unicorns found · $${uh.bonusEarned} in finder bonuses · ${collectionTier(G)}.`;
+}

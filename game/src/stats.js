@@ -80,3 +80,54 @@ export function careerSummary(G) {
   const cars = G.collection ? G.collection.owned.length : 0;
   return `${l.wins} race wins, ${v.bounties} bounties, ${G.missions.index} missions done, ${snaps} snapshots, ${tables} blackjack hands, ${vipJobs} VIP jobs, ${pokerHands} poker hands, ${cars}/5 cars collected, $${Math.floor(G.cash)} in pocket.`;
 }
+
+// v7: the second page of the scorecard. The base render() owns the
+// first page; this one appends the v7 rows — deliveries, season 2,
+// the K9 record, the regatta, the unicorns, the photo walk and the
+// story so far — so the pause menu tells the whole career, not just
+// the first six versions of it. It runs only when the pause menu opens,
+// right after the base render, so it never costs a frame in play.
+
+export function renderV7Stats(G) {
+  const panel = document.getElementById('statsPanel');
+  if (!panel) return;
+  const rows = [];
+  const d = G.delivery;
+  if (d) rows.push(['Solmar Express', `${d.done} parcels · $${d.earned} earned · best streak ${d.bestStreak}`]);
+  const s2 = G.season2;
+  if (s2) rows.push(['Race season 2', `${s2.wins} wins · ${s2.points} points · champion: ${s2.champion ? 'YES' : 'not yet'}`]);
+  const k9 = G.k9;
+  if (k9) rows.push(['K9 & PIT', `${k9.pitHits} PIT hits taken · ${k9.captures} K9 captures`]);
+  const reg = G.regatta;
+  if (reg) rows.push(['Bay Regatta', `${reg.wins} circuits · best ${reg.bestTime === null ? '—' : reg.bestTime.toFixed(1) + 's'}`]);
+  const uh = G.unicornHunt;
+  if (uh) rows.push(['Unicorn hunt', `${uh.found.length}/3 found · $${uh.bonusEarned} finder bonuses`]);
+  const walk = G.photoWalk;
+  if (walk) rows.push(['Photo walk', walk.done ? 'Complete — all five stops' : `${walk.stopIndex}/5 stops framed`]);
+  const fc = G.fireCallouts;
+  if (fc) rows.push(['Fire callouts', `${fc.callouts} fires out · $${fc.earned} earned`]);
+  const m4 = G.missions4;
+  if (m4) rows.push(['Story arc', `${Math.min(G.missions.index, 14)}/14 missions · ${m4.replays} replays`]);
+  const c7 = G.combatV7;
+  if (c7) rows.push(['Combat v7', c7.shotgunUnlocked ? `Shotgun owned · ${c7.finishers} finishers` : `${c7.finishers} combo finishers`]);
+  const g7 = G.garageV7;
+  if (g7) rows.push(['Garage v7', `Turbo Lv${g7.turboLevel}${g7.tires ? ' · bulletproof tires' : ''}${g7.hydraulics ? ' · hydraulics' : ''}`]);
+  if (rows.length) {
+    panel.innerHTML += rows.map(([k, v]) =>
+      `<div class="statRow"><span class="statKey">${k}</span><span class="statVal">${v}</span></div>`).join('');
+  }
+}
+
+// v7: the career in one sentence, second edition — the line the end
+// screen shows when Mara finishes the whole fourteen-mission arc.
+export function careerSummaryV7(G) {
+  const base = careerSummary(G);
+  const d = G.delivery;
+  const s2 = G.season2;
+  const extra = [
+    d ? `${d.done} parcels delivered` : null,
+    s2 ? (s2.champion ? 'season 2 champion' : `${s2.wins} season-2 wins`) : null,
+    G.missions.index >= 14 ? 'all 14 missions done' : null,
+  ].filter(Boolean).join(', ');
+  return extra ? `${base} Plus: ${extra}.` : base;
+}

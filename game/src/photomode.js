@@ -200,3 +200,90 @@ export function photoModeStatusText(G) {
     ? `Photo mode — ${currentFilter(G).name} · ${p.snaps} snapshot${p.snaps === 1 ? '' : 's'}`
     : `Photo mode — ${p.snaps} snapshot${p.snaps === 1 ? '' : 's'} taken (B to open)`;
 }
+
+// v7: five more film looks and the frame shop. The new filters are
+// graded for the new city — Neon Rain for wet nights, Desert Rose for
+// the beach at noon, Polaroid for the Old Town market, Mono Chrome for
+// the mountain in snow, and Vista for the wide bay shots. The frame
+// shop is the other half: a thin gold, white or black border around the
+// snap, chosen with the filter, so a photo from Solmar looks like it
+// came out of a gallery instead of a phone.
+
+export const PHOTO_FILTERS_V7 = [
+  { id: 'neon-rain', name: 'Neon Rain', css: 'saturate(1.6) contrast(1.2) brightness(0.92) hue-rotate(210deg)' },
+  { id: 'desert-rose', name: 'Desert Rose', css: 'sepia(0.5) saturate(1.4) contrast(1.05) hue-rotate(-15deg)' },
+  { id: 'polaroid', name: 'Polaroid', css: 'sepia(0.35) saturate(0.9) contrast(0.95) brightness(1.08)' },
+  { id: 'mono-chrome', name: 'Mono Chrome', css: 'grayscale(1) contrast(1.35) brightness(1.1)' },
+  { id: 'vista', name: 'Vista', css: 'saturate(1.3) contrast(1.15) brightness(1.05)' },
+];
+
+export const PHOTO_FRAMES_V7 = [
+  { id: 'none', name: 'No frame', css: 'none' },
+  { id: 'gold', name: 'Gold frame', css: '0 0 0 6px #d8a03a, 0 0 0 10px #1a1a1a' },
+  { id: 'white', name: 'White frame', css: '0 0 0 8px #f0f0f0' },
+  { id: 'black', name: 'Black frame', css: '0 0 0 8px #111' },
+];
+
+// v7: cycle the extended filters — the base five plus the v7 five, in
+// one loop, so Q never runs out of looks.
+export function cyclePhotoFilterV7(G) {
+  const photo = G.photomode;
+  if (!photo) return null;
+  const all = FILTERS.concat(PHOTO_FILTERS_V7);
+  photo.filterIndex = (photo.filterIndex + 1) % all.length;
+  const f = all[photo.filterIndex];
+  const canvas = document.getElementById('scene');
+  if (canvas) canvas.style.filter = f.css;
+  G.hud.toast(`Filter: ${f.name}.`);
+  return f;
+}
+
+// v7: the frame — a box-shadow border on the canvas, so the snap looks
+// framed even before it is downloaded.
+export function setPhotoFrameV7(G, frameId) {
+  const photo = G.photomode;
+  if (!photo) return false;
+  const frame = PHOTO_FRAMES_V7.find((f) => f.id === frameId) || PHOTO_FRAMES_V7[0];
+  photo.frameId = frame.id;
+  const canvas = document.getElementById('scene');
+  if (canvas) canvas.style.boxShadow = frame.css === 'none' ? 'none' : frame.css;
+  G.hud.toast(`Frame: ${frame.name}.`);
+  return true;
+}
+
+// v7: the photo challenge board — five shots the city dares Mara to
+// take, each worth $150 when the snap lands within sight of its subject.
+export const PHOTO_CHALLENGES_V7 = [
+  { id: 'fountain-dawn', name: 'Fountain at dawn', x: 20, z: 20, radius: 30 },
+  { id: 'lighthouse-night', name: 'Lighthouse at night', x: -205, z: 565, radius: 40 },
+  { id: 'summit-snow', name: 'Summit in the snow', x: -250, z: 520, radius: 50 },
+  { id: 'market-night', name: 'Night market in full swing', x: 260, z: -260, radius: 30 },
+  { id: 'runway-sunset', name: 'Runway at sunset', x: -260, z: -260, radius: 40 },
+];
+
+export function createPhotoChallenges(G) {
+  const pc = {
+    done: {},
+    earned: 0,
+    total: PHOTO_CHALLENGES_V7.length,
+  };
+  G.photoChallenges = pc;
+  return pc;
+}
+
+export function checkPhotoChallenge(G) {
+  const pc = G.photoChallenges;
+  if (!pc || !G.photomode) return null;
+  const p = G.player.pos;
+  for (const ch of PHOTO_CHALLENGES_V7) {
+    if (pc.done[ch.id]) continue;
+    if (Math.hypot(p.x - ch.x, p.z - ch.z) < ch.radius) {
+      pc.done[ch.id] = true;
+      pc.earned += G.config.photoChallengePay || 150;
+      G.cash += G.config.photoChallengePay || 150;
+      G.hud.toast(`Photo challenge: ${ch.name}! +$${G.config.photoChallengePay || 150}.`);
+      return ch;
+    }
+  }
+  return null;
+}

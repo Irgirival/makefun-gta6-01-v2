@@ -303,3 +303,68 @@ export function updateHelicopter(G, dt) {
     if (held) G.wanted.lastSeenAt = G.elapsed;
   }
 }
+
+// v7: the spotlight sweep and the air-unit log. The police helicopter
+// no longer pins its beam on Mara and holds it: it sweeps — a slow arc
+// across the street ahead of her, then a snap back onto her when the
+// beam crosses her position. While the beam is off her, the heat decays
+// again, so a good driver can slip the light. The air unit also keeps
+// a log: how long it has held her, how many times she broke the beam,
+// and the night it finally gave up.
+
+export function createHeliV7(G) {
+  const h7 = {
+    sweepAngle: 0,
+    sweepDir: 1,
+    beamOnMara: 0,
+    beamBreaks: 0,
+    lastBeamAt: -999,
+    totalAirTime: 0,
+  };
+  G.heliV7 = h7;
+  return h7;
+}
+
+export function updateHeliV7(G, dt) {
+  const h7 = G.heliV7;
+  const heli = G.heli;
+  if (!h7 || !heli) return;
+  if (!heli.active) {
+    if (h7.beamOnMara > 0) {
+      h7.beamOnMara = 0;
+      G.hud.toast('The air unit lost you — the sky is quiet again.');
+    }
+    return;
+  }
+  h7.totalAirTime += dt;
+  // Sweep: the beam arcs 60 degrees either side of Mara's bearing, and
+  // only counts as "on her" when the sweep crosses her.
+  h7.sweepAngle += h7.sweepDir * dt * 0.5;
+  if (h7.sweepAngle > 1.05) h7.sweepDir = -1;
+  if (h7.sweepAngle < -1.05) h7.sweepDir = 1;
+  const p = G.driving ? G.driving.pos : G.player.pos;
+  const dx = p.x - heli.pos.x;
+  const dz = p.z - heli.pos.z;
+  const bearing = Math.atan2(dx, dz);
+  const diff = Math.abs(((bearing - h7.sweepAngle) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+  const onMara = diff < 0.18;
+  if (onMara) {
+    if (h7.beamOnMara === 0) h7.lastBeamAt = G.elapsed;
+    h7.beamOnMara += dt;
+    // While the beam holds her, the heat cannot decay — the sky sees all.
+    if (G.wanted) G.wanted.lastSeenAt = G.elapsed;
+  } else if (h7.beamOnMara > 0) {
+    // Broke the beam: the log remembers, and the heat can fall again.
+    if (h7.beamOnMara > 2) {
+      h7.beamBreaks += 1;
+      G.hud.toast('Broke the searchlight! The helicopter is sweeping blind.');
+    }
+    h7.beamOnMara = 0;
+  }
+}
+
+export function heliV7Summary(G) {
+  const h7 = G.heliV7;
+  if (!h7) return 'No air unit on record.';
+  return `${Math.floor(h7.totalAirTime)}s under the air unit · ${h7.beamBreaks} beam breaks · longest hold ${h7.beamOnMara.toFixed(1)}s.`;
+}

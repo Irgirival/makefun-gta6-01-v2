@@ -286,3 +286,97 @@ export function updateOldTown(G, dt) {
 export function oldTownLandmarkCount(G) {
   return G.oldtown ? Object.keys(G.oldtown.visited).length : 0;
 }
+
+// v7: the night market's second row and the bell tower's hours. Six
+// more stalls open along the market street after dark — candles,
+// pastries, postcards, hats, second-hand books and a fortune teller
+// with a purple tent — and the bell tower keeps the quarter's hours:
+// it chimes on the hour, and at noon the chime is long enough to hear
+// from the plaza. The fortune teller is the only stall that talks back:
+// stand at her tent and she tells Mara's fortune, which is always the
+// same — "the city is yours, if you keep driving like you mean it."
+
+export const V7_MARKET_STALLS_2 = [
+  { x: 248, z: -208, color: 0xffd23e, name: 'Candle stall' },
+  { x: 252, z: -208, color: 0xd85a1a, name: 'Pastry stall' },
+  { x: 256, z: -208, color: 0x2a7ad8, name: 'Postcard stall' },
+  { x: 260, z: -208, color: 0x2a7a3a, name: 'Hat stall' },
+  { x: 264, z: -208, color: 0x8a3ad8, name: 'Book stall' },
+  { x: 268, z: -208, color: 0x6a1a6a, name: 'Fortune teller' },
+];
+
+export function buildOldTownV7(G) {
+  const group = new THREE.Group();
+  group.name = 'old-town-v7';
+  const mat = (color, opts = {}) => new THREE.MeshLambertMaterial({ color, ...opts });
+  const box = (w, h, d, color, x, y, z, opts) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+    m.position.set(x, y, z);
+    group.add(m);
+    return m;
+  };
+  const addCollider = (cx, cz, w, d) => {
+    G.city.colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
+  };
+
+  const stalls = [];
+  for (const stall of V7_MARKET_STALLS_2) {
+    box(3.0, 1.1, 2.0, 0x6a4a2a, stall.x, 0.55, stall.z);
+    const awning = box(3.4, 0.16, 2.3, stall.color, stall.x, 2.4, stall.z);
+    awning.rotation.z = 0.06;
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffd23e }));
+    lamp.position.set(stall.x, 2.8, stall.z);
+    group.add(lamp);
+    addCollider(stall.x, stall.z, 3.2, 2.2);
+    stalls.push({ ...stall, lamp });
+  }
+  // The fortune teller's tent: a purple pyramid over the last stall.
+  const tent = new THREE.Mesh(new THREE.ConeGeometry(2.6, 2.2, 4),
+    mat(0x6a1a6a));
+  tent.position.set(268, 3.4, -208);
+  tent.rotation.y = Math.PI / 4;
+  group.add(tent);
+
+  G.scene.add(group);
+  G.oldtownV7 = {
+    stalls,
+    lastChimeHour: -1,
+    fortunes: 0,
+    lastFortuneAt: -999,
+  };
+  return G.oldtownV7;
+}
+
+// v7: the bell chimes on the hour, and the fortune teller talks when
+// Mara stands at her tent — once a minute at most, the future is busy.
+export function updateOldTownV7(G, dt) {
+  const o7 = G.oldtownV7;
+  if (!o7) return;
+  const hour = Math.floor(G.clockMinutes / 60) % 24;
+  if (hour !== o7.lastChimeHour) {
+    o7.lastChimeHour = hour;
+    const p = G.player.pos;
+    if (Math.hypot(p.x - 240, p.z + 284) < 120) {
+      G.hud.toast(hour === 12
+        ? 'The bell tower chimes noon — long and low over Old Town.'
+        : `The bell tower chimes ${hour === 0 ? 'midnight' : hour + ':00'} over Old Town.`);
+    }
+  }
+  const p = G.player.pos;
+  if (Math.hypot(p.x - 268, p.z + 208) < 5 && G.elapsed - o7.lastFortuneAt > 60) {
+    o7.lastFortuneAt = G.elapsed;
+    o7.fortunes += 1;
+    G.hud.toast('FORTUNE TELLER: "The city is yours, if you keep driving like you mean it."');
+  }
+  // The market lamps glow after dark and sleep by day.
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const night = mins >= 18 * 60 || mins < 6 * 60;
+  for (const stall of o7.stalls) stall.lamp.visible = night;
+}
+
+export function oldTownV7Summary(G) {
+  const o7 = G.oldtownV7;
+  if (!o7) return 'The second market row is not built yet.';
+  return `${o7.stalls.length} new stalls · ${o7.fortunes} fortunes told.`;
+}

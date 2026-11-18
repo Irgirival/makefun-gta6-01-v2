@@ -335,3 +335,100 @@ function buildPlane(group, mat, x, z, heading, stripeColor) {
   group.add(plane);
   return plane;
 }
+
+// v7: the cargo terminal and the departure board. A second terminal
+// hall east of the runway handles freight — crates, a forklift silhouette
+// and a blinking beacon — and a departure board by the main terminal
+// announces the next charter in plain text on the HUD whenever Mara
+// walks past. The board is a scene object with a live texture of
+// nothing: the announcements ride the toast system, so there is no DOM
+// to keep in sync.
+
+const V7_CARGO_CRATES = [
+  { x: -196, z: -232, color: 0x8a6a3a },
+  { x: -192, z: -232, color: 0x3a7ad8 },
+  { x: -196, z: -228, color: 0xd81a2a },
+  { x: -192, z: -228, color: 0x2a7a3a },
+];
+
+const V7_DEPARTURES = [
+  'VERDE 101 — Isla Verde, on time',
+  'SOLMAR 204 — Harbor Loop, boarding',
+  'VERDE 118 — Mountain View, delayed 10 min',
+  'SOLMAR 310 — Beach Run, on time',
+  'VERDE 122 — Old Town Express, boarding',
+];
+
+export function buildAirportV7(G) {
+  const group = new THREE.Group();
+  group.name = 'solmar-airfield-v7';
+  const mat = (color, opts = {}) => new THREE.MeshLambertMaterial({ color, ...opts });
+  const box = (w, h, d, color, x, y, z, opts) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+    m.position.set(x, y, z);
+    group.add(m);
+    return m;
+  };
+  const addCollider = (cx, cz, w, d) => {
+    G.city.colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
+  };
+
+  // Cargo terminal: a long low hall with a roller door and a beacon.
+  box(26, 7, 12, 0x9aa0a3, -194, 3.5, -230);
+  box(10, 5, 0.4, 0x2a4a5a, -194, 2.5, -224);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xff5a2a }));
+  beacon.position.set(-194, 7.6, -230);
+  group.add(beacon);
+  addCollider(-194, -230, 26, 12);
+
+  // Freight crates stacked by the hall door.
+  for (const crate of V7_CARGO_CRATES) {
+    box(2.2, 2.2, 2.2, crate.color, crate.x, 1.1, crate.z);
+    addCollider(crate.x, crate.z, 2.4, 2.4);
+  }
+
+  // A forklift silhouette: body, mast and two forks, parked by the crates.
+  const fork = new THREE.Group();
+  const fBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 2.2), mat(0xd8a03a));
+  fBody.position.y = 0.8;
+  fork.add(fBody);
+  const mast = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.4, 1.6), mat(0x333333));
+  mast.position.set(0, 1.4, 1.1);
+  fork.add(mast);
+  fork.position.set(-188, 0, -232);
+  group.add(fork);
+
+  G.scene.add(group);
+  G.airportV7 = {
+    beacon,
+    beaconPhase: 0,
+    boardIndex: 0,
+    boardTimer: 0,
+    lastBoardToastAt: -999,
+    boardPos: { x: -235, z: -276 },
+  };
+  return G.airportV7;
+}
+
+// v7: the beacon blinks, and the departure board speaks once a minute
+// while Mara is on the airfield — a little life for the north-west corner.
+export function updateAirportV7(G, dt) {
+  const a7 = G.airportV7;
+  if (!a7) return;
+  a7.beaconPhase += dt * 2;
+  a7.beacon.material.color.setHex(Math.sin(a7.beaconPhase) > 0 ? 0xff5a2a : 0x661100);
+  a7.boardTimer -= dt;
+  const dx = G.player.pos.x - a7.boardPos.x;
+  const dz = G.player.pos.z - a7.boardPos.z;
+  if (a7.boardTimer <= 0 && Math.hypot(dx, dz) < 40) {
+    a7.boardTimer = 60;
+    const line = V7_DEPARTURES[a7.boardIndex % V7_DEPARTURES.length];
+    a7.boardIndex += 1;
+    G.hud.toast(`Departure board: ${line}.`);
+  }
+}
+
+export function airportV7Summary(G) {
+  return 'Cargo terminal open · 4 freight crates · departures board live.';
+}

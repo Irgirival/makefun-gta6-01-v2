@@ -287,3 +287,58 @@ export function updateRadio(G, dt) {
     }
   }
 }
+
+// v7: two more dial positions and the DJ shows. Solmar Jazz 92.1 is
+// the late-night station — slow chords, a brushed drum, a host who
+// sounds like he has seen the whole city and forgiven most of it. The
+// second addition is not music at all: the Solmar Sports desk gets a
+// dedicated race-call show, "The Verde GP Hour", which narrates the
+// race season live while Mara drives. Both stations join the dial the
+// moment this module loads, because STATIONS is the same array the
+// radio reads when it starts.
+
+STATIONS.push(
+  { id: 'jazz', name: 'Solmar Jazz 92.1', blurb: 'Slow chords for the long way home.' },
+  { id: 'gp-hour', name: 'The Verde GP Hour 88.9', blurb: 'Race calls, live from the plaza bend.' },
+);
+
+STATION_CHORDS.jazz = [[55, 65.4, 82.4, 98], [49, 58.3, 73.4, 87.3], [58.3, 73.4, 87.3, 103.8], [65.4, 82.4, 98, 116.5]];
+STATION_CHORDS['gp-hour'] = [[131, 164.8, 196], [98, 123.5, 146.8], [110, 130.8, 164.8], [117.5, 146.8, 175]];
+STATION_BASS.jazz = [55, 49, 58.3, 65.4];
+STATION_BASS['gp-hour'] = [65.4, 49, 55, 58.3];
+
+const JAZZ_LINES = [
+  'JAZZ HOST: "This one goes out to the woman in the red jacket — wherever you are tonight, the city is listening."',
+  'JAZZ HOST: "Slow down, Solmar. The night is long and the chords are longer."',
+  'JAZZ HOST: "Caller from the harbor says the fog is coming in. Good. Fog makes the jazz sound better."',
+];
+
+const GP_LINES = [
+  'GP HOUR: "Solano through the plaza bend — she is FLYING, and the crowd is on its feet!"',
+  'GP HOUR: "The Mountain Pass eats another gearbox — the summit does not forgive the impatient."',
+  'GP HOUR: "Season 2 is alive, Solmar — the points table is tight and the last round decides everything."',
+];
+
+// v7: the DJ show — a line from the current station's host, called by
+// the bulletin timer alongside the news, so the dial never goes quiet.
+export function radioShowLine(G) {
+  const radio = G.radio;
+  if (!radio) return null;
+  const id = radio.station().id;
+  const rng = G.rng;
+  if (id === 'jazz') return JAZZ_LINES[Math.floor(rng() * JAZZ_LINES.length)];
+  if (id === 'gp-hour') return GP_LINES[Math.floor(rng() * GP_LINES.length)];
+  return null;
+}
+
+// v7: the request line — listeners call in with a song for Mara, and
+// the station plays it. A small thing, but the city feels smaller and
+// warmer for it.
+export function radioRequestLine(G) {
+  const requests = [
+    'REQUEST LINE: "Play something fast for the woman in the red jacket — she just blew past my taxi."',
+    'REQUEST LINE: "This one is for Mara — the whole Old Town market is dancing to it."',
+    'REQUEST LINE: "Caller from the mountain lodge wants the sunset song. Consider it done."',
+  ];
+  return requests[Math.floor(G.rng() * requests.length)];
+}

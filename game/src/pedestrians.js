@@ -284,3 +284,84 @@ export function removePed(G, ped) {
   const i = G.peds.indexOf(ped);
   if (i >= 0) G.peds.splice(i, 1);
 }
+
+// v7: ped groups, street reactions and the gawkers. Pedestrians now
+// walk in groups of two or three — friends who stroll together, match
+// each other's pace and stop together when something happens. When a
+// car screams past, the whole group turns its head; when a crash
+// happens nearby, the group gathers and gawks; when Mara drives past
+// slowly with the window down, a group member might wave. Groups are
+// formed at spawn time and kept by a shared group id, so the system
+// never has to search the whole crowd to find a friend.
+
+export function spawnPedGroup(G, x, z, size = 3) {
+  const group = [];
+  const gid = `g${Math.floor(G.rng() * 1e9)}`;
+  for (let i = 0; i < size; i++) {
+    const ped = spawnPed(G, x + (G.rng() - 0.5) * 3, z + (G.rng() - 0.5) * 3, false);
+    if (!ped) continue;
+    ped.groupId = gid;
+    ped.groupRole = i === 0 ? 'leader' : 'follower';
+    ped.groupSize = size;
+    group.push(ped);
+  }
+  return group;
+}
+
+// v7: the group walk — followers match the leader's target and pace, so
+// a group strolls as one instead of three strangers who happen to be
+// near each other.
+export function updatePedGroupsV7(G, dt) {
+  const leaders = new Map();
+  for (const ped of G.peds) {
+    if (!ped.groupId) continue;
+    if (ped.groupRole === 'leader') leaders.set(ped.groupId, ped);
+  }
+  for (const ped of G.peds) {
+    if (!ped.groupId || ped.groupRole !== 'follower') continue;
+    const leader = leaders.get(ped.groupId);
+    if (!leader) continue;
+    // Followers drift toward the leader's neighbourhood, never far.
+    const d = Math.hypot(ped.pos.x - leader.pos.x, ped.pos.z - leader.pos.z);
+    if (d > 6) {
+      ped.target = { x: leader.pos.x + (G.rng() - 0.5) * 2, z: leader.pos.z + (G.rng() - 0.5) * 2 };
+      ped.speed = Math.min(3.2, leader.speed + 0.4);
+    }
+  }
+}
+
+// v7: reactions — a fast car past a group makes them turn and watch;
+// a crash nearby makes them gather; a slow cruise past makes one wave.
+export function updatePedReactionsV7(G, dt) {
+  const p = G.driving ? G.driving.pos : G.player.pos;
+  const speed = G.driving ? Math.abs(G.driving.speed) : 0;
+  for (const ped of G.peds) {
+    if (!ped || ped.performer) continue;
+    const d = Math.hypot(ped.pos.x - p.x, ped.pos.z - p.z);
+    if (d < 12 && speed > 24 && !ped.startled) {
+      ped.startled = true;
+      ped.startleAt = G.elapsed;
+      if (ped.mesh) ped.mesh.rotation.y = Math.atan2(p.x - ped.pos.x, p.z - ped.pos.z);
+    } else if (ped.startled && G.elapsed - (ped.startleAt || 0) > 4) {
+      ped.startled = false;
+    }
+    // Gawkers at a wreck: peds near a wrecked car stop and stare at it.
+    if (ped.gawking) {
+      const wreck = G.vehicles.find((v) => v.wrecked
+        && Math.hypot(v.pos.x - ped.pos.x, v.pos.z - ped.pos.z) < 20);
+      if (wreck) {
+        if (ped.mesh) ped.mesh.rotation.y = Math.atan2(wreck.pos.x - ped.pos.x, wreck.pos.z - ped.pos.z);
+        ped.speed = 0;
+      } else {
+        ped.gawking = false;
+        ped.speed = 1.6;
+      }
+    }
+  }
+}
+
+export function pedGroupsSummary(G) {
+  const groups = new Set();
+  for (const ped of G.peds) if (ped.groupId) groups.add(ped.groupId);
+  return `${groups.size} walking groups · ${G.peds.length} pedestrians on the street.`;
+}

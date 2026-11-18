@@ -92,3 +92,70 @@ export function photomode2Summary(G) {
   const total = landmarkList(G).length;
   return `Photo v2: ${Object.keys(pm2.framed).length}/${total} landmarks framed · ${pm2.snapsAtLandmarks} snaps at landmarks`;
 }
+
+// v7: the golden-hour bonus and the photo walk. A snap taken during
+// golden hour (17:00–18:00) pays double landmark credit, and the photo
+// walk is a guided route — five stops in order, fountain to lighthouse
+// to summit to market to runway, with a $500 bonus for walking the
+// whole route in one session. The walk is the city's own tour, and Mara
+// is its best customer.
+
+export const PHOTO_WALK_STOPS = [
+  { id: 'fountain', name: 'Plaza Fountain', x: 20, z: 20 },
+  { id: 'lighthouse', name: 'Isla Verde Lighthouse', x: -205, z: 565 },
+  { id: 'summit', name: 'Summit Viewpoint', x: -214, z: 542 },
+  { id: 'market', name: 'Old Town Market', x: 260, z: -212 },
+  { id: 'runway', name: 'Airfield Runway', x: -260, z: -260 },
+];
+
+export function createPhotoWalk(G) {
+  const walk = {
+    stopIndex: 0,
+    done: false,
+    snapsOnWalk: 0,
+    bonusPaid: false,
+  };
+  G.photoWalk = walk;
+  return walk;
+}
+
+// v7: call when Mara snaps a photo — advances the walk when the snap
+// lands at the current stop, and pays the $500 route bonus at the end.
+export function recordPhotoWalkSnap(G) {
+  const walk = G.photoWalk;
+  if (!walk || walk.done) return null;
+  const p = G.player.pos;
+  const stop = PHOTO_WALK_STOPS[walk.stopIndex];
+  if (!stop) return null;
+  if (Math.hypot(p.x - stop.x, p.z - stop.z) < 35) {
+    walk.snapsOnWalk += 1;
+    walk.stopIndex += 1;
+    if (walk.stopIndex >= PHOTO_WALK_STOPS.length) {
+      walk.done = true;
+      if (!walk.bonusPaid) {
+        walk.bonusPaid = true;
+        G.cash += 500;
+        G.hud.toast('Photo walk complete! All five stops — the city pays $500 for the tour.');
+      }
+      return { stop, complete: true };
+    }
+    G.hud.toast(`Photo walk: ${stop.name} framed. Next stop: ${PHOTO_WALK_STOPS[walk.stopIndex].name}.`);
+    return { stop, complete: false };
+  }
+  return null;
+}
+
+// v7: golden-hour snaps are worth double — the landmark checklist counts
+// them twice, so the golden hour is the fastest way to fill the board.
+export function goldenHourBonusActive(G) {
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  return mins >= 17 * 60 && mins < 18 * 60;
+}
+
+export function photoWalkSummary(G) {
+  const walk = G.photoWalk;
+  if (!walk) return 'The photo walk has not begun.';
+  if (walk.done) return 'Photo walk complete — all five stops framed.';
+  const next = PHOTO_WALK_STOPS[walk.stopIndex];
+  return `Photo walk ${walk.stopIndex}/5 — next: ${next ? next.name : 'done'}.`;
+}

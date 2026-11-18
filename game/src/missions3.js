@@ -103,3 +103,63 @@ export function updateMissions3(G, dt) {
 export function missions3Summary() {
   return 'Missions 11–12: Old Town Rising and The Mountain Run.';
 }
+
+// v7: mission records and the replay board. Every story mission now
+// keeps its fastest finish, and the pause menu shows which missions
+// Mara has replayed and which ones still hold her best time. The board
+// is a plain record — it never touches the mission flow itself, so a
+// record can never fail a mission that is already running.
+
+export function createMissionRecords(G) {
+  const rec = {
+    bestTimes: {},     // mission id -> seconds
+    finishes: {},      // mission id -> count
+    totalPlayTime: 0,
+    lastMissionAt: -999,
+  };
+  G.missionRecords = rec;
+  return rec;
+}
+
+export function recordMissionFinish(G, missionId, seconds) {
+  const rec = G.missionRecords;
+  if (!rec) return false;
+  rec.finishes[missionId] = (rec.finishes[missionId] || 0) + 1;
+  rec.lastMissionAt = G.elapsed;
+  const prev = rec.bestTimes[missionId];
+  if (prev === undefined || seconds < prev) {
+    rec.bestTimes[missionId] = seconds;
+    G.hud.toast(`New best time on ${missionId}: ${seconds.toFixed(1)}s!`);
+    return true;
+  }
+  return false;
+}
+
+export function missionRecordText(G, missionId) {
+  const rec = G.missionRecords;
+  if (!rec) return 'No record yet.';
+  const best = rec.bestTimes[missionId];
+  const n = rec.finishes[missionId] || 0;
+  if (best === undefined) return `${n} finishes — no timed best yet.`;
+  return `Best ${best.toFixed(1)}s · ${n} finish${n === 1 ? '' : 'es'}.`;
+}
+
+// v7: the mission clock — how long Mara has been on the current story
+// mission, in whole seconds, for the HUD's quiet timer line.
+export function currentMissionTime(G) {
+  if (!G.missions.active) return 0;
+  return Math.floor(G.elapsed - (G.missions.startedAt || G.elapsed));
+}
+
+// v7: a one-line summary of the whole story arc for the pause screen —
+// which missions are done, which are left, and the fastest time overall.
+export function missions3V7Summary(G) {
+  const rec = G.missionRecords;
+  const done = Math.min(G.missions.index, MISSIONS.length);
+  if (!rec) return `${done}/${MISSIONS.length} missions done.`;
+  const bests = Object.entries(rec.bestTimes);
+  const fastest = bests.length
+    ? bests.reduce((a, b) => (a[1] < b[1] ? a : b))
+    : null;
+  return `${done}/${MISSIONS.length} missions done${fastest ? ` · fastest ${fastest[0]} at ${fastest[1].toFixed(1)}s` : ''}.`;
+}

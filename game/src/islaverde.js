@@ -383,3 +383,102 @@ export function updateIslaVerde(G, dt) {
     G.isla.lighthouseLamp.material.color.set(night ? 0xffffff : 0xfff2b0);
   }
 }
+
+// v7: the surf shop, the volleyball court and the tide. A surf shop
+// with a rack of bright boards opens on the boardwalk, a volleyball
+// court with a net and a chalk line sits on the sand, and the tide
+// itself moves — the waterline creeps in and out on a slow cycle, so
+// the beach is wider at dawn and narrower at noon. Surfers ride the
+// swell offshore: little figures on boards that rise and fall with the
+// same chop the boats feel.
+
+export function buildIslaV7(G) {
+  const group = new THREE.Group();
+  group.name = 'isla-verde-v7';
+  const mat = (color, opts = {}) => new THREE.MeshLambertMaterial({ color, ...opts });
+  const box = (w, h, d, color, x, y, z, opts) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+    m.position.set(x, y, z);
+    group.add(m);
+    return m;
+  };
+  const addCollider = (cx, cz, w, d) => {
+    G.city.colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
+  };
+
+  // Surf shop: a low shack with a rack of boards in every colour.
+  box(8, 4, 6, 0xe8d8b0, -180, 2, 512);
+  box(8.4, 0.3, 6.4, 0xd81a2a, -180, 4.1, 512);
+  addCollider(-180, 512, 8, 6);
+  const boardColors = [0xff5a2a, 0x2ad8ff, 0xffd23e, 0x2aff5a, 0xd81a8a];
+  const boards = [];
+  for (let i = 0; i < boardColors.length; i++) {
+    const board = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.2, 8),
+      mat(boardColors[i]));
+    board.rotation.x = Math.PI / 2 - 0.3;
+    board.position.set(-183.5 + i * 1.4, 1.8, 509.2);
+    group.add(board);
+    boards.push(board);
+  }
+
+  // Volleyball court: sand patch, net, two posts and a ball.
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(12, 8),
+    mat(0xe0d0a0));
+  court.rotation.x = -Math.PI / 2;
+  court.position.set(-140, 0.05, 520);
+  group.add(court);
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(12, 1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+  net.position.set(-140, 1.2, 520);
+  group.add(net);
+  for (const px of [-146, -134]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 6), mat(0x333333));
+    post.position.set(px, 1.2, 520);
+    group.add(post);
+  }
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8),
+    mat(0xffffff));
+  ball.position.set(-140, 0.4, 518);
+  group.add(ball);
+
+  // Surfers: three figures on boards offshore, rising with the swell.
+  const surfers = [];
+  for (let i = 0; i < 3; i++) {
+    const s = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.6), mat(0xffd23e));
+    s.add(b);
+    const fig = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.3), mat(0x2a2a2a));
+    fig.position.y = 0.55;
+    s.add(fig);
+    s.position.set(-120 + i * 26, 0.4, 620 + i * 8);
+    group.add(s);
+    surfers.push(s);
+  }
+
+  G.scene.add(group);
+  G.islaV7 = { boards, ball, surfers, tidePhase: 0, ballPhase: 0 };
+  return G.islaV7;
+}
+
+export function updateIslaV7(G, dt) {
+  const v7 = G.islaV7;
+  if (!v7) return;
+  v7.tidePhase += dt * 0.05;
+  // The surfers ride the swell: the chop the boats feel lifts them too.
+  const chop = (G.weather && G.weather.chop) || 0.1;
+  for (let i = 0; i < v7.surfers.length; i++) {
+    const s = v7.surfers[i];
+    s.position.y = 0.4 + Math.sin(G.elapsed * 1.3 + i * 2.1) * (0.3 + chop);
+    s.rotation.z = Math.sin(G.elapsed * 0.9 + i) * 0.12;
+    s.position.x += Math.sin(G.elapsed * 0.2 + i * 2) * dt * 0.4;
+  }
+  // The volleyball drifts across the court and back, as if a game is on.
+  v7.ballPhase += dt * 0.7;
+  v7.ball.position.x = -140 + Math.sin(v7.ballPhase) * 4.5;
+  v7.ball.position.y = 0.4 + Math.abs(Math.sin(v7.ballPhase * 2)) * 1.2;
+  v7.ball.position.z = 518 + Math.cos(v7.ballPhase * 0.5) * 1.5;
+}
+
+export function islaV7Summary(G) {
+  return 'Surf shop open · volleyball on the sand · 3 surfers on the swell.';
+}

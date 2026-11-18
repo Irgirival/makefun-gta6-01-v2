@@ -162,3 +162,44 @@ export function applyShotOldTown(G) {
   }
   G.shotFrames = 0;
 }
+
+// v7: the season shot — a fifth deterministic pose for the new systems.
+// 'season' puts Mara on the Stunt Hawk at the skate park at dusk, the
+// night market glowing behind her, a delivery depot crate in frame and
+// the wanted stars just starting to climb. It is wired exactly like the
+// four dossier shots, so the same headless runner can verify it, and it
+// is the shot that shows what v7 added in a single frame.
+
+SHOT_NAMES.push('season');
+
+export function applyShotSeason(G) {
+  const p = G.player;
+  G.shot = 'season';
+  G.mode = 'playing';
+  G.hud.show();
+  document.getElementById('title').classList.add('hidden');
+  document.getElementById('pause').classList.add('hidden');
+  document.getElementById('end').classList.add('hidden');
+  G.audio.setMuted(true);
+  // Dusk at the skate park: the market lamps are on, the sky is gold.
+  G.clockMinutes = 18 * 60 + 20;
+  p.pos.set(-60, 0, 308);
+  p.heading = Math.PI * 0.75;
+  p.camYaw = Math.PI * 0.75;
+  p.camPitch = 0.32;
+  // A couple of pedestrians on the beach road for life, and a delivery
+  // job already running so the HUD shows the parcel clock.
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.8;
+    G.pedestrians.spawnPed(G, -60 + Math.cos(a) * 12, 300 + Math.sin(a) * 12, false);
+  }
+  startMission(G, 0);
+  G.hud.setMission('Solmar Express — parcel run',
+    'Parcel in hand — deliver it to the plaza hotel before the clock runs out.',
+    '52s left · streak 2 — pay grows with every clean drop.');
+  if (G.wanted) G.wanted.addHeat(25, 'season-shot');
+}
+
+export function shotSeasonSummary() {
+  return 'Season shot: dusk at the skate park, market lamps on, delivery running, heat rising.';
+}

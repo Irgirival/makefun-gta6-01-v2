@@ -249,3 +249,95 @@ export function createMinimap(G) {
   G.minimap = minimap;
   return minimap;
 }
+
+// v7: the job blips and the damage compass. After the base minimap
+// draws, this overlay paints on the same canvas: blue diamonds for
+// delivery depots, a green square for the active drop-off, a purple dot
+// for the regatta start, and a red arc on the rim pointing at whoever
+// just hurt Mara — the damage direction, so she can turn and face it.
+// The overlay recomputes the map transform itself (the base draw keeps
+// its own), so the two layers can never drift apart.
+
+export function drawMinimapV7(G) {
+  const canvas = document.getElementById('minimap');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const range = G.config.minimapRange;
+  const scale = W / (range * 2);
+  const px = G.driving ? G.driving.pos.x : G.player.pos.x;
+  const pz = G.driving ? G.driving.pos.z : G.player.pos.z;
+  const toMap = (x, z) => [cx + (x - px) * scale, cy + (z - pz) * scale];
+  const inCircle = (mx, my) => Math.hypot(mx - cx, my - cy) < W / 2 - 4;
+
+  const diamond = (x, z, color, size) => {
+    const [mx, my] = toMap(x, z);
+    if (!inCircle(mx, my)) return;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(mx, my - size);
+    ctx.lineTo(mx + size, my);
+    ctx.lineTo(mx, my + size);
+    ctx.lineTo(mx - size, my);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // Delivery depots: blue diamonds. The active drop-off: a green square.
+  if (G.delivery) {
+    for (const depot of [{ x: 100, z: -100 }, { x: -100, z: 220 }, { x: 220, z: -180 }, { x: -260, z: -180 }, { x: -160, z: 505 }]) {
+      diamond(depot.x, depot.z, '#3aa7ff', 5);
+    }
+    if (G.delivery.active && G.delivery.drop) {
+      const [mx, my] = toMap(G.delivery.drop.x, G.delivery.drop.z);
+      if (inCircle(mx, my)) {
+        ctx.fillStyle = '#2ee66b';
+        ctx.fillRect(mx - 5, my - 5, 10, 10);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(mx - 5, my - 5, 10, 10);
+      }
+    }
+  }
+
+  // The regatta start: a purple dot on the harbor water.
+  diamond(352, 40, '#b45ad8', 5);
+
+  // The fire callout: an orange flame-dot while a building burns.
+  if (G.fireCallouts && G.fireCallouts.active && G.fireCallouts.spot) {
+    diamond(G.fireCallouts.spot.x, G.fireCallouts.spot.z, '#ff7a1a', 6);
+  }
+
+  // The K9 unit: a red paw-dot while the dog is on the hunt.
+  if (G.k9 && G.k9.active && G.k9.dog) {
+    diamond(G.k9.dog.pos.x, G.k9.dog.pos.z, '#ff2a2a', 4);
+  }
+
+  // Damage direction: a red arc on the rim pointing at the last hit.
+  const dmg = G.minimapV7;
+  if (dmg && dmg.lastDamageAt && G.elapsed - dmg.lastDamageAt < 2) {
+    const ang = Math.atan2(dmg.dirX, -dmg.dirZ);
+    ctx.strokeStyle = 'rgba(255,42,42,0.9)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, W / 2 - 6, ang - 0.5, ang + 0.5);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+}
+
+// v7: record a hit's direction — the minimap overlay reads this for the
+// red arc. Call it from wherever damage lands on Mara.
+export function recordDamageDirection(G, fromX, fromZ) {
+  const px = G.player.pos.x;
+  const pz = G.player.pos.z;
+  G.minimapV7 = G.minimapV7 || {};
+  G.minimapV7.dirX = fromX - px;
+  G.minimapV7.dirZ = fromZ - pz;
+  G.minimapV7.lastDamageAt = G.elapsed;
+}
+
+export function minimapV7Summary(G) {
+  const dmg = G.minimapV7;
+  return dmg && dmg.lastDamageAt ? 'Damage compass live — the last hit came from the red arc.' : 'Minimap overlay live — depots, drops and callouts marked.';
+}

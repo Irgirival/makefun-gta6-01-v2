@@ -176,3 +176,97 @@ export function updatePlayer(G, dt) {
   cam.position.set(cx, cy, cz);
   cam.lookAt(p.pos.x, p.pos.y + 1.4, p.pos.z);
 }
+
+// v7: dodge roll, slide and second wind — Mara's on-foot tricks. Hold
+// sprint and tap jump while moving and she tucks into a roll: a burst of
+// speed in the direction she faces, a brief window where the street
+// cannot touch her, and a stamina bill when she stands back up. Slide
+// the other way — sprint, then stop dead and she skids a step and a half,
+// which is exactly enough to dodge a cruiser's bumper. Second wind is
+// the comeback: drop below a quarter health and the next sprint costs
+// nothing for five seconds, because Mara Solano does not stay down.
+
+export function updatePlayerV7(G, dt) {
+  const p = G.player;
+  if (!p) return;
+  const v7 = p.v7 || (p.v7 = {
+    rollTimer: 0,
+    rollCooldown: 0,
+    slideTimer: 0,
+    secondWind: 0,
+    secondWindUsedAt: -999,
+    rolls: 0,
+    slides: 0,
+  });
+  if (v7.rollCooldown > 0) v7.rollCooldown -= dt;
+  if (v7.secondWind > 0) v7.secondWind -= dt;
+
+  // Second wind: low health, once per chase, five seconds of free sprint.
+  if (G.health <= 25 && G.elapsed - v7.secondWindUsedAt > 30 && v7.secondWind <= 0) {
+    v7.secondWind = 5;
+    v7.secondWindUsedAt = G.elapsed;
+    G.hud.toast('Second wind! Mara digs deep — sprint is free for 5 seconds.');
+  }
+
+  const sprinting = G.input.down('sprint');
+  const moving = G.input.down('forward') || G.input.down('back')
+    || G.input.down('left') || G.input.down('right');
+
+  // Dodge roll: sprint + jump tap while moving, on a road, off cooldown.
+  if (sprinting && moving && G.input.pressed('jump') && v7.rollCooldown <= 0
+    && v7.rollTimer <= 0 && G.city.isRoad(p.pos.x, p.pos.z)) {
+    v7.rollTimer = 0.45;
+    v7.rollCooldown = G.config.dodgeRollCooldown || 1.6;
+    v7.rolls += 1;
+    if (G.player.stamina !== undefined) {
+      G.player.stamina = Math.max(0, (G.player.stamina || 0) - (G.config.staminaDodgeCost || 18));
+    }
+    G.audio.thud?.();
+  }
+
+  if (v7.rollTimer > 0) {
+    v7.rollTimer -= dt;
+    const speed = G.config.dodgeRollSpeed || 16;
+    const nx = p.pos.x + Math.sin(p.heading) * speed * dt;
+    const nz = p.pos.z + Math.cos(p.heading) * speed * dt;
+    // Stay on the road grid — a roll that would clip a building stops short.
+    if (G.city.isRoad(nx, nz)) {
+      p.pos.x = nx;
+      p.pos.z = nz;
+      p.group.position.copy(p.pos);
+    } else {
+      v7.rollTimer = 0;
+    }
+    // The roll tucks Mara low: the camera dips with her.
+    p.group.position.y = Math.max(0, p.group.position.y - dt * 0.5);
+    if (p.parts && p.parts.torso) p.parts.torso.rotation.x = 0.9;
+  } else if (p.parts && p.parts.torso && p.parts.torso.rotation.x !== 0) {
+    p.parts.torso.rotation.x = 0;
+  }
+
+  // Slide: sprinting, then a sudden stop — Mara skids forward a step and
+  // a half, which reads as a dodge to anyone watching the street.
+  if (sprinting && !moving && v7.slideTimer <= 0 && (p.slideReady === undefined || p.slideReady)) {
+    // Only slide if she was just moving fast: the game tracks speed on foot.
+    if (p.lastSpeed && p.lastSpeed > 8) {
+      v7.slideTimer = 0.4;
+      v7.slides += 1;
+    }
+  }
+  if (v7.slideTimer > 0) {
+    v7.slideTimer -= dt;
+    const nx = p.pos.x + Math.sin(p.heading) * 6 * dt;
+    const nz = p.pos.z + Math.cos(p.heading) * 6 * dt;
+    if (G.city.isRoad(nx, nz)) {
+      p.pos.x = nx;
+      p.pos.z = nz;
+      p.group.position.copy(p.pos);
+    }
+  }
+}
+
+export function playerV7Summary(G) {
+  const v7 = G.player && G.player.v7;
+  if (!v7) return 'No rolls yet — sprint and tap jump to roll.';
+  return `${v7.rolls} dodge rolls · ${v7.slides} slides · second wind ${v7.secondWind > 0 ? 'LIVE' : 'ready'}.`;
+}

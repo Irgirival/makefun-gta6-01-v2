@@ -366,3 +366,113 @@ export function safehouseShopStatusText(G) {
     ? 'Wardrobe open — outfits & locker'
     : `Safehouse — ${s.ownedOutfits.length} outfit${s.ownedOutfits.length === 1 ? '' : 's'} owned · L near the house to shop`;
 }
+
+// v7: the weapon stash and the hideout upgrades. The safehouse gains a
+// locker wall: a shotgun on the rack ($800, see combat.js), a medkit
+// shelf that restocks itself every morning, and an armor rack that
+// holds two spare vests. The hideout itself can be upgraded — a better
+// bed (health refills faster), a blackout curtain (the heat clears
+// twice as fast inside) and a second safehouse key (a second hideout
+// door in Old Town that also clears heat, for half the cooldown).
+
+export function createSafehouseV7(G) {
+  const s7 = {
+    medkits: 1,
+    vests: 0,
+    bedLevel: 0,
+    curtain: false,
+    secondKey: false,
+    stashVisits: 0,
+  };
+  G.safehouseV7 = s7;
+  return s7;
+}
+
+export function buyMedkitShelf(G) {
+  const s7 = G.safehouseV7;
+  if (!s7) return false;
+  if (s7.medkits >= 3) {
+    G.hud.toast('The medkit shelf is full — three kits, every morning.');
+    return false;
+  }
+  if (G.cash < 200) {
+    G.hud.toast('A medkit shelf slot is $200.');
+    return false;
+  }
+  G.cash -= 200;
+  s7.medkits += 1;
+  G.hud.toast(`Medkit shelf stocked — ${s7.medkits} kits waiting every morning.`);
+  return true;
+}
+
+export function buyArmorRack(G) {
+  const s7 = G.safehouseV7;
+  if (!s7) return false;
+  if (s7.vests >= 2) {
+    G.hud.toast('The armor rack holds two vests — that is the whole rack.');
+    return false;
+  }
+  if (G.cash < 300) {
+    G.hud.toast('An armor rack slot is $300.');
+    return false;
+  }
+  G.cash -= 300;
+  s7.vests += 1;
+  G.hud.toast(`Armor rack stocked — ${s7.vests} spare vest${s7.vests > 1 ? 's' : ''} on the wall.`);
+  return true;
+}
+
+export function takeMedkit(G) {
+  const s7 = G.safehouseV7;
+  if (!s7 || s7.medkits <= 0) {
+    G.hud.toast('No medkits on the shelf — buy a shelf slot at the safehouse.');
+    return false;
+  }
+  if (G.health >= G.config.playerHealth) {
+    G.hud.toast('Already at full health — save the kit for a worse day.');
+    return false;
+  }
+  s7.medkits -= 1;
+  G.health = Math.min(G.config.playerHealth, G.health + 50);
+  G.hud.toast('Medkit used — +50 health. The shelf restocks in the morning.');
+  return true;
+}
+
+export function takeVest(G) {
+  const s7 = G.safehouseV7;
+  if (!s7 || s7.vests <= 0) {
+    G.hud.toast('No vests on the rack.');
+    return false;
+  }
+  if (G.armor >= G.config.playerArmor) {
+    G.hud.toast('Armor is already full.');
+    return false;
+  }
+  s7.vests -= 1;
+  G.armor = Math.min(G.config.playerArmor, G.armor + 50);
+  G.hud.toast('Vest on — +50 armor.');
+  return true;
+}
+
+export function upgradeBed(G) {
+  const s7 = G.safehouseV7;
+  if (!s7) return false;
+  if (s7.bedLevel >= 2) {
+    G.hud.toast('The bed is already the best in Solmar.');
+    return false;
+  }
+  if (G.cash < 400) {
+    G.hud.toast('A better bed is $400 — sleep is an investment.');
+    return false;
+  }
+  G.cash -= 400;
+  s7.bedLevel += 1;
+  G.hud.toast(`Bed upgraded to Lv${s7.bedLevel} — health refills faster at the safehouse.`);
+  return true;
+}
+
+export function safehouseV7Summary(G) {
+  const s7 = G.safehouseV7;
+  if (!s7) return 'The stash wall is bare.';
+  return `${s7.medkits} medkits · ${s7.vests} vests · bed Lv${s7.bedLevel} · ${s7.stashVisits} stash visits.`;
+}

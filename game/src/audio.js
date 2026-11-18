@@ -236,3 +236,90 @@ export function createAudio(G) {
   G.audio = audio;
   return audio;
 }
+
+// v7: the sound effects the new systems need — all synthesized on the
+// same master gain the audio object owns, all guarded the same way, so
+// a headless run with no audio context stays silent and safe. Each one
+// is a standalone export that reads G.audio: if the context never
+// started, the function returns without a sound.
+
+function v7Ctx(G) {
+  const a = G.audio;
+  if (!a || !a.ctx || a.muted) return null;
+  return a.ctx;
+}
+
+function v7Noise(G, dur, freq, gain) {
+  const ctx = v7Ctx(G);
+  if (!ctx) return;
+  const len = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = freq;
+  const g = ctx.createGain();
+  g.gain.value = gain;
+  src.connect(filter).connect(g).connect(G.audio.master);
+  src.start();
+}
+
+function v7Tone(G, freq, dur, type, gain, slideTo) {
+  const ctx = v7Ctx(G);
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  osc.type = type || 'sine';
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+  osc.connect(g).connect(G.audio.master);
+  osc.start();
+  osc.stop(ctx.currentTime + dur);
+}
+
+// The cash register: two bright pings, a cha-ching for every payday.
+export function playCashV7(G) {
+  v7Tone(G, 1320, 0.09, 'square', 0.12);
+  setTimeout(() => v7Tone(G, 1760, 0.14, 'square', 0.12), 90);
+}
+
+// The mission sting: a little rising fanfare when a story step lands.
+export function playStingV7(G) {
+  v7Tone(G, 523, 0.12, 'triangle', 0.16);
+  setTimeout(() => v7Tone(G, 659, 0.12, 'triangle', 0.16), 110);
+  setTimeout(() => v7Tone(G, 784, 0.22, 'triangle', 0.18), 220);
+}
+
+// A car crash: shaped noise, low and short, with a metallic ping after.
+export function playCrashV7(G) {
+  v7Noise(G, 0.3, 900, 0.35);
+  setTimeout(() => v7Tone(G, 220, 0.2, 'square', 0.08, 110), 60);
+}
+
+// A horn: two-tone, impatient, exactly like Solmar traffic at 17:05.
+export function playHonkV7(G) {
+  v7Tone(G, 370, 0.18, 'sawtooth', 0.1);
+  v7Tone(G, 466, 0.18, 'sawtooth', 0.1);
+}
+
+// The K9 bark: two sharp yaps, low and fast.
+export function playBarkV7(G) {
+  v7Tone(G, 300, 0.07, 'square', 0.14, 180);
+  setTimeout(() => v7Tone(G, 320, 0.07, 'square', 0.14, 190), 120);
+}
+
+// The dock bell: a single harbour bell for the boat race start.
+export function playBellV7(G) {
+  v7Tone(G, 880, 0.6, 'sine', 0.2);
+  v7Tone(G, 1318, 0.5, 'sine', 0.08);
+}
+
+// The crowd cheer: filtered noise that swells and falls, for race wins.
+export function playCheerV7(G) {
+  v7Noise(G, 0.9, 2400, 0.16);
+}

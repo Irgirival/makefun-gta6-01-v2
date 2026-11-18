@@ -203,3 +203,96 @@ export function updateMotorcycles(G, dt) {
     v.mesh.rotation.x = v.brakeLights ? 0.06 : 0;
   }
 }
+
+// v7: the Stunt Hawk 450 — a lightweight stunt bike with a short
+// wheelbase and a long travel fork, built for the skate park and the
+// beach ramp. It wheelies on demand (hold sprint + back while moving),
+// stoppies on the front brake, and its lean is twice as dramatic as
+// the Comet's, because a stunt bike that does not lean is just a slow
+// motorcycle with opinions.
+
+export const STUNT_SPEC = {
+  name: 'Stunt Hawk 450',
+  topSpeed: 38,
+  accel: 30,
+  turn: 3.0,
+  colors: [0xff5a2a, 0x2a2a2a, 0xffd23e],
+};
+
+const STUNT_SPOT = { x: -48, z: 296 };
+
+export function spawnStuntBike(G) {
+  const bike = createMotorcycle(G, STUNT_SPOT.x, STUNT_SPOT.z, Math.PI / 2, {
+    parked: true,
+    color: 0xff5a2a,
+  });
+  // The stunt spec is fitted after the build — the frame is a Comet's,
+  // the gearing is the Hawk's.
+  bike.spec = STUNT_SPEC;
+  bike.name = 'Stunt Hawk 450';
+  G.stuntBike = bike;
+  return bike;
+}
+
+// v7: wheelies and stoppies — the stunt layer. While Mara rides any
+// bike, holding sprint + back lifts the front wheel (a wheelie, +style),
+// and braking hard from speed lifts the rear (a stoppie). Both are
+// tracked: the longest wheelie is a season record at the skate park.
+export function createBikeStunts(G) {
+  const st = {
+    wheelieTimer: 0,
+    longestWheelie: 0,
+    stoppieTimer: 0,
+    longestStoppie: 0,
+    stunts: 0,
+  };
+  G.bikeStunts = st;
+  return st;
+}
+
+export function updateBikeStuntsV7(G, dt) {
+  const st = G.bikeStunts;
+  if (!st) return;
+  const bike = G.driving;
+  const ridingBike = bike && (bike.spec === MOTORCYCLE_SPEC || bike.spec === CRUISER_SPEC
+    || bike.spec === DIRT_SPEC || bike.spec === STUNT_SPEC);
+  if (!ridingBike) {
+    st.wheelieTimer = 0;
+    st.stoppieTimer = 0;
+    return;
+  }
+  const speed = Math.abs(bike.speed || 0);
+  // Wheelie: sprint + back while rolling — the front wheel comes up and
+  // the bike balances on the rear for as long as she holds it.
+  if (G.input.down('sprint') && G.input.down('back') && speed > 8) {
+    st.wheelieTimer += dt;
+    if (bike.mesh) bike.mesh.rotation.x = -0.35;
+    if (st.wheelieTimer > st.longestWheelie) st.longestWheelie = st.wheelieTimer;
+  } else {
+    if (st.wheelieTimer > 2) {
+      st.stunts += 1;
+      G.hud.toast(`Wheelie held ${st.wheelieTimer.toFixed(1)}s — the skate park crowd approves.`);
+    }
+    st.wheelieTimer = 0;
+    if (bike.mesh) bike.mesh.rotation.x = 0;
+  }
+  // Stoppie: hard brake from speed — the rear wheel comes up.
+  if (G.input.down('back') && speed > 20 && !G.input.down('sprint')) {
+    st.stoppieTimer += dt;
+    if (bike.mesh) bike.mesh.rotation.x = 0.3;
+    if (st.stoppieTimer > st.longestStoppie) st.longestStoppie = st.stoppieTimer;
+  } else if (st.stoppieTimer > 0) {
+    if (st.stoppieTimer > 1.5) {
+      st.stunts += 1;
+      G.hud.toast(`Stoppie ${st.stoppieTimer.toFixed(1)}s — stop showing off. Actually, keep going.`);
+    }
+    st.stoppieTimer = 0;
+    if (bike.mesh) bike.mesh.rotation.x = 0;
+  }
+}
+
+export function bikeStuntsSummary(G) {
+  const st = G.bikeStunts;
+  if (!st) return 'No stunt bike on the road.';
+  return `${st.stunts} stunts · longest wheelie ${st.longestWheelie.toFixed(1)}s · longest stoppie ${st.longestStoppie.toFixed(1)}s.`;
+}

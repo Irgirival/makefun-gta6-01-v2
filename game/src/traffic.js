@@ -109,3 +109,123 @@ export function updateTraffic(G, dt) {
     }
   }
 }
+
+// v7: accidents and rush-hour waves. Once a minute the city rolls its
+// dice: two traffic cars that happen to share an intersection clip each
+// other, stop dead, flash their hazards and draw a little crowd of
+// gawkers while the tow truck is "on its way". At rush hour the avenues
+// fill up — four extra cars join the flow, the horns come out, and the
+// whole grid slows to a crawl exactly when Mara is in a hurry.
+
+const V7_ACCIDENT_SPOTS = [
+  { x: 60, z: 60 }, { x: 140, z: -20 }, { x: -20, z: 60 },
+  { x: 220, z: -100 }, { x: -100, z: -100 }, { x: 140, z: 140 },
+];
+
+export function createTrafficV7(G) {
+  const t7 = {
+    accidentTimer: 45 + G.rng() * 30,
+    accidents: 0,
+    wrecks: [],
+    rushWaveAt: -999,
+    rushCarsSpawned: 0,
+    honkTimer: 0,
+  };
+  G.trafficV7 = t7;
+  return t7;
+}
+
+function nearestTrafficPair(G) {
+  const cars = G.vehicles.filter((v) => v.driver === 'traffic');
+  let best = null;
+  let bestD = Infinity;
+  for (let i = 0; i < cars.length; i++) {
+    for (let j = i + 1; j < cars.length; j++) {
+      const d = Math.hypot(cars[i].pos.x - cars[j].pos.x, cars[i].pos.z - cars[j].pos.z);
+      if (d < bestD) { bestD = d; best = [cars[i], cars[j]]; }
+    }
+  }
+  return bestD < 40 ? best : null;
+}
+
+function stageAccident(G, pair) {
+  const t7 = G.trafficV7;
+  const [a, b] = pair;
+  a.speed = 0; b.speed = 0;
+  a.cruiseSpeed = 0; b.cruiseSpeed = 0;
+  a.wrecked = true; b.wrecked = true;
+  a.wreckTimer = G.config.accidentClearTime || 25;
+  b.wreckTimer = G.config.accidentClearTime || 25;
+  t7.wrecks.push(a, b);
+  t7.accidents += 1;
+  G.hud.toast('Crash on the avenue! Two cars clipped each other — the road is blocked.');
+  if (G.audio.crash) G.audio.crash();
+  // The gawkers: two nearby pedestrians stop and stare at the wreck.
+  const near = G.peds.filter((p) => Math.hypot(p.pos.x - a.pos.x, p.pos.z - a.pos.z) < 30).slice(0, 2);
+  for (const p of near) p.gawking = true;
+}
+
+export function updateTrafficV7(G, dt) {
+  const t7 = G.trafficV7;
+  if (!t7) return;
+  // One accident roll per minute, only while Mara is driving the streets.
+  t7.accidentTimer -= dt;
+  if (t7.accidentTimer <= 0) {
+    t7.accidentTimer = 60;
+    if (G.rng() < (G.config.accidentChance || 0.06) * 10) {
+      const pair = nearestTrafficPair(G);
+      if (pair) stageAccident(G, pair);
+    }
+  }
+  // Wrecks clear after the tow: the cars remember their cruise speed and
+  // rejoin the flow as if nothing happened.
+  for (const w of t7.wrecks) {
+    if (!w.wrecked) continue;
+    w.wreckTimer -= dt;
+    w.speed = 0;
+    if (w.wreckTimer <= 0) {
+      w.wrecked = false;
+      w.cruiseSpeed = 8 + G.rng() * 6;
+      w.speed = 2;
+      w.route.nextTurn = 40;
+      G.hud.toast('Tow truck cleared the wreck — traffic is moving again.');
+    }
+  }
+  t7.wrecks = t7.wrecks.filter((w) => w.wrecked);
+
+  // Rush-hour waves: between 17:00 and 19:00, four extra cars join once
+  // per hour and the whole grid honks when it bunches up.
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const rush = mins >= 17 * 60 && mins < 19 * 60;
+  if (rush && G.elapsed - t7.rushWaveAt > 3600) {
+    t7.rushWaveAt = G.elapsed;
+    t7.rushCarsSpawned += 1;
+    for (let i = 0; i < (G.config.rushWaveCars || 4); i++) {
+      const spot = V7_ACCIDENT_SPOTS[i % V7_ACCIDENT_SPOTS.length];
+      const v = createVehicle(G, 'sedan', spot.x + i * 4, spot.z, 0, { driver: 'traffic', occupied: true });
+      v.speed = 8;
+      v.route = { axis: 'z', dir: 1, nextTurn: 80 };
+      v.cruiseSpeed = 10;
+    }
+    G.hud.toast('Rush hour — the avenues just filled up. Good luck getting anywhere fast.');
+  }
+  // A honk when traffic bunches: three or more cars within ten units.
+  t7.honkTimer -= dt;
+  if (t7.honkTimer <= 0) {
+    t7.honkTimer = 7;
+    const cars = G.vehicles.filter((v) => v.driver === 'traffic');
+    for (const c of cars) {
+      const bunch = cars.filter((o) => o !== c && Math.hypot(o.pos.x - c.pos.x, o.pos.z - c.pos.z) < 10).length;
+      if (bunch >= 2) {
+        if (G.audio.honk) G.audio.honk();
+        break;
+      }
+    }
+  }
+}
+
+export function trafficV7Summary(G) {
+  const t7 = G.trafficV7;
+  if (!t7) return 'Traffic is flowing.';
+  return `${t7.accidents} accidents staged · ${t7.wrecks.length} wrecks on the road · ${t7.rushCarsSpawned} rush-hour waves.`;
+}

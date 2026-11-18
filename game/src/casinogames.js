@@ -398,3 +398,99 @@ export function casinoGamesStatusText(G) {
     ? 'Table floor open — roulette & blackjack'
     : `Table floor — ${g.bjHands} blackjack hands · net ${net >= 0 ? '+' : ''}$${net}`;
 }
+
+// v7: the slots floor and a baccarat table. The slots are pure luck with
+// a Solmar skin: three reels, seven symbols, $25 a pull, three gold
+// sevens pay the $2,500 jackpot and three cherries pay $250. Baccarat is
+// the quiet table in the corner — bet Player, Banker or Tie, two cards
+// each, closest to nine wins, Banker pays 19:20 and Tie pays 8:1. Both
+// games settle straight into Mara's cash and the casino's nightly tally,
+// so the house always remembers who beat it.
+
+const SLOT_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣', '🍀'];
+const SLOT_PAYS = { '🍒🍒🍒': 250, '🔔🔔🔔': 400, '⭐⭐⭐': 600, '💎💎💎': 1000, '🍀🍀🍀': 150, '7️⃣7️⃣7️⃣': 2500 };
+const SLOTS_BET = 25;
+
+function spinReel(rng) {
+  const roll = rng();
+  if (roll < 0.05) return '7️⃣';
+  if (roll < 0.14) return '💎';
+  if (roll < 0.26) return '⭐';
+  if (roll < 0.40) return '🔔';
+  if (roll < 0.58) return '🍒';
+  if (roll < 0.76) return '🍋';
+  return '🍀';
+}
+
+// v7: one pull of the slots. Returns the result line for the HUD — the
+// reels, the win, and whether the jackpot just fell.
+export function playSlots(G, bet = SLOTS_BET) {
+  const cg = G.casinogames;
+  if (!cg) return null;
+  if (G.cash < bet) {
+    G.hud.toast('Not enough cash for a spin — the slots take $25 a pull.');
+    return null;
+  }
+  G.cash -= bet;
+  const reels = [spinReel(G.rng), spinReel(G.rng), spinReel(G.rng)];
+  const key = reels.join('');
+  let win = SLOT_PAYS[key] || 0;
+  // Two matching symbols on the left still pay a little — the house is
+  // not completely heartless.
+  if (win === 0 && reels[0] === reels[1]) win = 10;
+  if (win > 0) G.cash += win;
+  cg.slotsSpins = (cg.slotsSpins || 0) + 1;
+  cg.slotsWon = (cg.slotsWon || 0) + win;
+  if (win >= 2500) {
+    cg.slotsJackpots = (cg.slotsJackpots || 0) + 1;
+    G.hud.toast(`🎰 JACKPOT! ${reels.join(' ')} — $${win}! The whole casino floor heard that.`);
+  } else if (win > 0) {
+    G.hud.toast(`🎰 ${reels.join(' ')} — won $${win}!`);
+  } else {
+    G.hud.toast(`🎰 ${reels.join(' ')} — no luck this time.`);
+  }
+  return { reels, win };
+}
+
+// v7: one hand of baccarat. Bet on Player, Banker or Tie; the hand
+// closest to nine wins. Banker wins pay 19:20 (the house takes its 5%),
+// Tie pays 8:1, and a natural 8 or 9 ends the hand on the spot.
+export function playBaccarat(G, bet, side = 'player') {
+  const cg = G.casinogames;
+  if (!cg) return null;
+  if (G.cash < bet) {
+    G.hud.toast('Not enough cash for that baccarat bet.');
+    return null;
+  }
+  const draw = () => Math.min(9, 1 + Math.floor(G.rng() * 13));
+  const handTotal = (cards) => cards.reduce((a, b) => a + b, 0) % 10;
+  const player = [draw(), draw()];
+  const banker = [draw(), draw()];
+  const pt = handTotal(player);
+  const bt = handTotal(banker);
+  G.cash -= bet;
+  let win = 0;
+  let result = 'push';
+  if (pt === bt) {
+    result = 'tie';
+    if (side === 'tie') win = bet * 8;
+    else win = bet; // a tie refunds a Player/Banker bet
+  } else if (pt > bt) {
+    result = 'player';
+    if (side === 'player') win = bet * 2;
+  } else {
+    result = 'banker';
+    if (side === 'banker') win = Math.floor(bet * 1.95);
+  }
+  G.cash += win;
+  cg.baccaratHands = (cg.baccaratHands || 0) + 1;
+  cg.baccaratWon = (cg.baccaratWon || 0) + Math.max(0, win - bet);
+  G.hud.toast(`Baccarat: Player ${pt} — Banker ${bt}. ${result === 'tie' ? 'Tie!' : result + ' wins.'} ${win > bet ? `+$${win - bet}` : win === bet ? 'Bet returned.' : `-$${bet}`}`);
+  return { player: pt, banker: bt, result, win };
+}
+
+export function casinoV7Summary(G) {
+  const cg = G.casinogames;
+  if (!cg) return 'The casino floor is dark.';
+  return `${cg.slotsSpins || 0} slot pulls · $${cg.slotsWon || 0} slot wins · ${cg.slotsJackpots || 0} jackpots · ${cg.baccaratHands || 0} baccarat hands.`;
+}

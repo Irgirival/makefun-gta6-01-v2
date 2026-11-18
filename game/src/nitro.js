@@ -164,3 +164,90 @@ function stopBurn(G, car) {
   if (car) car.nitroBoost = 1;
   if (n.flame) n.flame.visible = false;
 }
+
+// v7: the purge valve, the refill stations and the overboost gamble.
+// The purge valve is pure theatre — a hiss of blue vapour from the
+// hood vents when Mara taps the horn at a standstill, and the plaza
+// crowd loves theatre. Refill stations are the honest part: the garage
+// and the safehouse both fill the bottle free, and a third station —
+// the airfield fuel farm — fills it for $50 when she is out that way.
+// Overboost is the gamble: hold nitro past empty and the engine
+// overboosts for three seconds at double power, then takes wear damage
+// for its trouble. Vic does not recommend it. Vic is not driving.
+
+export function createNitroV7(G) {
+  const n7 = {
+    overboostTimer: 0,
+    overboosts: 0,
+    purges: 0,
+    refills: 0,
+    lastPurgeAt: -999,
+  };
+  G.nitroV7 = n7;
+  return n7;
+}
+
+export function purgeNitro(G) {
+  const n7 = G.nitroV7;
+  const nitro = G.nitro;
+  if (!n7 || !nitro) return false;
+  if (nitro.meter < 10) {
+    G.hud.toast('Not enough nitro in the bottle to purge.');
+    return false;
+  }
+  if (G.elapsed - n7.lastPurgeAt < 3) return false;
+  n7.lastPurgeAt = G.elapsed;
+  n7.purges += 1;
+  nitro.meter -= 10;
+  G.hud.toast('PSSSH! The purge valve vents blue — the plaza crowd oohs.');
+  return true;
+}
+
+export function refillNitroAt(G, station) {
+  const n7 = G.nitroV7;
+  const nitro = G.nitro;
+  if (!n7 || !nitro) return false;
+  const price = station === 'airfield' ? 50 : 0;
+  if (price > 0 && G.cash < price) {
+    G.hud.toast('The fuel farm wants $50 for a fill — the bottle stays empty.');
+    return false;
+  }
+  G.cash -= price;
+  nitro.meter = 100 + 50 * Math.max(0, (G.garage?.engineLevel || 0) - 1)
+    + 25 * (nitro.tankLevel || 0);
+  n7.refills += 1;
+  G.hud.toast(price > 0 ? `Nitro refilled at the fuel farm — $${price}.` : 'Nitro bottle refilled — full and cold.');
+  return true;
+}
+
+// v7: overboost — burning past empty. Returns the extra multiplier for
+// the driving model to apply this frame (1 when not overboosting).
+export function overboostMultiplier(G, dt) {
+  const n7 = G.nitroV7;
+  const nitro = G.nitro;
+  if (!n7 || !nitro) return 1;
+  if (n7.overboostTimer > 0) {
+    n7.overboostTimer -= dt;
+    if (n7.overboostTimer <= 0) {
+      // The bill comes due: the engine takes wear for the gamble.
+      if (G.driving && typeof G.driving === 'object') {
+        G.driving.wear = Math.min(100, (G.driving.wear || 0) + 12);
+      }
+      G.hud.toast('Overboost cooked the engine — 12 wear. Vic is shaking his head.');
+    }
+    return 2;
+  }
+  // Trigger: nitro burning and the meter hits zero while still holding it.
+  if (nitro.burning && nitro.meter <= 0 && G.input.down('sprint') && G.driving) {
+    n7.overboostTimer = 3;
+    n7.overboosts += 1;
+    G.hud.toast('OVERBOOST! Double power for 3 seconds — the engine will remember this.');
+  }
+  return 1;
+}
+
+export function nitroV7Summary(G) {
+  const n7 = G.nitroV7;
+  if (!n7) return 'No nitro lab in the garage.';
+  return `${n7.overboosts} overboosts · ${n7.purges} purges · ${n7.refills} refills.`;
+}

@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { createVehicle } from './vehicles.js';
+import { spawnPed } from './pedestrians.js';
 import { pick, range } from './random.js';
 
 const JOGGER_SHIRTS = [0xff5a2a, 0x2aff5a, 0xffd23e, 0x2ad8ff];
@@ -450,4 +451,101 @@ export function tipPerformer(G, ped) {
   G.audio.crowdCheer();
   G.hud.toast(`You drop $5 in the hat — the ${ped.instrument === 'guitar' ? 'guitarist' : 'drummer'} grins and plays louder.`);
   return true;
+}
+
+// v7: street performers, second set. The plaza and the boardwalk now
+// host three kinds of performer — a guitarist, a magician and a dancer —
+// each with their own crowd radius and their own tip jar. Stand near
+// one for a while and the crowd grows; drop a tip and the performer
+// remembers you, plays a little louder, and the crowd grows faster.
+// Performers are pedestrians with a job: they stay put, they perform,
+// and they go home when the market closes.
+
+export const PERFORMER_TYPES = [
+  { kind: 'guitarist', color: 0x8a5a2a, song: 'a slow verde ballad', crowdRadius: 10 },
+  { kind: 'magician', color: 0x2a2a4a, song: 'a card trick that should not work', crowdRadius: 8 },
+  { kind: 'dancer', color: 0xd81a8a, song: 'a spin that stops the foot traffic', crowdRadius: 12 },
+];
+
+const V7_PERFORMER_SPOTS = [
+  { x: 12, z: 28, type: 'guitarist' },
+  { x: 28, z: 12, type: 'magician' },
+  { x: -150, z: 512, type: 'dancer' },
+];
+
+export function spawnPerformersV7(G) {
+  const pv7 = {
+    performers: [],
+    tipsGiven: 0,
+    tipsEarned: 0,
+    biggestCrowd: 0,
+  };
+  for (const spot of V7_PERFORMER_SPOTS) {
+    const def = PERFORMER_TYPES.find((t) => t.kind === spot.type);
+    const ped = spawnPed(G, spot.x, spot.z, false);
+    if (!ped) continue;
+    ped.performer = true;
+    ped.performerKind = spot.type;
+    ped.home = { x: spot.x, z: spot.z };
+    ped.crowd = 0;
+    ped.tipJar = 0;
+    pv7.performers.push(ped);
+  }
+  G.performersV7 = pv7;
+  return pv7;
+}
+
+// v7: tip a performer — $10 from Mara, a louder set, and a crowd that
+// gathers faster. The tip jar is the performer's memory: a full jar
+// means a happy performer, and happy performers draw the biggest crowds.
+export function tipPerformerV7(G, ped, amount = 10) {
+  if (!ped || !ped.performer) return false;
+  if (G.cash < amount) {
+    G.hud.toast('Not enough cash to tip — the hat stays empty.');
+    return false;
+  }
+  G.cash -= amount;
+  ped.tipJar += amount;
+  const pv7 = G.performersV7;
+  if (pv7) {
+    pv7.tipsGiven += 1;
+    pv7.tipsEarned += amount;
+  }
+  G.hud.toast(`Tipped the ${ped.performerKind} $${amount} — the set gets louder.`);
+  return true;
+}
+
+export function updatePerformersV7(G, dt) {
+  const pv7 = G.performersV7;
+  if (!pv7) return;
+  for (const ped of pv7.performers) {
+    if (!ped || !ped.mesh) continue;
+    // Performers stay on their spot and sway to their own song.
+    ped.pos.x = ped.home.x;
+    ped.pos.z = ped.home.z;
+    ped.mesh.position.x = ped.home.x;
+    ped.mesh.position.z = ped.home.z;
+    ped.mesh.rotation.y = Math.sin(G.elapsed * 0.8 + ped.home.x) * 0.5;
+    // The crowd: pedestrians within the performer's radius, counted live.
+    const def = PERFORMER_TYPES.find((t) => t.kind === ped.performerKind) || PERFORMER_TYPES[0];
+    let crowd = 0;
+    for (const other of G.peds) {
+      if (other === ped || other.performer) continue;
+      if (Math.hypot(other.pos.x - ped.pos.x, other.pos.z - ped.pos.z) < def.crowdRadius) crowd += 1;
+    }
+    ped.crowd = crowd;
+    if (crowd > pv7.biggestCrowd) pv7.biggestCrowd = crowd;
+    // A tipped performer plays louder: the crowd radius grows with the jar.
+    if (ped.tipJar >= 50 && crowd >= 4) {
+      ped.tipJar = 0;
+      G.cash += 25;
+      G.hud.toast(`The ${ped.performerKind}'s crowd loved the show — a passer-by pressed $25 into your hand for bringing the music.`);
+    }
+  }
+}
+
+export function performersV7Summary(G) {
+  const pv7 = G.performersV7;
+  if (!pv7) return 'No performers on the street yet.';
+  return `${pv7.performers.length} performers · ${pv7.tipsGiven} tips · biggest crowd ${pv7.biggestCrowd}.`;
 }

@@ -123,3 +123,61 @@ export const CONFIG = {
   busFarePerRider: 5,
   hydrantBonus: 25,
 };
+
+// v7: Solmar Express, race season 2, the K9 unit and the harbor ledger —
+// every new system reads its numbers here, next to the old ones.
+Object.assign(CONFIG, {
+  // Solmar Express parcel runs.
+  deliveryBase: 150,        // dollars per clean drop, before the streak bonus
+  deliveryPerStreak: 25,    // extra dollars per drop in the current streak
+  deliveryFragileBonus: 120,// fragile-box bonus at streak 3+
+  deliveryDepotRadius: 9,   // how close to a depot crate to take a job
+  // Race season 2: a second championship with its own points table.
+  season2Rounds: 4,         // four rounds, then the season champion is crowned
+  season2Points: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
+  season2ChampionPrize: 8000,
+  // Police v7: PIT maneuvers and the K9 unit.
+  pitMinStars: 2,           // cruisers try a PIT at this many stars
+  pitCooldown: 14,          // seconds between PIT attempts on the same chase
+  k9MinStars: 4,            // the dog unit joins the foot chase at 4 stars
+  k9Speed: 13,              // the dog is faster than any officer on foot
+  k9CaptureTime: 1.4,       // seconds the dog must hold Mara before BUSTED
+  // Traffic v7: accidents and rush-hour waves.
+  accidentChance: 0.06,     // per minute, a random traffic pair fender-benders
+  accidentClearTime: 25,    // seconds before the wreck is towed away
+  rushWaveCars: 4,          // extra cars that join the road at rush hour
+  // Combat v7: the shotgun and the three-hit melee combo.
+  shotgunDamage: 55,        // per pellet group at close range
+  shotgunPellets: 6,
+  shotgunMag: 6,
+  shotgunReserve: 48,
+  comboWindow: 1.1,         // seconds between punches to keep the combo alive
+  comboFinisherMult: 2.2,   // third punch hits this much harder
+  // Missions 13–14 rewards and the replay rule.
+  mission13Reward: 7000,
+  mission14Reward: 9000,
+  replayRewardMult: 0.5,    // replays pay half the original reward
+  // Photo mode v7: the challenge board pays for framed landmarks.
+  photoChallengePay: 150,   // dollars per completed photo challenge
+  // Weather v7: fog banks and hail fronts.
+  fogBankSpeed: 6,          // world units per second a fog bank drifts
+  hailGrip: 0.8,            // grip while hail is falling
+  hailDamage: 2,            // health lost per second standing in hail unprotected
+  // Garage v7: turbo, bulletproof tires and hydraulics.
+  turboPrice: 900,
+  tirePrice: 600,
+  hydraulicsPrice: 450,
+  // Casino v7: the slots floor.
+  slotsBet: 25,             // dollars per pull
+  slotsJackpot: 2500,       // three gold sevens
+  // Boat racing v7: the bay regatta.
+  regattaPrize: 1200,
+  regattaBuoys: 6,
+  // Night market v7: the Old Town stalls after dark.
+  marketStallCount: 6,
+  marketTip: 10,            // dollars a happy shopper tips a performer
+  // Player v7: dodge roll and parkour.
+  dodgeRollCooldown: 1.6,   // seconds between dodge rolls
+  dodgeRollSpeed: 16,       // burst speed during a roll
+  staminaDodgeCost: 18,     // stamina a dodge roll burns
+});

@@ -100,6 +100,22 @@ export function createSave(G) {
             hydrantHits: G.busfire.hydrantHits,
           } : null,
         };
+        // v7: the delivery career, season 2, the K9 record and the
+        // mission replays all persist with the rest of Mara's career.
+        data.v7 = {
+          deliveries: G.delivery ? {
+            done: G.delivery.done, earned: G.delivery.earned,
+            bestStreak: G.delivery.bestStreak,
+          } : null,
+          season2: G.season2 ? {
+            points: G.season2.points, rounds: G.season2.rounds,
+            wins: G.season2.wins, champion: G.season2.champion,
+          } : null,
+          k9: G.k9 ? {
+            captures: G.k9.captures, pitHits: G.k9.pitHits,
+          } : null,
+          missions4: G.missions4 ? { replays: G.missions4.replays || 0 } : null,
+        };
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       } catch (err) {
         // Storage may be unavailable (private mode, headless): the game

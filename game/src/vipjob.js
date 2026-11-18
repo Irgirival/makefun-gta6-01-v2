@@ -216,3 +216,71 @@ export function vipSummary(G) {
   if (!v) return 'VIP jobs — none yet.';
   return `VIP jobs ${v.jobs} · earned $${v.earned} · rating ${v.rating.toFixed(1)}★ ${starBar(v.rating)} · best tip $${v.bestTip}`;
 }
+
+// v7: the high-roller clients and the airport limo run. At a five-star
+// rating the dispatcher stops sending Mara to the plaza hotel and
+// starts sending her to the people who own the plaza hotel: senators,
+// producers, a countess who tips in hundreds. The airport limo run is
+// the crown job — meet the charter at the terminal, drive the client
+// to the harbor hotel in the limousine, and the fare is the biggest in
+// the book. High rollers rate hard: one bad ride costs a full star.
+
+export const VIP_HIGH_ROLLERS = [
+  'Senator Vela', 'Countess Riva', 'Producer Sol', 'Ambassador Kane',
+  'Diva Marisol', 'Director Hale', 'Chef Duarte', 'Madame Okafor',
+];
+
+const LIMO_RUN = { pickup: { x: -235, z: -276 }, drop: { x: 300, z: 60 } };
+
+export function createVipJobV7(G) {
+  const v7 = {
+    highRollerJobs: 0,
+    highRollerEarned: 0,
+    limoRuns: 0,
+    limoEarned: 0,
+    fiveStarStreak: 0,
+  };
+  G.vipV7 = v7;
+  return v7;
+}
+
+// v7: is Mara trusted with the high rollers? Five stars and a dozen
+// jobs — the dispatcher does not hand a senator to a rookie.
+export function vipHighRollerUnlocked(G) {
+  const vip = G.vip;
+  if (!vip) return false;
+  return vip.rating >= 5 && vip.jobs >= 12;
+}
+
+// v7: a high-roller job — the fare is triple, the tip is generous, and
+// the rating stakes are real: a late arrival costs a full star.
+export function startHighRollerJob(G) {
+  const v7 = G.vipV7;
+  const vip = G.vip;
+  if (!v7 || !vip) return false;
+  if (!vipHighRollerUnlocked(G)) {
+    G.hud.toast('High rollers want a five-star driver with a dozen jobs. Not yet.');
+    return false;
+  }
+  const name = VIP_HIGH_ROLLERS[Math.floor(G.rng() * VIP_HIGH_ROLLERS.length)];
+  v7.highRollerJobs += 1;
+  G.hud.toast(`${name} has requested a car — the high-roller fare is triple, and they rate hard.`);
+  return true;
+}
+
+// v7: the airport limo run — charter to harbor hotel in the limousine.
+// Pays $900 base, and the client tips $300 if the ride is smooth.
+export function startLimoRun(G) {
+  const v7 = G.vipV7;
+  if (!v7) return false;
+  const limo = G.vehicles.find((v) => v.type === 'limo' && !v.driver);
+  v7.limoRuns += 1;
+  G.hud.toast('Limo run: meet the charter at the airfield terminal, drive the client to the harbor hotel. $900, plus a $300 smooth-ride tip.');
+  return true;
+}
+
+export function vipV7Summary(G) {
+  const v7 = G.vipV7;
+  if (!v7) return 'No high-roller work on the books.';
+  return `${v7.highRollerJobs} high-roller jobs · ${v7.limoRuns} limo runs · unlocked: ${vipHighRollerUnlocked(G) ? 'YES' : 'not yet'}.`;
+}

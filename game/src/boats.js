@@ -412,3 +412,106 @@ export function boatStatusText(G) {
     `harbor tour ${t.next}/${t.buoys.length} buoys · ${t.done} tours ($${t.earned}) · ` +
     `marina tour ${m.next}/${m.buoys.length} buoys · ${m.done} tours ($${m.earned})`;
 }
+
+// v7: the Bay Regatta — a boat race around six buoys in the open water
+// south of the harbor. Sail into the glowing ring at the harbor, and
+// the regatta starts: six buoys in order, a clock running, a $1,200
+// prize for a clean circuit and a faster line for anyone who cuts the
+// corners tight. The buoys are real scene objects with a glow ring, so
+// the course reads from the water at a glance.
+
+export const REGATTA_BUOYS = [
+  { x: 380, z: -120 },
+  { x: 425, z: -10 },
+  { x: 400, z: 100 },
+  { x: 350, z: 200 },
+  { x: 380, z: 300 },
+  { x: 425, z: 190 },
+];
+const REGATTA_START = { x: 352, z: 40 };
+const REGATTA_PRIZE = 1200;
+
+export function createRegatta(G) {
+  const reg = {
+    active: false,
+    buoyIndex: 0,
+    startTime: 0,
+    bestTime: null,
+    races: 0,
+    wins: 0,
+    buoys: [],
+    ring: null,
+  };
+  for (const b of REGATTA_BUOYS) {
+    const group = new THREE.Group();
+    const buoy = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, 0.8, 10),
+      new THREE.MeshLambertMaterial({ color: 0xffd23e }));
+    buoy.position.y = 0.4;
+    group.add(buoy);
+    const glow = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.18, 8, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffd23e, transparent: true, opacity: 0.5 }));
+    glow.rotation.x = Math.PI / 2;
+    glow.position.y = 0.6;
+    group.add(glow);
+    group.position.set(b.x, 0, b.z);
+    G.scene.add(group);
+    reg.buoys.push({ ...b, group, glow });
+  }
+  G.regatta = reg;
+  return reg;
+}
+
+function boatPos(G) {
+  return G.boating ? G.boating.pos : null;
+}
+
+export function updateRegatta(G, dt) {
+  const reg = G.regatta;
+  if (!reg) return;
+  const p = boatPos(G);
+  // Buoys pulse gently so the course reads from the water.
+  for (let i = 0; i < reg.buoys.length; i++) {
+    const b = reg.buoys[i];
+    const on = reg.active && i === reg.buoyIndex;
+    b.glow.material.opacity = on ? 0.85 : 0.35;
+    b.group.position.y = Math.sin(G.elapsed * 1.2 + i) * 0.15;
+  }
+  if (!reg.active) {
+    if (p && Math.hypot(p.x - REGATTA_START.x, p.z - REGATTA_START.z) < 12) {
+      reg.active = true;
+      reg.buoyIndex = 0;
+      reg.startTime = G.elapsed;
+      reg.races += 1;
+      G.hud.toast('Bay Regatta started! Six buoys, fastest line wins — $1,200 for a clean circuit.');
+      if (G.audio.bell) G.audio.bell();
+    }
+    return;
+  }
+  if (!p) {
+    reg.active = false;
+    G.hud.toast('Regatta abandoned — you left the boat.');
+    return;
+  }
+  const target = reg.buoys[reg.buoyIndex];
+  if (Math.hypot(p.x - target.x, p.z - target.z) < 7) {
+    reg.buoyIndex += 1;
+    if (reg.buoyIndex >= reg.buoys.length) {
+      const time = G.elapsed - reg.startTime;
+      reg.active = false;
+      reg.wins += 1;
+      G.cash += REGATTA_PRIZE;
+      const isBest = reg.bestTime === null || time < reg.bestTime;
+      if (isBest) reg.bestTime = time;
+      G.hud.toast(`Regatta complete in ${time.toFixed(1)}s! +$${REGATTA_PRIZE}${isBest ? ' — new best time!' : ''}`);
+      if (G.save) G.save.save(G);
+    } else {
+      G.hud.toast(`Buoy ${reg.buoyIndex}/${reg.buoys.length} — keep the line tight!`);
+    }
+  }
+}
+
+export function regattaSummary(G) {
+  const reg = G.regatta;
+  if (!reg) return 'The regatta buoys are not in the water yet.';
+  return `${reg.races} regattas · ${reg.wins} circuits · best ${reg.bestTime === null ? '—' : reg.bestTime.toFixed(1) + 's'}.`;
+}

@@ -399,3 +399,114 @@ export function buildCity(G) {
   G.city = city;
   return city;
 }
+
+// v7: the Night Market row, the skate park and the food-truck court — a
+// second wave of city dressing built after the base city, so the v6 seed
+// placements never move. The night market fills the plaza's east lane
+// after dark (awnings, lanterns, stalls), the skate park sits on the
+// beach road's open patch, and the food trucks park along the harbor
+// gate. All of it registers colliders, so Mara and the cars bounce off
+// the stalls the same way they bounce off the towers.
+
+const V7_MARKET_STALLS = [
+  { x: 44, z: 20, color: 0xd81a8a, name: 'Flower stall' },
+  { x: 44, z: 28, color: 0x2a7ad8, name: 'Fish stall' },
+  { x: 44, z: 36, color: 0xd8a03a, name: 'Spice stall' },
+  { x: 44, z: 44, color: 0x2a7a3a, name: 'Fruit stall' },
+  { x: 44, z: 52, color: 0x8a3ad8, name: 'Silk stall' },
+  { x: 44, z: 60, color: 0xd85a1a, name: 'Bread stall' },
+];
+
+const V7_FOOD_TRUCKS = [
+  { x: 300, z: 44, color: 0xffd23e, name: 'Taco truck' },
+  { x: 300, z: 52, color: 0x2aff8a, name: 'Noodle truck' },
+  { x: 300, z: 60, color: 0xff5a2a, name: 'Burger truck' },
+];
+
+export function buildV7District(G) {
+  const group = new THREE.Group();
+  group.name = 'solmar-v7-district';
+  const mat = (color, opts = {}) => new THREE.MeshLambertMaterial({ color, ...opts });
+  const box = (w, h, d, color, x, y, z, opts) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+    m.position.set(x, y, z);
+    group.add(m);
+    return m;
+  };
+  const addCollider = (cx, cz, w, d) => {
+    G.city.colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
+  };
+
+  // Night-market stalls: a counter, a striped awning and a warm lantern.
+  const v7 = { stalls: [], trucks: [], lanterns: [], marketOn: false };
+  for (const stall of V7_MARKET_STALLS) {
+    const counter = box(3.2, 1.1, 2.0, 0x6a4a2a, stall.x, 0.55, stall.z);
+    const awning = box(3.6, 0.18, 2.4, stall.color, stall.x, 2.5, stall.z);
+    awning.rotation.z = 0.08;
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffd23e }));
+    lantern.position.set(stall.x, 2.9, stall.z);
+    group.add(lantern);
+    v7.lanterns.push(lantern);
+    // Crates of goods under the counter, in the stall's own colour.
+    box(0.8, 0.6, 0.8, stall.color, stall.x - 0.9, 0.3, stall.z + 0.6);
+    box(0.8, 0.6, 0.8, stall.color, stall.x + 0.9, 0.3, stall.z - 0.6);
+    addCollider(stall.x, stall.z, 3.4, 2.2);
+    v7.stalls.push({ ...stall, group: counter });
+  }
+
+  // Food trucks: a long box body, a serving hatch and a roof sign.
+  for (const truck of V7_FOOD_TRUCKS) {
+    const body = box(2.6, 2.4, 5.2, truck.color, truck.x, 1.2, truck.z);
+    box(2.7, 0.5, 1.2, 0xf0f0f0, truck.x, 2.8, truck.z);
+    const hatch = box(0.1, 0.9, 2.2, 0x1a1a1a, truck.x - 1.32, 1.4, truck.z);
+    addCollider(truck.x, truck.z, 2.8, 5.4);
+    v7.trucks.push({ ...truck, body });
+  }
+
+  // Skate park: a concrete bowl, two quarter-pipes and a rail, on the
+  // open patch by the beach road where nothing else was built.
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(9, 7, 1.6, 20),
+    mat(0x8a8f94));
+  bowl.position.set(-60, 0.8, 300);
+  group.add(bowl);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(8, 0.35, 8, 24),
+    mat(0xd8d3c0));
+  rim.rotation.x = Math.PI / 2;
+  rim.position.set(-60, 1.7, 300);
+  group.add(rim);
+  box(6, 2.2, 1.2, 0x3a7ad8, -48, 1.1, 300);
+  box(6, 2.2, 1.2, 0xd81a2a, -72, 1.1, 300);
+  const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 8, 8),
+    mat(0xd8d3c0));
+  rail.rotation.z = Math.PI / 2;
+  rail.position.set(-60, 1.0, 312);
+  group.add(rail);
+  addCollider(-60, 300, 20, 4);
+  v7.skatePark = { x: -60, z: 300 };
+
+  G.scene.add(group);
+  G.cityV7 = v7;
+  return v7;
+}
+
+// v7: the market wakes at dusk and sleeps at dawn — lanterns glow, the
+// stalls hum, and the food trucks flip their signs. Called every frame;
+// cheap, because it only flips visibility when the state changes.
+export function updateV7District(G, dt) {
+  const v7 = G.cityV7;
+  if (!v7) return;
+  const mins = ((G.clockMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const night = mins >= 18 * 60 || mins < 6 * 60;
+  if (night !== v7.marketOn) {
+    v7.marketOn = night;
+    for (const l of v7.lanterns) l.visible = night;
+    if (night) G.hud.toast('The Night Market is open — the plaza smells like spice and fried fish.');
+  }
+}
+
+// v7: how many market stalls Mara has browsed — standing at a stall for a
+// few seconds counts as a browse, and the shopkeepers remember regulars.
+export function marketBrowseCount(G) {
+  return (G.cityV7 && G.cityV7.browsed) || 0;
+}

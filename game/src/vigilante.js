@@ -325,3 +325,101 @@ export function vigilanteStatusText(G) {
   if (!v) return 'Vigilante: not ready.';
   return `Vigilante — ${v.bounties} bounties ($${v.earned}) · press V while driving for a contract`;
 }
+
+// v7: the high-value target and the bounty tiers. The PD's contract
+// board gets a second page: a high-value target in an armored van —
+// slower than the Comet GT, harder to stop, worth $1,500 — and a tier
+// ladder that pays more the cleaner Mara works. A bounty with no
+// collateral damage (no peds hit, no traffic wrecked) pays a 25%
+// clean bonus; a bounty taken down in under a minute pays a 15% speed
+// bonus. The board remembers who works clean.
+
+export const VIGILANTE_TIERS = [
+  { name: 'Rookie', bounties: 0, mult: 1 },
+  { name: 'Hunter', bounties: 5, mult: 1.1 },
+  { name: 'Professional', bounties: 12, mult: 1.25 },
+  { name: 'Legend', bounties: 25, mult: 1.5 },
+];
+
+export function createVigilanteV7(G) {
+  const v7 = {
+    highValueActive: false,
+    highValueDone: 0,
+    cleanBonuses: 0,
+    speedBonuses: 0,
+    tierBonusEarned: 0,
+    startTime: 0,
+    collateral: 0,
+  };
+  G.vigilanteV7 = v7;
+  return v7;
+}
+
+export function vigilanteTier(G) {
+  const vig = G.vigilante;
+  const v7 = G.vigilanteV7;
+  if (!vig) return VIGILANTE_TIERS[0];
+  const n = vig.bounties || 0;
+  let tier = VIGILANTE_TIERS[0];
+  for (const t of VIGILANTE_TIERS) if (n >= t.bounties) tier = t;
+  return tier;
+}
+
+// v7: start a high-value target — the armored van, $1,500, and a fugitive
+// who does not scare easy. Only one target at a time.
+export function startHighValueTarget(G) {
+  const v7 = G.vigilanteV7;
+  const vig = G.vigilante;
+  if (!v7 || !vig) return false;
+  if (vig.active || v7.highValueActive) {
+    G.hud.toast('Already on a contract — finish this one first.');
+    return false;
+  }
+  v7.highValueActive = true;
+  v7.startTime = G.elapsed;
+  v7.collateral = 0;
+  G.hud.toast('HIGH-VALUE TARGET: an armored van is running the harbor loop. $1,500 — and the PD pays a clean bonus if nobody else gets hurt.');
+  return true;
+}
+
+// v7: settle a bounty with the tier ladder — the clean bonus and the
+// speed bonus stack on top of the tier multiplier.
+export function settleBountyV7(G, basePay) {
+  const v7 = G.vigilanteV7;
+  const vig = G.vigilante;
+  if (!v7 || !vig) return basePay;
+  const tier = vigilanteTier(G);
+  let pay = Math.round(basePay * tier.mult);
+  if (v7.collateral === 0) {
+    const clean = Math.round(pay * 0.25);
+    pay += clean;
+    v7.cleanBonuses += 1;
+    G.hud.toast(`Clean bounty! No collateral — +$${clean} clean bonus.`);
+  }
+  const elapsed = G.elapsed - v7.startTime;
+  if (v7.startTime > 0 && elapsed < 60) {
+    const speed = Math.round(pay * 0.15);
+    pay += speed;
+    v7.speedBonuses += 1;
+    G.hud.toast(`Fast takedown (${elapsed.toFixed(0)}s)! +$${speed} speed bonus.`);
+  }
+  v7.tierBonusEarned += pay - basePay;
+  v7.highValueActive = false;
+  v7.startTime = 0;
+  return pay;
+}
+
+// v7: collateral — call it when a bounty chase hurts a bystander or a
+// traffic car. One mark and the clean bonus is gone for this contract.
+export function recordCollateralV7(G) {
+  const v7 = G.vigilanteV7;
+  if (!v7) return;
+  v7.collateral += 1;
+}
+
+export function vigilanteV7Summary(G) {
+  const v7 = G.vigilanteV7;
+  if (!v7) return 'The contract board is empty.';
+  const tier = vigilanteTier(G);
+  return `Tier: ${tier.name} (x${tier.mult}) · ${v7.highValueDone} high-value targets · ${v7.cleanBonuses} clean bonuses · $${v7.tierBonusEarned} tier pay.`;
+}

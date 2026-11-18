@@ -1,17 +1,15 @@
-// Solmar City v6 — Mara Solano: a complete 3D open-world crime game for the
-// make.fun gta6-01 bounty (Node 22, standard library only). v6 tops up v5
-// with the Old Town historic quarter (cathedral, market, tram), Missions 11
-// "Old Town Rising" and 12 "The Mountain Run", VIP pickups and parcel runs
-// with a driver rating, Texas Hold'em poker at the Verde Casino, the
-// National Guard at five stars, a five-car collection with a garage
-// showroom, photo mode v2 (time-of-day and weather staging, landmark
-// checklist), a snow-capped mountain with a ski lodge and snowfall, a
-// charter flight, a harbor ferry, a drivable city bus and fire engine, an
-// SMG, sprint stamina, a fourth radio station that reacts to your crimes,
-// and two more race circuits — on top of v5's photo mode, casino table
-// floor, Radio v2, Mission 10, night racing, armored van and limousine,
-// safehouse outfit shop, garage suspension and nitro tanks, street
-// performers, golden-haze weather, rush-hour traffic and the Verde Comet.
+// Solmar City v7 — Mara Solano: a complete 3D open-world crime game for the
+// make.fun gta6-01 bounty (Node 22, standard library only). v7 tops up v6
+// with Missions 13 "The Harbor Ledger" and 14 "Queen of the Bay", Solmar
+// Express parcel runs with a streak-paid dispatcher, race season 2
+// (Mountain Pass + Night Market Dash), PIT maneuvers and the K9 unit, the
+// Bay Regatta, fire callouts for the engine, the unicorn-car hunt, fog
+// banks and hail fronts, a second night-market row with a fortune teller,
+// the photo walk, dodge rolls, the shotgun and melee combos, and a second
+// page on the career scorecard — on top of v6's Old Town, Missions 11-12,
+// poker, the National Guard, the car collection, photo mode v2, the
+// mountain, the charter flight, the ferry, the bus and fire engine, the
+// SMG, stamina, the fourth radio station and the extra race circuits.
 //
 // The game lives in this directory's game/ folder as plain static files a
 // desktop browser loads fully offline: game/index.html plus its ES modules
@@ -27,7 +25,7 @@
 // motorcycle, arcade physics, car stealing with E, and five drivable boats);
 // traffic AI, buses and pedestrians; a 0-5 star wanted system with pursuing
 // cruisers, a searchlight helicopter, spike strips, roadblocks and arrests;
-// punch and pistol combat; twelve story missions with dialogue, waypoints
+// punch and pistol combat; fourteen story missions with dialogue, waypoints
 // and cash rewards ending in the King of Solmar, a repeatable taxi job, courier
 // runs, stunt jumps, street races with AI rivals and a championship league,
 // a tuning garage, vigilante bounties, a safehouse, three radio stations,

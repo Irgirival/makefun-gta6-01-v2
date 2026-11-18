@@ -335,3 +335,101 @@ export function registerMission10(G) {
   }
   return MISSION_10;
 }
+
+// v7: the courier rush — a streak system for the C-key courier runs.
+// Three clean deliveries in a row and the dispatcher starts paying a
+// rush bonus; five in a row and the parcels get lighter, faster, better.
+// The rush clock is the same one the courier job already keeps: this
+// layer only counts, pays and remembers, so it cannot break a run that
+// is already going.
+
+export function createCourierRush(G) {
+  const rush = {
+    streak: 0,
+    best: 0,
+    rushBonus: 0,
+    totalRushPay: 0,
+    rushJobs: 0,
+    lastJobAt: -999,
+  };
+  G.courierRush = rush;
+  return rush;
+}
+
+// v7: call when a courier parcel lands on time. Returns the rush bonus
+// paid on top of the normal reward — zero until the streak warms up.
+export function recordCourierDrop(G, onTime) {
+  const rush = G.courierRush;
+  if (!rush) return 0;
+  if (!onTime) {
+    if (rush.streak >= 3) G.hud.toast('Courier streak broken — the dispatcher sighs.');
+    rush.streak = 0;
+    rush.rushBonus = 0;
+    return 0;
+  }
+  rush.streak += 1;
+  rush.rushJobs += 1;
+  if (rush.streak > rush.best) rush.best = rush.streak;
+  let bonus = 0;
+  if (rush.streak >= 5) bonus = 150;
+  else if (rush.streak >= 3) bonus = 75;
+  if (bonus > 0) {
+    rush.rushBonus = bonus;
+    rush.totalRushPay += bonus;
+    G.cash += bonus;
+    G.hud.toast(`Courier rush! Streak ${rush.streak} — rush bonus +$${bonus}.`);
+  }
+  return bonus;
+}
+
+export function courierRushSummary(G) {
+  const rush = G.courierRush;
+  if (!rush) return 'No courier runs yet.';
+  return `Streak ${rush.streak} · best ${rush.best} · $${rush.totalRushPay} rush bonuses · ${rush.rushJobs} drops.`;
+}
+
+// v7: the dispatcher's mood — the streak decides whether the next job is
+// a milk run or a sprint across the whole city.
+export function courierNextJobTier(G) {
+  const rush = G.courierRush;
+  if (!rush) return 'standard';
+  if (rush.streak >= 5) return 'express';
+  if (rush.streak >= 3) return 'priority';
+  return 'standard';
+}
+
+// v7: stunt-jump season — the three ramps keep a season table now. A
+// jump over 30 metres is a "big air" and pays a season bonus once per
+// ramp per day; the season leader is whoever owns the longest jump.
+export function createStuntSeason(G) {
+  const season = {
+    jumps: 0,
+    bigAir: 0,
+    longest: 0,
+    longestRamp: null,
+    bonusPaid: {},
+    seasonPay: 0,
+  };
+  G.stuntSeason = season;
+  return season;
+}
+
+export function recordStuntJump(G, rampName, distance) {
+  const season = G.stuntSeason;
+  if (!season) return 0;
+  season.jumps += 1;
+  let bonus = 0;
+  if (distance > season.longest) {
+    season.longest = distance;
+    season.longestRamp = rampName;
+  }
+  if (distance >= 30 && !season.bonusPaid[rampName]) {
+    season.bonusPaid[rampName] = true;
+    season.bigAir += 1;
+    bonus = 200;
+    season.seasonPay += bonus;
+    G.cash += bonus;
+    G.hud.toast(`BIG AIR off the ${rampName}! ${distance.toFixed(0)}m — season bonus +$${bonus}.`);
+  }
+  return bonus;
+}

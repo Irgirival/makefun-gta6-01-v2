@@ -214,3 +214,106 @@ export function updateWeather(G, dt) {
   // The whole cloud rides with the player.
   w.points.position.set(0, 0, 0);
 }
+
+// v7: fog banks and hail fronts. The weather gets two new moods. A fog
+// bank is a slow, low, drifting wall of white that rolls in off the bay
+// and swallows a whole district for a minute — visibility drops, the
+// headlights matter, and the minimap becomes the only honest witness.
+// A hail front is the sky losing its temper: hard white pellets, a grip
+// penalty, and a reason to get under cover, because standing in hail
+// hurts and the cars do not like it either.
+
+export function createWeatherV7(G) {
+  const w7 = {
+    fogBank: null,       // { x, z, radius, life }
+    fogTimer: 150,
+    hail: false,
+    hailTimer: 200,
+    hailDamageAt: 0,
+    fronts: 0,
+  };
+  // The fog bank is one big soft sphere, transparent white, that the
+  // update moves across the map like weather with somewhere to be.
+  const fog = new THREE.Mesh(new THREE.SphereGeometry(55, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0xd8e4ee, transparent: true, opacity: 0.32 }));
+  fog.position.set(0, 12, 0);
+  fog.visible = false;
+  G.scene.add(fog);
+  w7.fogBank = { mesh: fog, x: 0, z: 0, radius: 55, life: 0 };
+  G.weatherV7 = w7;
+  return w7;
+}
+
+export function updateWeatherV7(G, dt) {
+  const w7 = G.weatherV7;
+  const w = G.weather;
+  if (!w7 || !w) return;
+  // Fog bank: rolls in every couple of minutes, drifts for a minute,
+  // then thins out over the bay.
+  w7.fogTimer -= dt;
+  const fog = w7.fogBank;
+  if (w7.fogTimer <= 0 && fog.life <= 0) {
+    w7.fogTimer = 150 + G.rng() * 90;
+    fog.life = 60;
+    fog.x = -200 + G.rng() * 400;
+    fog.z = -200 + G.rng() * 400;
+    w7.fronts += 1;
+    G.hud.toast('Fog bank rolling in off the bay — visibility is about to get honest.');
+  }
+  if (fog.life > 0) {
+    fog.life -= dt;
+    fog.x += (G.config.fogBankSpeed || 6) * dt;
+    fog.mesh.position.set(fog.x, 12, fog.z);
+    fog.mesh.visible = true;
+    const p = G.player.pos;
+    const d = Math.hypot(p.x - fog.x, p.z - fog.z);
+    if (d < fog.radius) {
+      // Inside the bank: the world goes white and close.
+      if (G.scene.fog) G.scene.fog.near = 30;
+      if (G.scene.fog) G.scene.fog.far = 180;
+    } else if (G.scene.fog) {
+      G.scene.fog.near = 220;
+      G.scene.fog.far = 900;
+    }
+    if (fog.life <= 0) fog.mesh.visible = false;
+  }
+  // Hail front: every few minutes the sky turns hard and white.
+  w7.hailTimer -= dt;
+  if (w7.hailTimer <= 0 && !w7.hail) {
+    w7.hailTimer = 240 + G.rng() * 120;
+    w7.hail = true;
+    w7.hailLife = 35;
+    G.hud.toast('HAIL! Hard white pellets — grip is down, get under cover or keep moving.');
+  }
+  if (w7.hail) {
+    w7.hailLife -= dt;
+    // Hail hurts to stand in: a little health every second, outdoors.
+    if (!G.driving && !G.boating && !G.flying) {
+      w7.hailDamageAt -= dt;
+      if (w7.hailDamageAt <= 0) {
+        w7.hailDamageAt = 1;
+        G.health = Math.max(1, G.health - (G.config.hailDamage || 2));
+        G.hud.toast('Hail stings! Get in a car or under cover.');
+      }
+    }
+    if (w7.hailLife <= 0) {
+      w7.hail = false;
+      G.hud.toast('The hail has passed — the streets are white and the sky is sorry.');
+    }
+  }
+}
+
+// v7: the grip the driving model reads — hail is worse than rain, fog
+// is just weather, and the mountain snow is its own thing already.
+export function weatherGripV7(G) {
+  const w7 = G.weatherV7;
+  if (!w7) return 1;
+  if (w7.hail) return G.config.hailGrip || 0.8;
+  return 1;
+}
+
+export function weatherV7Summary(G) {
+  const w7 = G.weatherV7;
+  if (!w7) return 'The sky is quiet.';
+  return `${w7.fronts} fog banks · hail ${w7.hail ? 'FALLING NOW' : 'not falling'}.`;
+}
