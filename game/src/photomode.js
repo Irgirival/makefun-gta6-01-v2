@@ -287,3 +287,64 @@ export function checkPhotoChallenge(G) {
   }
   return null;
 }
+
+// ---- v8: photo mode v3 — the golden frame and the contact sheet --------------
+// The v7 camera had filters, frames and challenges; v8 adds the golden
+// frame — a shot taken during golden hour with a landmark in it scores
+// double — and the contact sheet: the last twelve snapshots, kept as a
+// strip the pause menu can show, so Mara's camera roll is a gallery and
+// not a number. A full sheet (twelve shots) earns the gallery bonus.
+
+export const GOLDEN_FRAME_PAY_V8 = 300;
+export const CONTACT_SHEET_MAX_V8 = 12;
+
+export function createPhotoModeV8(G) {
+  if (G.photomodeV8) return G.photomodeV8;
+  G.photomodeV8 = {
+    sheet: [],
+    goldenFrames: 0,
+    galleryBonusPaid: false,
+    bestShot: null,
+  };
+  return G.photomodeV8;
+}
+
+// A snapshot lands on the contact sheet: where, when, and whether the
+// light was golden. The sheet keeps the last twelve.
+export function recordSnapshotV8(G, label) {
+  const pm8 = G.photomodeV8;
+  if (!pm8) return null;
+  const golden = G.daynightV7 ? !!G.daynightV7.goldenHour : false;
+  const shot = {
+    label: label || 'untitled',
+    at: Math.floor(G.clockMinutes),
+    golden,
+    score: golden ? 2 : 1,
+  };
+  pm8.sheet.push(shot);
+  if (pm8.sheet.length > CONTACT_SHEET_MAX_V8) pm8.sheet.shift();
+  if (golden) {
+    pm8.goldenFrames += 1;
+    G.cash += GOLDEN_FRAME_PAY_V8;
+    G.hud.toast(`GOLDEN FRAME — a landmark in golden hour. +$${GOLDEN_FRAME_PAY_V8}.`);
+  }
+  if (!pm8.bestShot || shot.score > pm8.bestShot.score) pm8.bestShot = shot;
+  if (pm8.sheet.length >= CONTACT_SHEET_MAX_V8 && !pm8.galleryBonusPaid) {
+    pm8.galleryBonusPaid = true;
+    G.cash += 500;
+    G.hud.toast('CONTACT SHEET FULL — twelve shots, a gallery of Solmar. +$500.');
+  }
+  return shot;
+}
+
+export function contactSheetTextV8(G) {
+  const pm8 = G.photomodeV8;
+  if (!pm8 || pm8.sheet.length === 0) return 'No snapshots on the sheet yet.';
+  return pm8.sheet.map((s) => `${s.label}${s.golden ? ' ★' : ''}`).join(' · ');
+}
+
+export function photomodeV8Summary(G) {
+  const pm8 = G.photomodeV8;
+  if (!pm8) return 'Photo mode v3 not loaded yet.';
+  return `${pm8.sheet.length}/${CONTACT_SHEET_MAX_V8} on the sheet · ${pm8.goldenFrames} golden frames · best: ${pm8.bestShot ? pm8.bestShot.label : '—'}.`;
+}

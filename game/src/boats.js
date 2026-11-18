@@ -515,3 +515,79 @@ export function regattaSummary(G) {
   if (!reg) return 'The regatta buoys are not in the water yet.';
   return `${reg.races} regattas · ${reg.wins} circuits · best ${reg.bestTime === null ? '—' : reg.bestTime.toFixed(1) + 's'}.`;
 }
+
+// ---- v8: the regatta league -------------------------------------------------
+// One regatta win was a prize; v8 makes it a season. The league runs
+// four rounds — Harbor, Verde, North Bay and the Grand Bay — with points
+// for place and a champion's purse at the end, and the standings live on
+// the pause screen next to the race league. A win in any round feeds the
+// league table; the table feeds the radio news; the news feeds the city.
+
+export const REGATTA_LEAGUE_ROUNDS = [
+  { id: 'harbor', name: 'Harbor Sprint', prize: 1200 },
+  { id: 'verde', name: 'Verde Classic', prize: 1500 },
+  { id: 'north-bay', name: 'North Bay Cup', prize: 1800 },
+  { id: 'grand-bay', name: 'Grand Bay Final', prize: 3000 },
+];
+
+export const REGATTA_LEAGUE_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+
+export function createRegattaLeague(G) {
+  if (G.regattaLeague) return G.regattaLeague;
+  G.regattaLeague = {
+    round: 0,
+    points: 0,
+    wins: 0,
+    roundsSailed: 0,
+    champion: false,
+    rivals: [
+      { name: 'Captain Rosa', points: 0 },
+      { name: 'Old Man Ruiz', points: 0 },
+      { name: 'Tasha Cole', points: 0 },
+    ],
+  };
+  return G.regattaLeague;
+}
+
+// A regatta win is a league round: points for the win, rival points for
+// the table, and the champion's purse when the fourth round is sailed.
+export function recordRegattaWinV8(G, seconds) {
+  const league = G.regattaLeague;
+  const reg = G.regatta;
+  if (!league || !reg) return false;
+  const round = REGATTA_LEAGUE_ROUNDS[league.round % REGATTA_LEAGUE_ROUNDS.length];
+  league.roundsSailed += 1;
+  league.wins += 1;
+  league.points += REGATTA_LEAGUE_POINTS[0];
+  for (const rival of league.rivals) {
+    rival.points += REGATTA_LEAGUE_POINTS[1 + Math.floor(G.rng() * 3)];
+  }
+  G.cash += round.prize;
+  G.hud.toast(`Regatta league: ${round.name} won in ${seconds.toFixed(1)}s — +${REGATTA_LEAGUE_POINTS[0]} points, +$${round.prize}.`);
+  if (league.roundsSailed >= REGATTA_LEAGUE_ROUNDS.length && !league.champion) {
+    const bestRival = Math.max(...league.rivals.map((r) => r.points));
+    if (league.points >= bestRival) {
+      league.champion = true;
+      G.cash += 5000;
+      G.hud.toast('REGATTA CHAMPION — the bay is yours. +$5,000 champion\'s purse.');
+      if (G.audio && G.audio.cheer) G.audio.cheer();
+    }
+  }
+  league.round = (league.round + 1) % REGATTA_LEAGUE_ROUNDS.length;
+  return true;
+}
+
+export function regattaLeagueStandings(G) {
+  const league = G.regattaLeague;
+  if (!league) return 'Regatta league not started yet.';
+  const rows = [{ name: 'Mara Solano', points: league.points }, ...league.rivals]
+    .sort((a, b) => b.points - a.points);
+  return rows.map((r, i) => `${i + 1}. ${r.name} ${r.points} pts`).join(' · ');
+}
+
+export function regattaLeagueSummary(G) {
+  const league = G.regattaLeague;
+  if (!league) return 'Regatta league not started yet.';
+  const next = REGATTA_LEAGUE_ROUNDS[league.round % REGATTA_LEAGUE_ROUNDS.length];
+  return `${league.wins} league wins · ${league.points} points · next: ${next.name} · champion: ${league.champion ? 'YES' : 'not yet'}.`;
+}

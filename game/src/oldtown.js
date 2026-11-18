@@ -380,3 +380,70 @@ export function oldTownV7Summary(G) {
   if (!o7) return 'The second market row is not built yet.';
   return `${o7.stalls.length} new stalls · ${o7.fortunes} fortunes told.`;
 }
+
+// ---- v8: the Old Town ghost walk ---------------------------------------------
+// The v7 quarter had landmarks and a market; v8 gives it a ghost walk.
+// At night, the lantern guide leads a tour past the quarter's haunted
+// corners — the old customs house, the sealed chapel, the well that
+// never runs dry — and each stop pays a storyteller's fee if Mara is
+// there to hear it. Three stops in one night is a full walk, and a full
+// walk earns the lantern badge. The quarter is old; it remembers.
+
+export const GHOST_STOPS_V8 = [
+  { id: 'customs', name: 'The Old Customs House', x: 270, z: -250 },
+  { id: 'chapel', name: 'The Sealed Chapel', x: 250, z: -270 },
+  { id: 'well', name: 'The Well That Never Runs Dry', x: 280, z: -240 },
+];
+
+export function createGhostWalk(G) {
+  if (G.ghostWalk) return G.ghostWalk;
+  G.ghostWalk = {
+    stopsHeard: [],
+    walks: 0,
+    badge: false,
+    active: false,
+    night: -1,
+  };
+  return G.ghostWalk;
+}
+
+export function updateGhostWalk(G, dt) {
+  const gw = G.ghostWalk;
+  if (!gw) return;
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  const night = hour >= 21 || hour < 2;
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  if (night && !gw.active) {
+    gw.active = true;
+    gw.night = day;
+    gw.stopsHeard = [];
+    G.hud.toast('GHOST WALK — the lantern guide is leading a tour through Old Town. Follow the lantern.');
+  }
+  if (!night && gw.active) {
+    gw.active = false;
+    if (gw.stopsHeard.length >= GHOST_STOPS_V8.length) {
+      gw.walks += 1;
+      if (!gw.badge) {
+        gw.badge = true;
+        G.cash += 400;
+        G.hud.toast('LANTERN BADGE — a full ghost walk, all three stops. The quarter trusts you now. +$400.');
+      }
+    }
+  }
+  if (!gw.active) return;
+  const p = G.player.pos;
+  for (const stop of GHOST_STOPS_V8) {
+    if (gw.stopsHeard.includes(stop.id)) continue;
+    if (Math.hypot(p.x - stop.x, p.z - stop.z) < 9) {
+      gw.stopsHeard.push(stop.id);
+      G.cash += 60;
+      G.hud.toast(`Ghost walk: ${stop.name} — the guide tells its story. +$60 (${gw.stopsHeard.length}/3 stops).`);
+    }
+  }
+}
+
+export function ghostWalkSummary(G) {
+  const gw = G.ghostWalk;
+  if (!gw) return 'Ghost walk not haunting yet.';
+  return `${gw.walks} full walks · ${gw.stopsHeard.length}/3 stops tonight · badge: ${gw.badge ? 'YES' : 'not yet'} · walk ${gw.active ? 'ACTIVE' : 'only after 21:00'}.`;
+}

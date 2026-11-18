@@ -203,3 +203,41 @@ export function applyShotSeason(G) {
 export function shotSeasonSummary() {
   return 'Season shot: dusk at the skate park, market lamps on, delivery running, heat rising.';
 }
+
+// ---- v8: the finale pose and the sunrise shot ----------------------------------
+// The v7 shots added the Old Town staging pose and the season pose; v8
+// adds the finale pose — Mara at the plaza fountain at dawn, the
+// ceremony sparks orbiting, the whole city behind her — and the sunrise
+// shot, which is the same pose with the camera low and the sun in the
+// frame. Both are deterministic (seed 1, fixed camera), so the dossier
+// can re-take them any time, and both show the systems at once: the
+// sparks, the gardens, the skybridge, the market and the bay.
+
+export function applyShotFinale(G) {
+  G.mode = 'playing';
+  G.shot = 'finale';
+  G.shotFrames = 0;
+  if (G.missions5) G.missions5.finaleDone = true;
+  for (const s of (G.missions5 ? G.missions5.ceremonySparks : [])) s.visible = true;
+  G.player.pos.set(20, 0, 28);
+  G.player.group.position.copy(G.player.pos);
+  G.player.group.rotation.y = Math.PI;
+  G.clockMinutes = 6 * 60 + 30; // 06:30 — sunrise
+  if (G.daynightV7) G.daynightV7.goldenHour = true;
+  G.camera.position.set(20, 6, 52);
+  G.camera.lookAt(20, 4, 20);
+  G.hud.show();
+  G.hud.setMission('Mission 16 — Solmar Sunrise', 'Walk into the sunrise at the plaza fountain.', 'The whole city is watching you win.');
+}
+
+export function applyShotSunrise(G) {
+  applyShotFinale(G);
+  G.shot = 'sunrise';
+  // Low camera, sun in the frame: the shot the photo walk was waiting for.
+  G.camera.position.set(20, 2.2, 46);
+  G.camera.lookAt(20, 8, -40);
+}
+
+export function shotFinaleSummary() {
+  return 'Finale pose: Mara at the plaza fountain at dawn, ceremony sparks orbiting, sunrise shot low with the sun in frame.';
+}

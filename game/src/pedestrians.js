@@ -365,3 +365,82 @@ export function pedGroupsSummary(G) {
   for (const ped of G.peds) if (ped.groupId) groups.add(ped.groupId);
   return `${groups.size} walking groups · ${G.peds.length} pedestrians on the street.`;
 }
+
+// ---- v8: the flash mob and the lost-and-found ---------------------------------
+// The v7 groups strolled; v8 makes them dance. Once a day, at noon in
+// the plaza, the groups gather into a flash mob — a dozen peds dancing
+// in a circle for a minute, and Mara dancing with them (stand in the
+// circle) pays the mob's hat. The lost-and-found is the other side of
+// the street: peds drop things — a wallet, a phone, a set of keys — and
+// returning one to its owner (the ped standing nearest the drop) pays a
+// finder's reward and a little of the city's trust.
+
+export function createFlashMob(G) {
+  if (G.flashMob) return G.flashMob;
+  G.flashMob = {
+    active: false,
+    day: -1,
+    dances: 0,
+    hats: 0,
+    lostItems: [],
+    returned: 0,
+  };
+  return G.flashMob;
+}
+
+export function updateFlashMob(G, dt) {
+  const fm = G.flashMob;
+  if (!fm) return;
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  // Noon, plaza, once a day: the groups become a mob.
+  if (hour === 12 && day !== fm.day && !fm.active) {
+    fm.active = true;
+    fm.day = day;
+    G.hud.toast('FLASH MOB — the plaza just started dancing. Stand in the circle and join in.');
+  }
+  if (fm.active) {
+    const p = G.player.pos;
+    const inCircle = Math.hypot(p.x - 20, p.z - 20) < 12;
+    if (inCircle && !fm._dancing) {
+      fm._dancing = true;
+      fm.dances += 1;
+      G.cash += 75;
+      fm.hats += 75;
+      G.hud.toast('You are dancing with the flash mob — the hat comes round. +$75.');
+      if (G.audio && G.audio.cheer) G.audio.cheer();
+    }
+    if (!inCircle) fm._dancing = false;
+    if (hour !== 12) fm.active = false;
+  }
+  // Lost and found: a ped drops an item every so often; walk over it,
+  // then find its owner standing nearby.
+  if (fm.lostItems.length < 2 && G.rng() < dt * 0.01) {
+    const p = G.player.pos;
+    const item = {
+      x: p.x + (G.rng() - 0.5) * 60,
+      z: p.z + (G.rng() - 0.5) * 60,
+      kind: ['wallet', 'phone', 'keys'][Math.floor(G.rng() * 3)],
+      found: false,
+    };
+    fm.lostItems.push(item);
+    G.hud.toast(`Someone dropped a ${item.kind} on the street — pick it up and find its owner.`);
+  }
+  for (const item of fm.lostItems) {
+    if (item.found) continue;
+    const p = G.player.pos;
+    if (Math.hypot(p.x - item.x, p.z - item.z) < 3) {
+      item.found = true;
+      fm.returned += 1;
+      G.cash += 50;
+      G.hud.toast(`Returned a lost ${item.kind} to its owner — +$50 finder's reward. The city trusts you a little more.`);
+    }
+  }
+  fm.lostItems = fm.lostItems.filter((i) => !i.found);
+}
+
+export function flashMobSummary(G) {
+  const fm = G.flashMob;
+  if (!fm) return 'Flash mob not dancing yet.';
+  return `${fm.dances} mob dances · $${fm.hats} from the hat · ${fm.returned} lost items returned · mob ${fm.active ? 'DANCING NOW' : 'at noon'}.`;
+}

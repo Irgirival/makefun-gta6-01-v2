@@ -168,3 +168,60 @@ export function missionElapsed(G) {
   if (!G.missions.active) return 0;
   return G.elapsed - (G.missions.startedAt || G.elapsed);
 }
+
+// ---- v8: the harbor ledger's aftermath and the bay's quiet --------------------
+// Missions 13–14 ended the Syndicate; v8 writes the aftermath. The
+// harbor hotel is quiet now — the ledger's names are gone, the bagmen
+// are gone, and the docks pay a "quiet harbor" dividend every game day
+// the heat stays low. The bay is quiet too: the regatta league's boats
+// are the only traffic, and the strongbox buoy is a memorial now, with
+// flowers on it. The aftermath is the city exhaling.
+
+export function createAftermathV8(G) {
+  if (G.aftermathV8) return G.aftermathV8;
+  G.aftermathV8 = {
+    quietDays: 0,
+    dividends: 0,
+    lastDividendDay: -1,
+    memorialVisits: 0,
+  };
+  return G.aftermathV8;
+}
+
+export function updateAftermathV8(G, dt) {
+  const a8 = G.aftermathV8;
+  if (!a8) return;
+  if (G.missions.index < 14) return; // the aftermath only starts after the Syndicate falls
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  // A quiet day is a day the wanted level never passed 2 stars; the
+  // dividend is the harbor's thank-you for the peace. The day's worst
+  // heat is tracked right here, and the dividend for a day is paid when
+  // the next day dawns — so the record needs no other system.
+  if (day !== a8._trackDay) {
+    if (a8._trackDay !== undefined && a8._dayStars <= 2 && a8._trackDay >= 1) {
+      a8.quietDays += 1;
+      a8.dividends += 200;
+      G.cash += 200;
+      G.hud.toast(`Quiet harbor dividend — another peaceful day on the docks. +$200 (day ${a8.quietDays}).`);
+    }
+    a8._trackDay = day;
+    a8._dayStars = 0;
+  }
+  a8._dayStars = Math.max(a8._dayStars, G.wanted.stars);
+  // The memorial buoy: visit the strongbox spot and the city remembers.
+  const p = G.player.pos;
+  const bx = 352;
+  const bz = 40;
+  if (Math.hypot(p.x - bx, p.z - bz) < 10 && !a8._memorialToday) {
+    a8._memorialToday = day;
+    a8.memorialVisits += 1;
+    G.hud.toast('The strongbox buoy, with flowers on it. The bay remembers the night the Syndicate ended.');
+  }
+  if (a8._memorialToday !== day) a8._memorialToday = 0;
+}
+
+export function aftermathV8Summary(G) {
+  const a8 = G.aftermathV8;
+  if (!a8) return 'Aftermath not written yet.';
+  return `${a8.quietDays} quiet days · $${a8.dividends} in harbor dividends · ${a8.memorialVisits} memorial visits.`;
+}

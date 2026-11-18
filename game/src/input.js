@@ -159,3 +159,31 @@ export const V7_BINDINGS = [
 export function bindingHelpText() {
   return V7_BINDINGS.map(([k, what]) => `${k} — ${what}`).join('\n');
 }
+
+// v8: the binding table for the new systems. The v8 keys reuse the
+// bindings the game already has — no new keys were invented, so the
+// table below documents what the old keys do now:
+//   7  — delivery board: now shows the Express tier and the boss run
+//   T  — cycle weather: now also prints the v8 forecast on the ticker
+//   N  — cycle radio: the news desk now reacts to the story
+//   B  — photo mode: the walk, the gardens and the eclipse are new shots
+//   E  — enter/exit: also boards heli tours and the sunset charter
+//   G  — street race: season 3 runs from the same banner
+export const V8_BINDINGS = [
+  ['7', 'Delivery board — Express tier, boss run, streak'],
+  ['T', 'Cycle weather — forecast on the HUD ticker'],
+  ['N', 'Cycle radio — news reacts to the story'],
+  ['B', 'Photo mode — walk stops, gardens, eclipse'],
+  ['E', 'Enter/exit — cars, boats, helis, tours, charter'],
+  ['G', 'Street race — season 3 from the same banner'],
+  ['X', 'VIP / parcel job — boss deliveries at streak 2+'],
+  ['Z', 'Poker table — tournament + craps at the Verde'],
+];
+
+export function bindingHelpTextV8() {
+  return V8_BINDINGS.map(([k, what]) => `${k} — ${what}`).join('\n');
+}
+
+export function bindingHelpTextAll() {
+  return `${bindingHelpText()}\n--- v8 ---\n${bindingHelpTextV8()}`;
+}

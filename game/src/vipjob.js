@@ -284,3 +284,60 @@ export function vipV7Summary(G) {
   if (!v7) return 'No high-roller work on the books.';
   return `${v7.highRollerJobs} high-roller jobs · ${v7.limoRuns} limo runs · unlocked: ${vipHighRollerUnlocked(G) ? 'YES' : 'not yet'}.`;
 }
+
+// ---- v8: the VIP blacklist and the regulars ------------------------------------
+// The v7 VIP job had ratings and high rollers; v8 remembers the bad ones.
+// The blacklist is the list of VIPs who rated Mara below three stars or
+// no-showed — they never get a car again, and the dispatcher pays a
+// "standards" bonus for every name on it. The regulars are the other
+// side: VIPs who ride with Mara five times become regulars, and a
+// regular's fare is 20% higher, because they ask for her by name.
+
+export function createVipBlacklist(G) {
+  if (G.vipBlacklist) return G.vipBlacklist;
+  G.vipBlacklist = {
+    blacklisted: [],
+    regulars: {},
+    standardsBonuses: 0,
+    regularBonusEarned: 0,
+  };
+  return G.vipBlacklist;
+}
+
+export function blacklistVipV8(G, name, reason) {
+  const bl = G.vipBlacklist;
+  if (!bl) return false;
+  if (bl.blacklisted.some((b) => b.name === name)) return false;
+  bl.blacklisted.push({ name, reason, at: Math.floor(G.elapsed) });
+  bl.standardsBonuses += 150;
+  G.cash += 150;
+  G.hud.toast(`Blacklist: ${name} will never ride with Mara again (${reason}). Standards bonus +$150.`);
+  return true;
+}
+
+export function recordVipRideV8(G, name) {
+  const bl = G.vipBlacklist;
+  if (!bl) return 1;
+  bl.regulars[name] = (bl.regulars[name] || 0) + 1;
+  if (bl.regulars[name] === 5) {
+    G.hud.toast(`${name} is a regular now — five rides with Mara. Their fare is 20% higher from here on.`);
+  }
+  if (bl.regulars[name] >= 5) {
+    bl.regularBonusEarned += 1;
+    return 1.2;
+  }
+  return 1;
+}
+
+export function vipFareMultV8(G, name) {
+  const bl = G.vipBlacklist;
+  if (!bl || !name) return 1;
+  return (bl.regulars[name] || 0) >= 5 ? 1.2 : 1;
+}
+
+export function vipV8Summary(G) {
+  const bl = G.vipBlacklist;
+  if (!bl) return 'VIP blacklist not kept yet.';
+  const regulars = Object.entries(bl.regulars).filter(([, n]) => n >= 5).map(([n]) => n).join(', ') || 'none yet';
+  return `${bl.blacklisted.length} blacklisted · regulars: ${regulars} · standards bonuses $${bl.standardsBonuses}.`;
+}

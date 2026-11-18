@@ -423,3 +423,88 @@ export function vigilanteV7Summary(G) {
   const tier = vigilanteTier(G);
   return `Tier: ${tier.name} (x${tier.mult}) · ${v7.highValueDone} high-value targets · ${v7.cleanBonuses} clean bonuses · $${v7.tierBonusEarned} tier pay.`;
 }
+
+// ---- v8: the most-wanted board and the informant ------------------------------
+// The v7 vigilante had tiers and high-value targets; v8 posts the board.
+// The most-wanted board at the precinct lists three fugitives with
+// prices on their heads, refreshed every game day, and the informant —
+// a nervous man at the night market — sells the next fugitive's route
+// for $100. A board cleared in one day (all three fugitives) pays the
+// "clean sweep" bonus, and the board is the vigilante's reason to keep
+// driving after the bounties run dry.
+
+export const MOST_WANTED_V8 = [
+  { id: 'ghost', name: 'The Ghost', price: 900, car: 'sports' },
+  { id: 'bookkeeper', name: 'The Bookkeeper', price: 1200, car: 'sedan' },
+  { id: 'wheelman', name: 'The Wheelman', price: 1500, car: 'sports' },
+];
+
+export function createMostWanted(G) {
+  if (G.mostWanted) return G.mostWanted;
+  G.mostWanted = {
+    board: [...MOST_WANTED_V8],
+    caught: [],
+    cleanSweeps: 0,
+    informantTips: 0,
+    day: -1,
+  };
+  return G.mostWanted;
+}
+
+export function buyInformantTipV8(G) {
+  const mw = G.mostWanted;
+  if (!mw) return null;
+  if (G.cash < 100) {
+    G.hud.toast('The informant wants $100 for the route — you have less than that.');
+    return null;
+  }
+  const remaining = mw.board.filter((f) => !mw.caught.includes(f.id));
+  if (remaining.length === 0) {
+    G.hud.toast('The informant shrugs — the board is clean, there is nothing to sell.');
+    return null;
+  }
+  G.cash -= 100;
+  mw.informantTips += 1;
+  const target = remaining[Math.floor(G.rng() * remaining.length)];
+  G.hud.toast(`Informant: "${target.name} runs the harbor road at dusk. ${target.car} car. Don't say who told you."`);
+  return target;
+}
+
+export function catchFugitiveV8(G, fugitiveId) {
+  const mw = G.mostWanted;
+  if (!mw) return false;
+  const fugitive = mw.board.find((f) => f.id === fugitiveId);
+  if (!fugitive || mw.caught.includes(fugitiveId)) return false;
+  mw.caught.push(fugitiveId);
+  G.cash += fugitive.price;
+  G.hud.toast(`MOST WANTED: ${fugitive.name} caught — +$${fugitive.price}. (${mw.caught.length}/3 on the board)`);
+  if (mw.caught.length >= mw.board.length) {
+    mw.cleanSweeps += 1;
+    mw.caught = [];
+    G.cash += 1000;
+    G.hud.toast('CLEAN SWEEP — the whole board in one day. The precinct pays $1,000 and posts three new names.');
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+  return true;
+}
+
+export function updateMostWanted(G, dt) {
+  const mw = G.mostWanted;
+  if (!mw) return;
+  // The board refreshes every game day: new names, same prices, same
+  // city that needs them caught.
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  if (day !== mw.day) {
+    mw.day = day;
+    if (mw.caught.length > 0 && mw.caught.length < mw.board.length) {
+      mw.caught = [];
+      G.hud.toast('Most-wanted board refreshed — new day, new names, same prices.');
+    }
+  }
+}
+
+export function vigilanteV8Summary(G) {
+  const mw = G.mostWanted;
+  if (!mw) return 'Most-wanted board not posted yet.';
+  return `${mw.caught.length}/3 fugitives caught · ${mw.cleanSweeps} clean sweeps · ${mw.informantTips} informant tips bought.`;
+}

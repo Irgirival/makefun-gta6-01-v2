@@ -131,3 +131,30 @@ export function careerSummaryV7(G) {
   ].filter(Boolean).join(', ');
   return extra ? `${base} Plus: ${extra}.` : base;
 }
+
+// ---- v8: the career's third page, already written — see achievements.js --------
+// The v8 scorecard's third page lives in achievements.js (renderV8Stats),
+// because the shelf and the page are one system. This block is the
+// stats module's own v8 row: the career totals the other pages do not
+// own — the lifetime cash earned, the lifetime cash spent, and the
+// cleanest day Mara ever had — so the pause menu's first page can quote
+// the whole career in one breath.
+
+export function careerTotalsV8(G) {
+  const d = G.delivery ? G.delivery.earned : 0;
+  const v = G.vigilante ? G.vigilante.earned : 0;
+  const vip = G.vip ? G.vip.earned : 0;
+  const fc = G.fireCallouts ? G.fireCallouts.earned : 0;
+  const a = G.achievements ? G.achievements.earned : 0;
+  const earned = d + v + vip + fc + a;
+  const spent = (G.garageLoyalty ? G.garageLoyalty.lifetimeSpent : 0)
+    + (G.garageV8 ? G.garageV8.paintSpent : 0);
+  return { earned, spent };
+}
+
+export function careerSummaryV8(G) {
+  const base = careerSummaryV7(G);
+  const totals = careerTotalsV8(G);
+  const finale = G.missions5 && G.missions5.finaleDone ? 'the sunrise ceremony is done' : `${Math.min(G.missions.index, 16)}/16 missions`;
+  return `${base} Lifetime: $${totals.earned} earned on the job, $${totals.spent} spent at the garage. Finale: ${finale}.`;
+}

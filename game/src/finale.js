@@ -84,3 +84,74 @@ export function updateFinale(G, dt) {
     if (text) text.textContent = EPILOGUE_TEXT;
   }
 }
+
+// ---- v8: the epilogue jobs board ---------------------------------------------
+// After the Verde Heist, the finale registered the story as done; v8
+// gives the done story a second life. The jobs board at the plaza posts
+// three rotating gigs — a courier sprint, a lookout shift and a getaway
+// drill — each paying a little and each keeping the city alive after the
+// credits. The board refreshes every game hour, and a completed board
+// (all three gigs in one day) pays the day's bonus.
+
+export const EPILOGUE_GIGS_V8 = [
+  { id: 'sprint', name: 'Courier Sprint', pay: 250, desc: 'One parcel, one timer, no excuses.' },
+  { id: 'lookout', name: 'Lookout Shift', pay: 200, desc: 'Watch the harbor hotel for an hour. Boring pays.' },
+  { id: 'getaway', name: 'Getaway Drill', pay: 350, desc: 'Lose a two-star tail and meet Lena at the plaza.' },
+];
+
+export function registerFinaleV8(G) {
+  if (G.finaleV8) return G.finaleV8;
+  G.finaleV8 = {
+    gigsDoneToday: [],
+    daysCompleted: 0,
+    boardHour: -1,
+    gigIndex: 0,
+    totalGigs: 0,
+    boardBonusPaid: 0,
+  };
+  return G.finaleV8;
+}
+
+export function currentGigV8(G) {
+  const f8 = G.finaleV8;
+  if (!f8) return null;
+  return EPILOGUE_GIGS_V8[f8.gigIndex % EPILOGUE_GIGS_V8.length];
+}
+
+export function completeGigV8(G, gigId) {
+  const f8 = G.finaleV8;
+  if (!f8) return false;
+  const gig = EPILOGUE_GIGS_V8.find((g) => g.id === gigId);
+  if (!gig) return false;
+  if (f8.gigsDoneToday.includes(gigId)) return false;
+  f8.gigsDoneToday.push(gigId);
+  f8.totalGigs += 1;
+  G.cash += gig.pay;
+  G.hud.toast(`Epilogue gig done: ${gig.name} — +$${gig.pay}.`);
+  if (f8.gigsDoneToday.length >= EPILOGUE_GIGS_V8.length) {
+    f8.daysCompleted += 1;
+    f8.boardBonusPaid += 500;
+    G.cash += 500;
+    f8.gigsDoneToday = [];
+    G.hud.toast('Full board — all three gigs in one day. Day bonus +$500.');
+  }
+  return true;
+}
+
+export function updateFinaleV8(G, dt) {
+  const f8 = G.finaleV8;
+  if (!f8) return;
+  // The board rotates every game hour: a new gig leads the list.
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  if (hour !== f8.boardHour) {
+    f8.boardHour = hour;
+    f8.gigIndex = (f8.gigIndex + 1) % EPILOGUE_GIGS_V8.length;
+  }
+}
+
+export function finaleV8Summary(G) {
+  const f8 = G.finaleV8;
+  if (!f8) return 'Epilogue board not posted yet.';
+  const gig = currentGigV8(G);
+  return `${f8.totalGigs} gigs done · ${f8.daysCompleted} full boards · next gig: ${gig ? gig.name + ' ($' + gig.pay + ')' : '—'}.`;
+}

@@ -229,3 +229,91 @@ export function trafficV7Summary(G) {
   if (!t7) return 'Traffic is flowing.';
   return `${t7.accidents} accidents staged · ${t7.wrecks.length} wrecks on the road · ${t7.rushCarsSpawned} rush-hour waves.`;
 }
+
+// ---- v8: the tow truck and the rush-hour report --------------------------------
+// The v7 accidents staged themselves and cleared on a timer; v8 sends
+// the tow truck. A small flatbed that drives to the oldest accident,
+// hooks the wreck and hauls it off the road — and the rush-hour report
+// is the driver's log: how many wrecks it cleared, how many rush waves
+// it worked, and the longest queue it ever saw. The truck is the city's
+// answer to its own bad driving.
+
+import * as THREE from 'three';
+
+export function createTowTruckV8(G) {
+  if (G.towTruckV8) return G.towTruckV8;
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(5, 1.4, 2.2),
+    new THREE.MeshLambertMaterial({ color: 0xffd23e }));
+  body.position.y = 0.9;
+  group.add(body);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 2),
+    new THREE.MeshLambertMaterial({ color: 0x2a2a2a }));
+  cab.position.set(1.8, 1.9, 0);
+  group.add(cab);
+  const bed = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.4, 2),
+    new THREE.MeshLambertMaterial({ color: 0x555555 }));
+  bed.position.set(-1.2, 1.7, 0);
+  group.add(bed);
+  group.position.set(100, 0, 60);
+  group.visible = false;
+  G.scene.add(group);
+  G.towTruckV8 = {
+    group,
+    active: false,
+    target: null,
+    cleared: 0,
+    longestQueue: 0,
+    waves: 0,
+  };
+  return G.towTruckV8;
+}
+
+export function updateTowTruckV8(G, dt) {
+  const tow = G.towTruckV8;
+  const t7 = G.trafficV7;
+  if (!tow || !t7) return;
+  // A wreck older than 15 seconds gets a tow truck: v7's wrecks carry
+  // a wreckTimer that counts down from the clear time, so a wreck with
+  // less than 10 seconds left is an old one. The truck drives to it,
+  // hooks it, and the timer is cut to zero so v7 clears it next frame.
+  if (!tow.active && t7.wrecks && t7.wrecks.length > 0) {
+    const wreck = t7.wrecks.find((w) => w.wreckTimer !== undefined && w.wreckTimer < 10);
+    if (wreck) {
+      tow.active = true;
+      tow.target = wreck;
+      tow.group.visible = true;
+      G.hud.toast('Tow truck dispatched — the flatbed is rolling to the wreck.');
+    }
+  }
+  if (tow.active && tow.target) {
+    const g = tow.group.position;
+    const tp = tow.target.pos || { x: tow.target.x || 0, z: tow.target.z || 0 };
+    const dx = tp.x - g.x;
+    const dz = tp.z - g.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 3) {
+      g.x += (dx / d) * 22 * dt;
+      g.z += (dz / d) * 22 * dt;
+      tow.group.rotation.y = Math.atan2(dx, dz);
+    } else {
+      tow.active = false;
+      tow.group.visible = false;
+      tow.cleared += 1;
+      tow.target.wreckTimer = 0.01; // v7's clear timer takes it from here
+      tow.target = null;
+      G.hud.toast('Tow truck hauled the wreck away — the road is clear.');
+    }
+  }
+  // The rush-hour report: the longest queue the truck ever saw is the
+  // most wrecks on the road at once.
+  if (t7.wrecks) {
+    tow.longestQueue = Math.max(tow.longestQueue, t7.wrecks.length);
+  }
+}
+
+export function towTruckV8Summary(G) {
+  const tow = G.towTruckV8;
+  if (!tow) return 'Tow truck not in the depot yet.';
+  return `${tow.cleared} wrecks towed · longest queue ${tow.longestQueue} cars · truck ${tow.active ? 'ROLLING' : 'in the depot'}.`;
+}

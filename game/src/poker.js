@@ -398,3 +398,70 @@ export function pokerTournamentSummary(G) {
   if (!t) return 'No tournament played yet.';
   return `${t.running ? 'Tournament running' : 'No tournament running'} · best finish ${t.bestFinish === null ? '—' : '#' + t.bestFinish} · ${t.eliminated.length} players eliminated.`;
 }
+
+// ---- v8: the poker leaderboard and the bad-beat jackpot -----------------------
+// The v7 tournament had blinds and a prize; v8 keeps a leaderboard.
+// Every hand at the Verde table is logged — hands played, hands won,
+// biggest pot — and the board ranks Mara against the three regulars by
+// win rate. The bad-beat jackpot is the table's legend: lose with four
+// of a kind or better and the house pays $2,000 for the pain, because
+// even the Verde feels sorry for that hand.
+
+export const BAD_BEAT_JACKPOT_V8 = 2000;
+
+export function createPokerLeaderboard(G) {
+  if (G.pokerBoard) return G.pokerBoard;
+  G.pokerBoard = {
+    maraWins: 0,
+    maraHands: 0,
+    rivals: [
+      { name: 'Lena', wins: 0, hands: 0 },
+      { name: 'Vic', wins: 0, hands: 0 },
+      { name: 'Rosa', wins: 0, hands: 0 },
+    ],
+    badBeats: 0,
+    jackpotPaid: 0,
+  };
+  return G.pokerBoard;
+}
+
+export function recordPokerHandV8(G, won, pot, handRank) {
+  const board = G.pokerBoard;
+  if (!board) return;
+  board.maraHands += 1;
+  if (won) board.maraWins += 1;
+  // The rivals play their own hands in the background — the board is a
+  // living table, not a scoreboard that only moves when Mara does.
+  for (const rival of board.rivals) {
+    rival.hands += 1;
+    if (G.rng() < 0.4) rival.wins += 1;
+  }
+  // The bad beat: a monster hand that still loses. The house pays for it.
+  if (!won && handRank >= 7) {
+    board.badBeats += 1;
+    board.jackpotPaid += BAD_BEAT_JACKPOT_V8;
+    G.cash += BAD_BEAT_JACKPOT_V8;
+    G.hud.toast(`BAD BEAT JACKPOT — four of a kind or better, and you still lost. The house pays $${BAD_BEAT_JACKPOT_V8} for the pain.`);
+  }
+}
+
+export function pokerLeaderboardText(G) {
+  const board = G.pokerBoard;
+  if (!board) return 'Poker leaderboard not posted yet.';
+  const rows = [
+    { name: 'Mara', wins: board.maraWins, hands: board.maraHands },
+    ...board.rivals,
+  ].map((r) => ({
+    name: r.name,
+    rate: r.hands === 0 ? 0 : r.wins / r.hands,
+    wins: r.wins,
+    hands: r.hands,
+  })).sort((a, b) => b.rate - a.rate);
+  return rows.map((r, i) => `${i + 1}. ${r.name} ${r.wins}/${r.hands} (${Math.round(r.rate * 100)}%)`).join(' · ');
+}
+
+export function pokerV8Summary(G) {
+  const board = G.pokerBoard;
+  if (!board) return 'Poker leaderboard not posted yet.';
+  return `${pokerLeaderboardText(G)} · bad beats ${board.badBeats} · jackpot paid $${board.jackpotPaid}.`;
+}

@@ -537,3 +537,92 @@ export function raceSeason2Summary(G) {
   if (!s2) return 'Season 2 is not on the calendar.';
   return `${s2.wins} season-2 wins · ${s2.rounds}/4 rounds · champion: ${s2.champion ? 'YES' : 'not yet'}.`;
 }
+
+// ---- v8: race season 3 and the midnight cup -----------------------------------
+// Season 2 crowned a champion on the mountain and the night market; v8
+// runs season 3 — four new rounds (Harbor Sprint, Airfield Straight,
+// Beachfront Loop, Downtown Grand) with the same points table and a
+// bigger purse — and the Midnight Cup, a one-off winner-takes-all night
+// race that only opens after midnight, pays $3,000, and is the only race
+// in the game where the rivals drive with their lights off.
+
+export const RACE_SEASON3_CIRCUITS = [
+  { id: 'harbor-sprint', name: 'Harbor Sprint', laps: 2, prize: 2000 },
+  { id: 'airfield-straight', name: 'Airfield Straight', laps: 2, prize: 2000 },
+  { id: 'beachfront-loop', name: 'Beachfront Loop', laps: 3, prize: 2500 },
+  { id: 'downtown-grand', name: 'Downtown Grand', laps: 3, prize: 3000 },
+];
+
+export const MIDNIGHT_CUP_PRIZE_V8 = 3000;
+
+export function createRaceSeason3(G) {
+  if (G.season3) return G.season3;
+  G.season3 = {
+    points: 0,
+    rounds: 0,
+    wins: 0,
+    champion: false,
+    circuitIndex: 0,
+    midnightWins: 0,
+    midnightAttempts: 0,
+  };
+  return G.season3;
+}
+
+export function recordSeason3Round(G, position) {
+  const s3 = G.season3;
+  if (!s3) return false;
+  const pointsTable = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+  const pts = pointsTable[position - 1] || 1;
+  s3.points += pts;
+  s3.rounds += 1;
+  if (position === 1) {
+    s3.wins += 1;
+    const circuit = RACE_SEASON3_CIRCUITS[s3.circuitIndex % RACE_SEASON3_CIRCUITS.length];
+    G.cash += circuit.prize;
+    G.hud.toast(`Season 3: ${circuit.name} won — +${pts} points, +$${circuit.prize}.`);
+  } else {
+    G.hud.toast(`Season 3: P${position} — +${pts} points.`);
+  }
+  s3.circuitIndex = (s3.circuitIndex + 1) % RACE_SEASON3_CIRCUITS.length;
+  if (s3.rounds >= RACE_SEASON3_CIRCUITS.length && !s3.champion) {
+    s3.champion = true;
+    G.cash += 10000;
+    G.hud.toast('SEASON 3 CHAMPION — the whole city saw it. +$10,000.');
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+  return true;
+}
+
+export function startMidnightCupV8(G) {
+  const s3 = G.season3;
+  if (!s3) return false;
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  if (hour !== 0) {
+    G.hud.toast('The Midnight Cup only runs at midnight — come back at 00:00, lights off.');
+    return false;
+  }
+  s3.midnightAttempts += 1;
+  G.hud.toast('MIDNIGHT CUP — winner takes all, $3,000, rivals with their lights off. Good luck.');
+  return true;
+}
+
+export function winMidnightCupV8(G) {
+  const s3 = G.season3;
+  if (!s3) return false;
+  s3.midnightWins += 1;
+  G.cash += MIDNIGHT_CUP_PRIZE_V8;
+  G.hud.toast(`MIDNIGHT CUP WON — $${MIDNIGHT_CUP_PRIZE_V8}, in the dark, against drivers who could not see you coming.`);
+  if (G.audio && G.audio.cheer) G.audio.cheer();
+  return true;
+}
+
+export function season3Standings(G) {
+  const s3 = G.season3;
+  if (!s3) return 'Season 3 not started yet.';
+  return `${s3.wins} wins · ${s3.points} points · round ${Math.min(s3.rounds, 4)}/4 · champion: ${s3.champion ? 'YES' : 'not yet'} · midnight cups: ${s3.midnightWins}.`;
+}
+
+export function raceSeason3Summary(G) {
+  return season3Standings(G);
+}

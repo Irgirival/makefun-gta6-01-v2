@@ -342,3 +342,49 @@ export function radioRequestLine(G) {
   ];
   return requests[Math.floor(G.rng() * requests.length)];
 }
+
+// ---- v8: two new stations — the jazz cellar and the grand prix channel --------
+// The v7 radio had six stations; v8 adds two. Solmar Jazz is a late-night
+// cellar — slow chords, a brushed drum, a DJ who only speaks in a
+// whisper — and the Grand Prix channel is race-day only: engine notes,
+// lap calls and a commentator who gets louder every lap. Both plug into
+// the same station table the cycle key already walks, so N finds them
+// in rotation like any other station.
+
+export const V8_STATIONS = [
+  { id: 'jazz', name: 'Solmar Jazz', desc: 'Late-night cellar jazz, whispered DJ.' },
+  { id: 'grandprix', name: 'Grand Prix Radio', desc: 'Race-day engine notes and lap calls.' },
+];
+
+const JAZZ_LINES_V8 = [
+  'Solmar Jazz: the cellar is smoky, the piano is honest, and the night is young.',
+  'Solmar Jazz: a brushed drum, a low horn, and a DJ who whispers like the city is asleep.',
+  'Solmar Jazz: this one is for the couples at the back table. You know who you are.',
+];
+
+const GP_LINES_V8 = [
+  'Grand Prix Radio: engines on the grid, lights on the gantry — the city is holding its breath.',
+  'Grand Prix Radio: lap three, and Mara Solano is closing on the leader like a rumour.',
+  'Grand Prix Radio: the crowd is on its feet — the last lap is going to be a fight.',
+];
+
+export function jazzLineV8(G) {
+  return JAZZ_LINES_V8[Math.floor(G.rng() * JAZZ_LINES_V8.length)];
+}
+
+export function grandPrixLineV8(G) {
+  return GP_LINES_V8[Math.floor(G.rng() * GP_LINES_V8.length)];
+}
+
+// The station a v8 request line belongs to: jazz gets a dedication, the
+// Grand Prix channel gets a lap call, and everything else gets the old
+// request line the radio already had.
+export function radioV8StationLine(G, stationId) {
+  if (stationId === 'jazz') return jazzLineV8(G);
+  if (stationId === 'grandprix') return grandPrixLineV8(G);
+  return null;
+}
+
+export function radioV8Summary(G) {
+  return `v8 stations: ${V8_STATIONS.map((s) => s.name).join(' + ')} — jazz for the small hours, Grand Prix for race day.`;
+}

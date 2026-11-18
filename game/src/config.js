@@ -181,3 +181,45 @@ Object.assign(CONFIG, {
   dodgeRollSpeed: 16,       // burst speed during a roll
   staminaDodgeCost: 18,     // stamina a dodge roll burns
 });
+
+// v8: the finale arc, the paint shop, the dyno, the highway, the weather
+// fronts, the radio news desk, the routines and the achievement shelf —
+// every new system reads its numbers here, next to the old ones.
+Object.assign(CONFIG, {
+  // Missions 15–16: the Meridian Trust con and the sunrise finale.
+  mission15Reward: 12000,
+  mission16Reward: 15000,
+  ceremonyBonus: 5000,
+  // Paint shop v2: the booth, the flake and the finish.
+  paintBasePrice: 200,
+  paintFlakeMax: 500,
+  paintMattePrice: 350,
+  twoTonePrice: 450,
+  // Dyno: a pull is six seconds on the rollers.
+  dynoPullTime: 6,
+  dynoHpPerTopSpeed: 6,
+  // Highway v2: the north artery and the jam that chains.
+  highwaySpeed: 58,
+  highwayCars: 6,
+  jamClearTime: 40,
+  chainRadius: 14,
+  // Weather v2: fronts, strikes and dust devils.
+  frontSpeed: 14,
+  frontWidth: 90,
+  strikeMinGap: 6,
+  strikeMaxGap: 16,
+  scorchMax: 8,
+  // Radio v2: the news desk checks in every 75 seconds.
+  newsInterval: 75,
+  newsHeadlinesKept: 6,
+  // Pedestrian routines: five workers keep the city's hours.
+  routineWorkers: 5,
+  // Achievements: thirty medals, six families.
+  achievementCount: 30,
+  achievementFamilies: 6,
+  // Combat v2: smoke and adrenaline.
+  smokePrice: 120,
+  smokeDuration: 8,
+  adrenalineHits: 3,
+  adrenalineSeconds: 6,
+});

@@ -280,3 +280,86 @@ export function updateFlyHeli(G, dt) {
   G.hud.setObjectiveHint(flyHeliStatusText(G));
   if (h.altitude > 120) G.hud.toast('You are above the whole city — the lighthouse looks tiny from here.');
 }
+
+// ---- v8: scenic heli tours ----------------------------------------------------
+// The v7 helis were for flying; v8 sells the view. Three scenic tours
+// leave from the airfield pad — the Bay Loop, the Mountain Pass and the
+// Night Lights — each with a flight path of waypoints and a fare, and a
+// tour flown clean (no hard landings, no wanted stars at touchdown) pays
+// a guide's bonus. The tour log is the pilot's record: hours in the air,
+// tours flown, and the best-loved route.
+
+export const HELI_TOURS_V8 = [
+  { id: 'bay-loop', name: 'Bay Loop', fare: 400, waypoints: [{ x: 352, z: 40 }, { x: 200, z: 300 }, { x: -120, z: 360 }] },
+  { id: 'mountain-pass', name: 'Mountain Pass', fare: 550, waypoints: [{ x: -250, z: 520 }, { x: -100, z: 300 }, { x: 60, z: -180 }] },
+  { id: 'night-lights', name: 'Night Lights', fare: 600, waypoints: [{ x: 20, z: 20 }, { x: 300, z: 60 }, { x: -235, z: -276 }] },
+];
+
+export function createHeliToursV8(G) {
+  if (G.heliToursV8) return G.heliToursV8;
+  G.heliToursV8 = {
+    active: null,
+    waypointIndex: 0,
+    toursFlown: 0,
+    cleanLandings: 0,
+    hoursAirborne: 0,
+    favourite: null,
+    counts: {},
+  };
+  return G.heliToursV8;
+}
+
+export function startHeliTourV8(G, tourId) {
+  const t8 = G.heliToursV8;
+  if (!t8) return false;
+  const tour = HELI_TOURS_V8.find((t) => t.id === tourId);
+  if (!tour) return false;
+  if (!G.flying) {
+    G.hud.toast('Heli tours start in the air — take a helicopter up first.');
+    return false;
+  }
+  if (G.cash < tour.fare) {
+    G.hud.toast(`The ${tour.name} costs $${tour.fare} to book — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  G.cash -= tour.fare;
+  t8.active = tour;
+  t8.waypointIndex = 0;
+  G.hud.toast(`Heli tour: ${tour.name} — fly the waypoints, land clean, and the guide's bonus is yours.`);
+  return true;
+}
+
+export function updateHeliToursV8(G, dt) {
+  const t8 = G.heliToursV8;
+  if (!t8) return;
+  if (G.flying) t8.hoursAirborne += dt / 3600;
+  if (!t8.active || !G.flying) return;
+  const wp = t8.active.waypoints[t8.waypointIndex];
+  if (!wp) return;
+  const h = G.flying;
+  const d = Math.hypot(h.pos.x - wp.x, h.pos.z - wp.z);
+  if (d < 20) {
+    t8.waypointIndex += 1;
+    G.hud.toast(`Tour waypoint ${t8.waypointIndex}/${t8.active.waypoints.length} — ${t8.active.name}.`);
+    if (t8.waypointIndex >= t8.active.waypoints.length) {
+      const tour = t8.active;
+      t8.toursFlown += 1;
+      t8.counts[tour.id] = (t8.counts[tour.id] || 0) + 1;
+      const clean = G.wanted.stars === 0;
+      const bonus = clean ? 300 : 100;
+      if (clean) t8.cleanLandings += 1;
+      G.cash += tour.fare + bonus;
+      G.hud.toast(`Tour complete: ${tour.name} — fare back + $${bonus} ${clean ? 'clean-flight' : 'rough-flight'} bonus.`);
+      if (clean && G.audio && G.audio.cheer) G.audio.cheer();
+      t8.active = null;
+      t8.waypointIndex = 0;
+    }
+  }
+}
+
+export function heliToursV8Summary(G) {
+  const t8 = G.heliToursV8;
+  if (!t8) return 'Heli tours not flying yet.';
+  const fav = Object.entries(t8.counts).sort((a, b) => b[1] - a[1])[0];
+  return `${t8.toursFlown} tours flown · ${t8.cleanLandings} clean · ${t8.hoursAirborne.toFixed(1)}h airborne · favourite: ${fav ? HELI_TOURS_V8.find((t) => t.id === fav[0]).name : '—'}.`;
+}

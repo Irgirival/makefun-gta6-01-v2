@@ -380,3 +380,55 @@ function updateTaxi(G, dt) {
     G.save.save(G);
   }
 }
+
+// ---- v8: mission grades and the taxi surge -----------------------------------
+// The v7 replay ledger kept the fastest replay; v8 grades every story
+// run. A mission finished with no damage, no wanted stars at the end and
+// time to spare earns an S — the grade is written into the mission
+// record, and three S grades in a row pay the "clean operator" bonus.
+// The taxi job gets surge pricing too: rain, rush hour and the small
+// hours all lift the fare, because Solmar's cabs charge for the weather.
+
+export const MISSION_GRADES_V8 = ['S', 'A', 'B', 'C'];
+
+export function gradeMissionV8(G, missionId, seconds, damageTaken, starsAtEnd) {
+  if (!G.missionGrades) G.missionGrades = {};
+  let grade = 'C';
+  if (damageTaken === 0 && starsAtEnd === 0 && seconds < 240) grade = 'S';
+  else if (damageTaken < 20 && starsAtEnd <= 1) grade = 'A';
+  else if (damageTaken < 50 && starsAtEnd <= 2) grade = 'B';
+  const prev = G.missionGrades[missionId];
+  if (!prev || MISSION_GRADES_V8.indexOf(grade) < MISSION_GRADES_V8.indexOf(prev.grade)) {
+    G.missionGrades[missionId] = { grade, seconds, at: Math.floor(G.elapsed) };
+  }
+  const sCount = Object.values(G.missionGrades).filter((g) => g.grade === 'S').length;
+  if (sCount >= 3 && !G.missionGrades._cleanBonusPaid) {
+    G.missionGrades._cleanBonusPaid = true;
+    G.cash += 1000;
+    G.hud.toast('CLEAN OPERATOR — three S grades. The city pays $1,000 for the quiet professional.');
+  }
+  return grade;
+}
+
+export function missionGradeTextV8(G, missionId) {
+  const g = G.missionGrades && G.missionGrades[missionId];
+  return g ? `${g.grade} (${g.seconds.toFixed(0)}s)` : 'not graded yet';
+}
+
+// Surge pricing for the taxi: rain adds 25%, rush hour 20%, the small
+// hours 30% — the meter knows what time it is.
+export function taxiSurgeV8(G, baseFare) {
+  let mult = 1;
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  if (G.weather && (G.weather.mode === 'light' || G.weather.mode === 'heavy')) mult += 0.25;
+  if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 19)) mult += 0.2;
+  if (hour >= 0 && hour < 5) mult += 0.3;
+  return { fare: Math.round(baseFare * mult), mult };
+}
+
+export function missionsV8Summary(G) {
+  const grades = G.missionGrades || {};
+  const keys = Object.keys(grades).filter((k) => !k.startsWith('_'));
+  const sCount = keys.filter((k) => grades[k].grade === 'S').length;
+  return `${keys.length} missions graded · ${sCount} S grades · clean-operator bonus: ${grades._cleanBonusPaid ? 'paid' : 'not yet'}.`;
+}

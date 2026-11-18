@@ -510,3 +510,74 @@ export function updateV7District(G, dt) {
 export function marketBrowseCount(G) {
   return (G.cityV7 && G.cityV7.browsed) || 0;
 }
+
+// ---- v8: the rooftop gardens and the skybridge ------------------------------
+// The v7 district gave the city a night market; v8 builds up. Three
+// rooftop gardens crown the downtown towers — palm, herb and flower —
+// joined by a glass skybridge Mara can walk, and at night the bridge
+// lights up gold. The gardens are photo spots in their own right, and
+// the skybridge is the highest walkable point in the city that is not a
+// helicopter: stand on it at dusk and the whole bay is below you.
+
+
+export const V8_GARDENS = [
+  { id: 'palm', name: 'Palm Garden', x: 60, z: -40, h: 34, color: 0x2a8a4a },
+  { id: 'herb', name: 'Herb Garden', x: -60, z: -60, h: 28, color: 0x6a8a2a },
+  { id: 'flower', name: 'Flower Garden', x: 100, z: 60, h: 42, color: 0xd83a8a },
+];
+
+export function buildV8District(G) {
+  if (G.cityV8) return G.cityV8;
+  const group = new THREE.Group();
+  const gardens = [];
+  for (const def of V8_GARDENS) {
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(16, 1, 12),
+      new THREE.MeshLambertMaterial({ color: def.color }));
+    bed.position.set(def.x, def.h, def.z);
+    group.add(bed);
+    for (let i = 0; i < 5; i++) {
+      const plant = new THREE.Mesh(new THREE.ConeGeometry(0.9, 3.2, 6),
+        new THREE.MeshLambertMaterial({ color: 0x3ad86a }));
+      plant.position.set(def.x - 6 + i * 3, def.h + 2, def.z + (i % 2 ? 3 : -3));
+      group.add(plant);
+    }
+    gardens.push({ ...def, visited: false });
+  }
+  // The glass skybridge between the palm and herb gardens.
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(120, 0.5, 3),
+    new THREE.MeshLambertMaterial({ color: 0x9fc8e8, transparent: true, opacity: 0.55 }));
+  bridge.position.set(0, 31, -50);
+  group.add(bridge);
+  const bridgeGlow = new THREE.Mesh(new THREE.BoxGeometry(120, 0.2, 3.4),
+    new THREE.MeshBasicMaterial({ color: 0xffd23e, transparent: true, opacity: 0 }));
+  bridgeGlow.position.set(0, 30.6, -50);
+  group.add(bridgeGlow);
+  G.scene.add(group);
+  G.cityV8 = { group, gardens, bridgeGlow, visits: 0 };
+  return G.cityV8;
+}
+
+export function updateV8District(G, dt) {
+  const c8 = G.cityV8;
+  if (!c8) return;
+  // The skybridge glows gold after dark, and a garden visit is counted
+  // when Mara stands on a rooftop bed — the city keeps a garden book.
+  const night = G.clockMinutes % (24 * 60) >= 18 * 60 || G.clockMinutes % (24 * 60) < 6 * 60;
+  c8.bridgeGlow.material.opacity = night ? 0.5 + Math.sin(G.elapsed * 2) * 0.15 : 0;
+  const p = G.player.pos;
+  for (const garden of c8.gardens) {
+    if (!garden.visited && Math.hypot(p.x - garden.x, p.z - garden.z) < 9) {
+      garden.visited = true;
+      c8.visits += 1;
+      G.hud.toast(`${garden.name} — a rooftop garden above the city. ${c8.visits}/3 gardens found.`);
+      G.cash += 50;
+    }
+  }
+}
+
+export function v8DistrictSummary(G) {
+  const c8 = G.cityV8;
+  if (!c8) return 'Rooftop gardens not built yet.';
+  const found = c8.gardens.filter((g) => g.visited).length;
+  return `${found}/3 rooftop gardens visited · skybridge ${G.clockMinutes % (24 * 60) >= 18 * 60 ? 'lit gold' : 'daylight'}.`;
+}

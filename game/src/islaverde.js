@@ -482,3 +482,79 @@ export function updateIslaV7(G, dt) {
 export function islaV7Summary(G) {
   return 'Surf shop open · volleyball on the sand · 3 surfers on the swell.';
 }
+
+// ---- v8: the Isla Verde ferry timetable and the boardwalk market ------------
+// The v7 island added a second market row; v8 gives the island a clock.
+// The ferry runs on a timetable — every 20 game-minutes it leaves the
+// marina, crosses the causeway water and docks at the boardwalk — and
+// the boardwalk market opens with it: three stalls that only sell while
+// the ferry is in. A ride on the ferry is free, the market is not, and
+// the timetable is posted on the radio so Mara can plan around it.
+
+export const FERRY_INTERVAL_MIN = 20;
+
+export function createFerryV8(G) {
+  if (G.ferryV8) return G.ferryV8;
+  G.ferryV8 = {
+    crossings: 0,
+    rides: 0,
+    marketOpen: false,
+    marketSales: 0,
+    nextDeparture: FERRY_INTERVAL_MIN,
+    stalls: [
+      { id: 'shells', name: 'Shell stall', price: 40 },
+      { id: 'fish', name: 'Grilled fish', price: 25 },
+      { id: 'postcards', name: 'Postcards', price: 15 },
+    ],
+  };
+  return G.ferryV8;
+}
+
+export function ferryNextDepartureV8(G) {
+  const f8 = G.ferryV8;
+  if (!f8) return '—';
+  const mins = Math.max(0, Math.ceil(f8.nextDeparture - (G.clockMinutes % (24 * 60))));
+  return `${mins} min`;
+}
+
+export function updateFerryV8(G, dt) {
+  const f8 = G.ferryV8;
+  if (!f8) return;
+  // The ferry leaves every 20 game-minutes; the market opens for the
+  // 10 minutes after each departure and closes with the last stall.
+  const clock = G.clockMinutes % (24 * 60);
+  const phase = clock % FERRY_INTERVAL_MIN;
+  if (phase < 0.1 && f8.nextDeparture > 0) {
+    f8.crossings += 1;
+    f8.nextDeparture = FERRY_INTERVAL_MIN;
+    G.hud.toast('The Isla Verde ferry just left the marina — the boardwalk market opens with it.');
+  }
+  f8.nextDeparture = FERRY_INTERVAL_MIN - phase;
+  f8.marketOpen = phase < 10;
+}
+
+export function buyFerryStallV8(G, stallId) {
+  const f8 = G.ferryV8;
+  if (!f8) return false;
+  if (!f8.marketOpen) {
+    G.hud.toast('The boardwalk market is closed — it opens when the ferry leaves.');
+    return false;
+  }
+  const stall = f8.stalls.find((s) => s.id === stallId);
+  if (!stall) return false;
+  if (G.cash < stall.price) {
+    G.hud.toast(`The ${stall.name} is $${stall.price} — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  G.cash -= stall.price;
+  f8.marketSales += 1;
+  G.health = Math.min(100, G.health + 10);
+  G.hud.toast(`Boardwalk market: ${stall.name} — $${stall.price}. +10 health, and the gulls approve.`);
+  return true;
+}
+
+export function ferryV8Summary(G) {
+  const f8 = G.ferryV8;
+  if (!f8) return 'Ferry timetable not posted yet.';
+  return `${f8.crossings} crossings · market ${f8.marketOpen ? 'OPEN' : 'closed'} · ${f8.marketSales} stall sales · next ferry in ${ferryNextDepartureV8(G)}.`;
+}

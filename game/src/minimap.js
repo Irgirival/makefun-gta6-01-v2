@@ -341,3 +341,70 @@ export function minimapV7Summary(G) {
   const dmg = G.minimapV7;
   return dmg && dmg.lastDamageAt ? 'Damage compass live — the last hit came from the red arc.' : 'Minimap overlay live — depots, drops and callouts marked.';
 }
+
+// ---- v8: minimap v2 — the zoom, the route line and the legend -----------------
+// The v7 minimap added job blips and a damage compass; v8 adds the zoom
+// (the map follows Mara closer when she is on foot, wider when she is
+// driving), a gold route line from Mara to the live mission marker, and
+// a tiny legend so a new player can read the blips. The route line is
+// drawn fresh every frame from the mission target, so it never goes stale.
+
+export function drawMinimapV8(G) {
+  const mm = G.minimap;
+  if (!mm || !mm.canvas) return;
+  const ctx = mm.canvas.getContext('2d');
+  if (!ctx) return;
+  // Zoom: on foot the map shows 120 units across, in a car 220 — the
+  // world breathes with Mara's speed.
+  const speed = G.driving ? Math.abs(G.driving.speed || 0) : 0;
+  const range = G.driving ? 220 : 120;
+  mm.rangeV8 = range;
+  // Route line: from Mara's dot to the mission marker, in gold, dashed
+  // so it reads as a suggestion and not a road.
+  const target = currentMissionTargetV8(G);
+  if (!target) return;
+  const p = G.driving ? G.driving.pos : G.player.pos;
+  const size = mm.canvas.width;
+  const scale = size / (range * 2);
+  const cx = size / 2;
+  const cy = size / 2;
+  const tx = cx + (target.x - p.x) * scale;
+  const ty = cy + (target.z - p.z) * scale;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 210, 62, 0.9)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(tx, ty);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ffd23e';
+  ctx.beginPath();
+  ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function currentMissionTargetV8(G) {
+  if (!G.missions || !G.missions.active) return null;
+  const step = G.missions.step;
+  const list = G.missions.list || null;
+  if (list && list[step] && list[step].target) return list[step].target;
+  // Fall back to the marker the mission system already placed.
+  const marker = G.missions.marker;
+  if (marker && marker.ring && marker.ring.visible) {
+    return { x: marker.ring.position.x, z: marker.ring.position.z };
+  }
+  return null;
+}
+
+export function minimapLegendV8() {
+  return 'Gold dot: mission target · dashed gold: your route · red: wanted · green: job · blue: water.';
+}
+
+export function minimapV8Summary(G) {
+  const mm = G.minimap;
+  if (!mm) return 'Minimap v2 not drawn yet.';
+  return `range ${mm.rangeV8 || 190} units · route line ${currentMissionTargetV8(G) ? 'live' : 'no active mission'} · legend: gold mission, red wanted, green job.`;
+}

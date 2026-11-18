@@ -171,3 +171,62 @@ export function talkV7Line(G) {
   if (G.cityV7 && G.cityV7.marketOn) return talkMarketLine(G);
   return null;
 }
+
+// ---- v8: the talk lines that know the story ------------------------------------
+// The v7 talk lines covered deliveries, season 2, the K9 unit and the
+// market; v8 adds the lines for the finale, the highway, the weather
+// fronts and the achievements — the hosts finally talk about what Mara
+// actually did, because the whole city heard about it.
+
+const FINALE_LINES_V8 = [
+  'Talk Solmar: the Meridian Trust is on the front page, and the plaza fountain has flowers on it. Draw your own conclusions.',
+  'Talk Solmar: they say Mara Solano walked into the courthouse at sunrise and the city has not stopped talking since.',
+  'Talk Solmar: the Trust\'s auditors are auditing each other now. Beautiful, really.',
+];
+
+const HIGHWAY_LINES_V8 = [
+  'Talk Solmar: the north highway jammed again — three cars, one fender, and a whole afternoon of horns.',
+  'Talk Solmar: the traffic chopper says the highway is flowing. Enjoy it while it lasts.',
+];
+
+const FRONT_LINES_V8 = [
+  'Talk Solmar: a cold front crossed the city and the lightning put on a show. The gulls did not approve.',
+  'Talk Solmar: rainbow over the bay this morning. The photographers are insufferable and the pictures are gorgeous.',
+];
+
+const MEDAL_LINES_V8 = [
+  'Talk Solmar: Mara Solano has another medal on the shelf. At this rate the safehouse needs a bigger wall.',
+  'Talk Solmar: thirty medals, six families, one Mara. The city is keeping count.',
+];
+
+export function talkFinaleLineV8(G) {
+  return FINALE_LINES_V8[Math.floor(G.rng() * FINALE_LINES_V8.length)];
+}
+
+export function talkHighwayLineV8(G) {
+  return HIGHWAY_LINES_V8[Math.floor(G.rng() * HIGHWAY_LINES_V8.length)];
+}
+
+export function talkFrontLineV8(G) {
+  return FRONT_LINES_V8[Math.floor(G.rng() * FRONT_LINES_V8.length)];
+}
+
+export function talkMedalLineV8(G) {
+  return MEDAL_LINES_V8[Math.floor(G.rng() * MEDAL_LINES_V8.length)];
+}
+
+// The host picks the freshest story: the finale first, then the jam,
+// then the front, then the medals, then the old lines the show already
+// had. The city talks about what happened, not what might.
+export function talkV8Line(G) {
+  if (G.missions5 && G.missions5.finaleDone) return talkFinaleLineV8(G);
+  if (G.trafficV8 && G.trafficV8.jams.length > 0) return talkHighwayLineV8(G);
+  if (G.weatherV8 && (G.weatherV8.frontActive || G.weatherV8.rainbowTimer > 0)) return talkFrontLineV8(G);
+  if (G.achievements && G.achievements.unlocked.length >= 5) return talkMedalLineV8(G);
+  return null;
+}
+
+export function talkradioV8Summary(G) {
+  const line = talkV8Line(G);
+  return line ? `Talk Solmar now: ${line}` : 'Talk Solmar: the hosts are on the old lines today.';
+}

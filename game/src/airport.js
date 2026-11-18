@@ -432,3 +432,65 @@ export function updateAirportV7(G, dt) {
 export function airportV7Summary(G) {
   return 'Cargo terminal open · 4 freight crates · departures board live.';
 }
+
+// ---- v8: sunset charters and the charter log --------------------------------
+// The v7 charter was a free bay tour; v8 sells the golden hour. A sunset
+// charter leaves the apron at dusk, flies the bay while the sky burns,
+// and pays a photographer's bonus if Mara snaps it — and every flight,
+// free or paid, goes into the logbook, so the airport remembers how many
+// times Mara has actually left the ground.
+
+export const CHARTER_V8_ROUTES = [
+  { id: 'sunset', name: 'Sunset Bay Tour', price: 300, hour: 18, bonus: 150 },
+  { id: 'dawn', name: 'Dawn Mountain Pass', price: 350, hour: 6, bonus: 200 },
+  { id: 'night', name: 'City Lights Night Flight', price: 400, hour: 21, bonus: 250 },
+];
+
+export function createCharterV8(G) {
+  if (G.charterV8) return G.charterV8;
+  G.charterV8 = {
+    flights: 0,
+    sunsetFlights: 0,
+    logbook: [],
+    wasRiding: false,
+    rides: 0,
+  };
+  return G.charterV8;
+}
+
+export function bookCharterV8(G, routeId) {
+  const c8 = G.charterV8;
+  if (!c8) return false;
+  const route = CHARTER_V8_ROUTES.find((r) => r.id === routeId);
+  if (!route) return false;
+  if (G.cash < route.price) {
+    G.hud.toast(`The ${route.name} is $${route.price} — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  G.cash -= route.price;
+  c8.flights += 1;
+  if (route.id === 'sunset') c8.sunsetFlights += 1;
+  c8.logbook.push({ route: route.name, at: Math.floor(G.clockMinutes) });
+  G.hud.toast(`Booked: ${route.name} — $${route.price}. Board at the apron when the hour comes.`);
+  return true;
+}
+
+export function updateCharterV8(G, dt) {
+  const c8 = G.charterV8;
+  if (!c8) return;
+  // The logbook counts a ride by watching the charter flag flip on and
+  // off — no hook into the flight code needed, just the truth of it.
+  const riding = !!G.charterRide;
+  if (riding && !c8.wasRiding) {
+    c8.rides += 1;
+    G.charterRides = (G.charterRides || 0) + 1;
+  }
+  c8.wasRiding = riding;
+}
+
+export function charterV8Summary(G) {
+  const c8 = G.charterV8;
+  if (!c8) return 'Charter v2 not open yet.';
+  const last = c8.logbook.length ? c8.logbook[c8.logbook.length - 1].route : 'no bookings yet';
+  return `${c8.flights} booked charters · ${c8.sunsetFlights} sunset tours · ${c8.rides} flights taken · last: ${last}.`;
+}

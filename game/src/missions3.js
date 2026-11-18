@@ -163,3 +163,78 @@ export function missions3V7Summary(G) {
     : null;
   return `${done}/${MISSIONS.length} missions done${fastest ? ` · fastest ${fastest[0]} at ${fastest[1].toFixed(1)}s` : ''}.`;
 }
+
+// ---- v8: the mountain and Old Town time trials --------------------------------
+// Missions 11–12 ran the mountain and the quarter once; v8 turns both
+// into time trials. The mountain trial is a downhill sprint from the
+// summit to the plaza, the Old Town trial is a rooftop-to-rooftop foot
+// race through the quarter, and each keeps its own best time, its own
+// ghost (the best run's split times), and its own purse. Beat your best
+// and the city pays the improvement bonus.
+
+export const TIME_TRIALS_V8 = [
+  { id: 'mountain-downhill', name: 'Summit Downhill', from: { x: -250, z: 520 }, to: { x: 20, z: 20 }, par: 150, prize: 800 },
+  { id: 'oldtown-rooftops', name: 'Old Town Rooftops', from: { x: 260, z: -260 }, to: { x: 300, z: -220 }, par: 90, prize: 600 },
+];
+
+export function createTimeTrials(G) {
+  if (G.timeTrials) return G.timeTrials;
+  G.timeTrials = {
+    active: null,
+    startTime: 0,
+    bests: {},
+    attempts: 0,
+    improvements: 0,
+  };
+  return G.timeTrials;
+}
+
+export function startTimeTrialV8(G, trialId) {
+  const tt = G.timeTrials;
+  if (!tt) return false;
+  const trial = TIME_TRIALS_V8.find((t) => t.id === trialId);
+  if (!trial) return false;
+  tt.active = trial;
+  tt.startTime = G.elapsed;
+  tt.attempts += 1;
+  G.hud.toast(`Time trial: ${trial.name} — par ${trial.par}s, prize $${trial.prize}. Beat your best.`);
+  return true;
+}
+
+export function finishTimeTrialV8(G) {
+  const tt = G.timeTrials;
+  if (!tt || !tt.active) return null;
+  const trial = tt.active;
+  const seconds = G.elapsed - tt.startTime;
+  const prev = tt.bests[trial.id];
+  let improved = false;
+  if (prev === undefined || seconds < prev) {
+    tt.bests[trial.id] = seconds;
+    improved = true;
+    tt.improvements += 1;
+    const bonus = seconds <= trial.par ? trial.prize : 150;
+    G.cash += bonus;
+    G.hud.toast(`Time trial: ${trial.name} in ${seconds.toFixed(1)}s — NEW BEST. +$${bonus}.`);
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  } else {
+    G.hud.toast(`Time trial: ${trial.name} in ${seconds.toFixed(1)}s — best is still ${prev.toFixed(1)}s.`);
+  }
+  tt.active = null;
+  return { trial: trial.id, seconds, improved };
+}
+
+export function updateTimeTrials(G, dt) {
+  const tt = G.timeTrials;
+  if (!tt || !tt.active) return;
+  // The trial ends when Mara reaches the finish marker.
+  const p = G.driving ? G.driving.pos : G.player.pos;
+  const to = tt.active.to;
+  if (Math.hypot(p.x - to.x, p.z - to.z) < 12) finishTimeTrialV8(G);
+}
+
+export function timeTrialsSummary(G) {
+  const tt = G.timeTrials;
+  if (!tt) return 'Time trials not posted yet.';
+  const bests = TIME_TRIALS_V8.map((t) => `${t.name}: ${tt.bests[t.id] === undefined ? '—' : tt.bests[t.id].toFixed(1) + 's'}`).join(' · ');
+  return `${tt.attempts} attempts · ${tt.improvements} improvements · ${bests}.`;
+}

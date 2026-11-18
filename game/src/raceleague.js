@@ -174,3 +174,62 @@ export function updateRaceLeague(G, dt) {
     }
   }
 }
+
+// ---- v8: the grand prix and the rival grudges ---------------------------------
+// The v7 league had circuits and a champion's purse; v8 adds the Grand
+// Prix — a five-race championship across every circuit in the game, with
+// double points and a $10,000 purse — and rival grudges: beat the same
+// rival three races in a row and they drive harder against you (and pay
+// a grudge bonus when you beat them a fourth time). The league table
+// remembers who owes whom.
+
+export const GRAND_PRIX_PRIZE_V8 = 10000;
+export const GRAND_PRIX_ROUNDS_V8 = 5;
+
+export function createGrandPrix(G) {
+  if (G.grandPrix) return G.grandPrix;
+  G.grandPrix = {
+    round: 0,
+    points: 0,
+    wins: 0,
+    champion: false,
+    grudges: {},
+    grudgeBonuses: 0,
+  };
+  return G.grandPrix;
+}
+
+export function recordGrandPrixRoundV8(G, place, rivalBeaten) {
+  const gp = G.grandPrix;
+  if (!gp) return false;
+  const points = [25, 18, 15, 12, 10][place - 1] || 2;
+  gp.round += 1;
+  gp.points += points * 2; // Grand Prix rounds pay double points
+  if (place === 1) gp.wins += 1;
+  if (rivalBeaten) {
+    gp.grudges[rivalBeaten] = (gp.grudges[rivalBeaten] || 0) + 1;
+    if (gp.grudges[rivalBeaten] === 3) {
+      G.hud.toast(`GRUDGE — you have beaten ${rivalBeaten} three races straight. They are driving angry now.`);
+    }
+    if (gp.grudges[rivalBeaten] >= 4) {
+      gp.grudges[rivalBeaten] = 0;
+      gp.grudgeBonuses += 500;
+      G.cash += 500;
+      G.hud.toast(`GRUDGE SETTLED — four straight over ${rivalBeaten}. +$500, and they will not forget it.`);
+    }
+  }
+  if (gp.round >= GRAND_PRIX_ROUNDS_V8 && !gp.champion) {
+    gp.champion = true;
+    G.cash += GRAND_PRIX_PRIZE_V8;
+    G.hud.toast(`GRAND PRIX CHAMPION — five rounds, ${gp.wins} wins, ${gp.points} points. +$${GRAND_PRIX_PRIZE_V8}.`);
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+  return true;
+}
+
+export function grandPrixSummary(G) {
+  const gp = G.grandPrix;
+  if (!gp) return 'Grand Prix not on the calendar yet.';
+  const grudge = Object.entries(gp.grudges).map(([n, c]) => `${n} x${c}`).join(', ') || 'no grudges yet';
+  return `round ${Math.min(gp.round, GRAND_PRIX_ROUNDS_V8)}/${GRAND_PRIX_ROUNDS_V8} · ${gp.wins} wins · ${gp.points} points · champion: ${gp.champion ? 'YES' : 'not yet'} · grudges: ${grudge}.`;
+}

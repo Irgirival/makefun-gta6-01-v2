@@ -403,3 +403,83 @@ export function policeV7Summary(G) {
   if (!k9) return 'The PD is quiet.';
   return `${k9.pitAttempts} PIT attempts · ${k9.pitHits} PIT hits · ${k9.captures} K9 captures.`;
 }
+
+// ---- v8: the heat map and the clean-slate record ------------------------------
+// The v7 police chased, PITted and sent the dog; v8 remembers where.
+// The heat map counts every crime by district — downtown, harbor, Old
+// Town, beach, airfield — and the pause screen shows the hot spots, so
+// Mara can see which quarter knows her face. The clean slate is the
+// other record: the longest Mara has gone without a single star, in game
+// hours, and the city pays a "model citizen" bonus at 24 clean hours.
+
+export const POLICE_DISTRICTS_V8 = [
+  { id: 'downtown', name: 'Downtown', x0: -130, x1: 130, z0: -130, z1: 130 },
+  { id: 'harbor', name: 'Harbor', x0: 130, x1: 340, z0: -130, z1: 130 },
+  { id: 'oldtown', name: 'Old Town', x0: 130, x1: 340, z0: -340, z1: -130 },
+  { id: 'beach', name: 'Beach', x0: -340, x1: 340, z0: 130, z1: 340 },
+  { id: 'airfield', name: 'Airfield', x0: -340, x1: -130, z0: -340, z1: -130 },
+];
+
+export function createHeatMap(G) {
+  if (G.heatMap) return G.heatMap;
+  G.heatMap = {
+    byDistrict: {},
+    total: 0,
+    cleanHours: 0,
+    cleanStreak: 0,
+    modelBonuses: 0,
+    _cleanTimer: 0,
+  };
+  return G.heatMap;
+}
+
+export function districtAtV8(x, z) {
+  for (const d of POLICE_DISTRICTS_V8) {
+    if (x >= d.x0 && x < d.x1 && z >= d.z0 && z < d.z1) return d;
+  }
+  return { id: 'outskirts', name: 'Outskirts' };
+}
+
+export function recordCrimeV8(G, kind) {
+  const hm = G.heatMap;
+  if (!hm) return null;
+  const p = G.player.pos;
+  const d = districtAtV8(p.x, p.z);
+  hm.byDistrict[d.id] = (hm.byDistrict[d.id] || 0) + 1;
+  hm.total += 1;
+  hm.cleanStreak = 0;
+  hm._cleanTimer = 0;
+  return d;
+}
+
+export function updateHeatMapV8(G, dt) {
+  const hm = G.heatMap;
+  if (!hm) return;
+  if (G.wanted.stars === 0) {
+    hm._cleanTimer += dt;
+    hm.cleanHours = hm._cleanTimer / 3600;
+    if (hm._cleanTimer >= 24 * 3600) {
+      hm._cleanTimer = 0;
+      hm.modelBonuses += 1;
+      G.cash += 500;
+      G.hud.toast('MODEL CITIZEN — 24 clean hours without a single star. The city pays $500 for the good behaviour.');
+    }
+  } else {
+    hm._cleanTimer = 0;
+  }
+  hm.cleanStreak = Math.max(hm.cleanStreak, hm._cleanTimer / 3600);
+}
+
+export function heatMapTextV8(G) {
+  const hm = G.heatMap;
+  if (!hm) return 'Heat map not drawn yet.';
+  const rows = POLICE_DISTRICTS_V8.map((d) => `${d.name}: ${hm.byDistrict[d.id] || 0}`);
+  return `${rows.join(' · ')} — total ${hm.total} crimes.`;
+}
+
+export function policeV8Summary(G) {
+  const hm = G.heatMap;
+  if (!hm) return 'Heat map not drawn yet.';
+  const hottest = POLICE_DISTRICTS_V8.reduce((a, d) => ((hm.byDistrict[d.id] || 0) > (hm.byDistrict[a.id] || 0) ? d : a), POLICE_DISTRICTS_V8[0]);
+  return `${heatMapTextV8(G)} · hottest: ${hottest.name} · clean streak ${hm.cleanStreak.toFixed(1)}h · model bonuses ${hm.modelBonuses}.`;
+}

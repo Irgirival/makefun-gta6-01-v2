@@ -208,3 +208,78 @@ export function deliveryRank(G) {
   if (d.bestStreak >= 3) return 'Rising Courier';
   return 'Rookie';
 }
+
+// ---- v8: Solmar Express tiers ------------------------------------------------
+// The v7 dispatcher paid per drop with a streak bonus; v8 gives the job
+// a ladder. Tiers run Bronze → Silver → Gold → Platinum, earned by
+// parcels delivered, and every tier lifts the base pay and the fragile
+// bonus — Platinum couriers earn double on every drop. Boss deliveries
+// are the tier's test: a single timed run to the far end of the map that
+// pays triple and counts double toward the next tier.
+
+export const EXPRESS_TIERS_V8 = [
+  { id: 'bronze', name: 'Bronze Courier', parcels: 0, payMult: 1, fragileMult: 1 },
+  { id: 'silver', name: 'Silver Courier', parcels: 5, payMult: 1.25, fragileMult: 1.25 },
+  { id: 'gold', name: 'Gold Courier', parcels: 15, payMult: 1.5, fragileMult: 1.5 },
+  { id: 'platinum', name: 'Platinum Courier', parcels: 30, payMult: 2, fragileMult: 2 },
+];
+
+export const BOSS_DELIVERIES_V8 = [
+  { id: 'airport-dawn', name: 'Dawn Airport Run', drop: { x: -235, z: -276 }, seconds: 100, pay: 900 },
+  { id: 'mountain-summit', name: 'Summit Supply Drop', drop: { x: -250, z: 520 }, seconds: 120, pay: 1200 },
+  { id: 'isla-lighthouse', name: 'Lighthouse Parcel', drop: { x: -205, z: 565 }, seconds: 110, pay: 1000 },
+];
+
+export function expressTierV8(G) {
+  const d = G.delivery;
+  if (!d) return EXPRESS_TIERS_V8[0];
+  let tier = EXPRESS_TIERS_V8[0];
+  for (const t of EXPRESS_TIERS_V8) {
+    if (d.done >= t.parcels) tier = t;
+  }
+  return tier;
+}
+
+export function expressTierBonusV8(G, basePay) {
+  return Math.round(basePay * expressTierV8(G).payMult);
+}
+
+export function expressTierProgressV8(G) {
+  const d = G.delivery;
+  if (!d) return 'No deliveries yet.';
+  const tier = expressTierV8(G);
+  const idx = EXPRESS_TIERS_V8.indexOf(tier);
+  const next = EXPRESS_TIERS_V8[idx + 1];
+  if (!next) return `${tier.name} — top tier. Every drop pays double.`;
+  return `${tier.name} · ${d.done}/${next.parcels} parcels to ${next.name} (${next.payMult}x pay).`;
+}
+
+// A boss delivery: one timed run, triple pay, double tier credit. The
+// dispatcher only offers one when Mara's streak is hot.
+export function startBossDeliveryV8(G) {
+  const d = G.delivery;
+  if (!d) return null;
+  if (d.active || d.carrying) {
+    G.hud.toast('Finish the parcel you are carrying first — the boss run waits.');
+    return null;
+  }
+  if (d.streak < 2) {
+    G.hud.toast('Boss deliveries need a hot streak — deliver 2 parcels in a row first.');
+    return null;
+  }
+  const job = BOSS_DELIVERIES_V8[Math.floor(G.rng() * BOSS_DELIVERIES_V8.length)];
+  d.active = true;
+  d.carrying = true;
+  d.boss = job;
+  d.drop = { ...job.drop, name: job.name };
+  d.deadline = job.seconds;
+  d.timeLeft = job.seconds;
+  G.hud.toast(`BOSS DELIVERY: ${job.name} — ${job.seconds}s, pays $${job.pay}, counts double toward your tier.`);
+  return job;
+}
+
+export function deliveryV8Summary(G) {
+  const d = G.delivery;
+  if (!d) return 'Solmar Express not running yet.';
+  return `${expressTierProgressV8(G)} · ${d.done} parcels · $${d.earned} earned · best streak ${d.bestStreak} · fragile ${d.fragileDone}.`;
+}

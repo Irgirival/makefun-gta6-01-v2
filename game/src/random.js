@@ -168,3 +168,47 @@ export function roundTo(v, step = 5) {
 export function pickOr(rng, arr, fallback) {
   return arr.length ? pick(rng, arr) : fallback;
 }
+
+// ---- v8: seeded names, plates and call signs ----------------------------------
+// The v7 random kit had picks, ranges, shuffles and hashes; v8 adds the
+// city's paperwork. Seeded name plates for traffic cars (so the same car
+// keeps the same plate every load), call signs for the police air unit,
+// and a weighted pick that favours the common over the rare — all from
+// the same deterministic rng, so a seed-1 city is the same city every
+// time, down to the license plates.
+
+export function plateFor(rng, prefix = 'SOL') {
+  const letters = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+  const digits = '0123456789';
+  let plate = prefix + '-';
+  for (let i = 0; i < 2; i++) plate += letters[Math.floor(rng() * letters.length)];
+  for (let i = 0; i < 3; i++) plate += digits[Math.floor(rng() * digits.length)];
+  return plate;
+}
+
+export function callSignFor(rng) {
+  const units = ['Air One', 'Air Two', 'Harbor One', 'Delta Three', 'Night Owl'];
+  return units[Math.floor(rng() * units.length)];
+}
+
+export function pickSeededName(rng, names) {
+  if (!names || names.length === 0) return 'Unknown';
+  return names[Math.floor(rng() * names.length)];
+}
+
+export function weightedPickV8(rng, entries) {
+  // entries: [[value, weight], ...] — the common wins often, the rare
+  // wins sometimes, and the seed decides which.
+  let total = 0;
+  for (const [, w] of entries) total += w;
+  let roll = rng() * total;
+  for (const [v, w] of entries) {
+    roll -= w;
+    if (roll <= 0) return v;
+  }
+  return entries[entries.length - 1][0];
+}
+
+export function randomV8Summary() {
+  return 'v8 random: seeded plates, air-unit call signs, weighted picks — same seed, same city.';
+}

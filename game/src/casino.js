@@ -247,3 +247,61 @@ export function casinoStatusText(G) {
   const net = c.won - c.lost;
   return `Verde Casino — ${c.spins} spins · net ${net >= 0 ? '+' : ''}$${net} tonight`;
 }
+
+// ---- v8: the high-roller lounge --------------------------------------------
+// The Verde Casino's main floor is for everyone; v8 opens the lounge
+// behind the velvet rope. Entry needs $5,000 in pocket and a clean-enough
+// nose — no wanted stars — and inside, the stakes are tripled, the
+// drinks are free, and the lounge host remembers Mara's name. Every
+// lounge visit is stamped on a membership card, and five stamps earn the
+// gold card: a permanent 10% bonus on every casino win.
+
+export const LOUNGE_ENTRY_CASH = 5000;
+export const LOUNGE_STAMP_GOAL = 5;
+
+export function createLoungeV8(G) {
+  if (G.loungeV8) return G.loungeV8;
+  G.loungeV8 = {
+    visits: 0,
+    stamps: 0,
+    goldCard: false,
+    won: 0,
+    lost: 0,
+  };
+  return G.loungeV8;
+}
+
+export function loungeEntryV8(G) {
+  const lounge = G.loungeV8;
+  if (!lounge) return false;
+  if (G.cash < LOUNGE_ENTRY_CASH) {
+    G.hud.toast(`The high-roller lounge needs $${LOUNGE_ENTRY_CASH} in pocket — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  if (G.wanted.stars > 0) {
+    G.hud.toast('The lounge host shakes his head — no wanted guests past the velvet rope.');
+    return false;
+  }
+  lounge.visits += 1;
+  lounge.stamps += 1;
+  if (lounge.stamps >= LOUNGE_STAMP_GOAL && !lounge.goldCard) {
+    lounge.goldCard = true;
+    G.hud.toast('GOLD CARD — five lounge visits. Every casino win now pays 10% extra.');
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  } else {
+    G.hud.toast(`High-roller lounge — welcome back, Ms. Solano. Stamp ${lounge.stamps}/${LOUNGE_STAMP_GOAL}.`);
+  }
+  return true;
+}
+
+export function loungeBonusV8(G, amount) {
+  const lounge = G.loungeV8;
+  if (!lounge || !lounge.goldCard) return amount;
+  return Math.round(amount * 1.1);
+}
+
+export function loungeV8Summary(G) {
+  const lounge = G.loungeV8;
+  if (!lounge) return 'High-roller lounge not open yet.';
+  return `${lounge.visits} visits · ${lounge.stamps}/${LOUNGE_STAMP_GOAL} stamps · ${lounge.goldCard ? 'GOLD CARD (+10% wins)' : 'no gold card yet'} · won $${lounge.won} / lost $${lounge.lost}.`;
+}

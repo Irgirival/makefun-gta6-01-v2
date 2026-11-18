@@ -296,3 +296,63 @@ export function bikeStuntsSummary(G) {
   if (!st) return 'No stunt bike on the road.';
   return `${st.stunts} stunts · longest wheelie ${st.longestWheelie.toFixed(1)}s · longest stoppie ${st.longestStoppie.toFixed(1)}s.`;
 }
+
+// ---- v8: the wheelie school and the bike meet ---------------------------------
+// The v7 stunt bike could jump; v8 teaches it to wheelie. Hold the
+// wheelie and the style meter climbs — a second of wheelie is $10, a
+// full five seconds is a "stoppie-to-wheelie" combo worth $150 — and on
+// Friday nights the bike meet gathers at the beach road, where the best
+// wheelie of the night wins the meet's purse. The meet is the motorcycle
+// scene's living room.
+
+export function createWheelieSchool(G) {
+  if (G.wheelieSchool) return G.wheelieSchool;
+  G.wheelieSchool = {
+    wheelieTime: 0,
+    bestWheelie: 0,
+    wheelies: 0,
+    earned: 0,
+    meetWins: 0,
+    meetNight: false,
+  };
+  return G.wheelieSchool;
+}
+
+export function updateWheelieSchool(G, dt) {
+  const ws = G.wheelieSchool;
+  if (!ws) return;
+  // Friday night is meet night: the beach road fills with bikes.
+  const day = Math.floor(G.elapsed / 86400);
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  ws.meetNight = day % 7 === 5 && hour >= 20;
+  // A wheelie is a fast bike with the front up — read from speed and
+  // the sprint key, since the bike has no front-wheel sensor of its own.
+  // (Bikes carry type 'motorcycle' on the vehicle, not on the spec.)
+  const onBike = G.driving && G.driving.type === 'motorcycle';
+  const wheeling = onBike && G.input.down('sprint') && Math.abs(G.driving.speed || 0) > 15;
+  if (wheeling) {
+    ws.wheelieTime += dt;
+    if (ws.wheelieTime > ws.bestWheelie) ws.bestWheelie = ws.wheelieTime;
+  } else if (ws.wheelieTime > 0.5) {
+    const t = ws.wheelieTime;
+    ws.wheelies += 1;
+    const pay = Math.min(150, Math.floor(t * 10) + (t >= 5 ? 100 : 0));
+    ws.earned += pay;
+    G.cash += pay;
+    G.hud.toast(`Wheelie school: ${t.toFixed(1)}s on one wheel — +$${pay}.`);
+    if (ws.meetNight && t >= 4) {
+      ws.meetWins += 1;
+      G.cash += 250;
+      G.hud.toast('BIKE MEET — best wheelie of the night. The beach road roars. +$250.');
+    }
+    ws.wheelieTime = 0;
+  } else {
+    ws.wheelieTime = 0;
+  }
+}
+
+export function wheelieSchoolSummary(G) {
+  const ws = G.wheelieSchool;
+  if (!ws) return 'Wheelie school not open yet.';
+  return `${ws.wheelies} wheelies · best ${ws.bestWheelie.toFixed(1)}s · ${ws.meetWins} meet wins · $${ws.earned} earned · meet ${ws.meetNight ? 'TONIGHT' : 'not tonight'}.`;
+}

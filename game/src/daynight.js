@@ -279,3 +279,79 @@ export function skyLabelV7(G) {
   if (mins >= 19 * 60 && mins < 21 * 60) return 'Blue hour';
   return 'Night over Solmar';
 }
+
+// ---- v8: meteor showers and the eclipse --------------------------------------
+// The v7 cycle added golden hour; v8 puts things in the night sky. A
+// meteor shower streaks over the bay on clear nights — short bright
+// lines that cross the sky and fade — and once a season the moon crosses
+// the sun at noon and the city goes dusk-dark for a minute. Both are
+// photo-mode gold: a meteor over the lighthouse, or the eclipse over the
+// plaza, is the shot the walk has been waiting for.
+
+export function createSkyV8(G) {
+  if (G.skyV8) return G.skyV8;
+  G.skyV8 = {
+    meteors: 0,
+    showerActive: false,
+    showerTimer: 120 + G.rng() * 120,
+    showerLeft: 0,
+    eclipse: false,
+    eclipseTimer: 300 + G.rng() * 200,
+    eclipseLeft: 0,
+    eclipsesSeen: 0,
+  };
+  return G.skyV8;
+}
+
+function isNightV8(G) {
+  const h = (G.clockMinutes % (24 * 60)) / 60;
+  return h >= 20 || h < 5;
+}
+
+export function updateSkyV8(G, dt) {
+  const s8 = G.skyV8;
+  if (!s8) return;
+  // Meteor shower: on a clear night, every few minutes the sky fills
+  // with streaks for half a minute. The counter is the record.
+  s8.showerTimer -= dt;
+  if (!s8.showerActive && s8.showerTimer <= 0 && isNightV8(G) && G.weather.mode === 'clear') {
+    s8.showerActive = true;
+    s8.showerLeft = 30;
+    G.hud.toast('Meteor shower over the bay — look up. The sky is falling in the good way.');
+    if (G.audio && G.audio.bell) G.audio.bell();
+  }
+  if (s8.showerActive) {
+    s8.showerLeft -= dt;
+    s8.meteors += dt * 0.5;
+    if (s8.showerLeft <= 0) {
+      s8.showerActive = false;
+      s8.showerTimer = 150 + G.rng() * 180;
+      G.hud.toast(`The shower is over — ${Math.floor(s8.meteors)} meteors crossed the bay tonight.`);
+    }
+  }
+  // Eclipse: once a season, at noon, the sun dims for sixty seconds and
+  // the city goes dusk-dark in the middle of the day.
+  s8.eclipseTimer -= dt;
+  if (!s8.eclipse && s8.eclipseTimer <= 0) {
+    s8.eclipse = true;
+    s8.eclipseLeft = 60;
+    s8.eclipsesSeen += 1;
+    if (G.sun) G.sun.intensity = 0.35;
+    G.hud.toast('ECLIPSE — the moon just crossed the sun. Midday, and the city is dusk-dark.');
+  }
+  if (s8.eclipse) {
+    s8.eclipseLeft -= dt;
+    if (s8.eclipseLeft <= 0) {
+      s8.eclipse = false;
+      s8.eclipseTimer = 400 + G.rng() * 300;
+      if (G.sun) G.sun.intensity = 1.6;
+      G.hud.toast('The eclipse has passed — the sun is back, and the city blinks.');
+    }
+  }
+}
+
+export function skyV8Summary(G) {
+  const s8 = G.skyV8;
+  if (!s8) return 'Night sky v2 not watching yet.';
+  return `${Math.floor(s8.meteors)} meteors seen · shower ${s8.showerActive ? 'ACTIVE' : 'quiet'} · ${s8.eclipsesSeen} eclipses · eclipse ${s8.eclipse ? 'NOW' : 'not today'}.`;
+}

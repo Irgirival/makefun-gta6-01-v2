@@ -147,3 +147,39 @@ export function createHud(G) {
   G.hud = hud;
   return hud;
 }
+
+// ---- v8: the HUD ticker ------------------------------------------------------
+// The v7 HUD showed stars, cash, clock, weather and the objective. v8
+// adds the ticker: one line under the weather label that rotates between
+// the forecast, the highway report and the next achievement — the three
+// things Mara checks most, without opening the pause menu. It rotates
+// every four seconds and never overlaps the mission dialogue.
+
+export function updateHudV8(G, dt) {
+  const hud = G.hud;
+  if (!hud || !hud.weatherLabel) return;
+  const el = hud.weatherLabel;
+  const tick = Math.floor(G.elapsed / 4) % 3;
+  if (tick === 0) {
+    // Forecast: what the weather v2 system thinks is coming.
+    if (G.weatherV8) {
+      el.textContent = `Sky: ${G.weatherV8.forecast}${G.weatherV8.frontActive ? ' — front overhead' : ''}`;
+    }
+  } else if (tick === 1) {
+    // Highway: the jam report, or the all-clear.
+    if (G.trafficV8) {
+      el.textContent = G.trafficV8.jams.length > 0
+        ? `Highway: JAMMED (${G.trafficV8.jams.length}) — take the avenue`
+        : 'Highway: flowing';
+    }
+  } else {
+    // Next medal: the story so far, until the finale is done.
+    el.textContent = G.missions5 && G.missions5.finaleDone
+      ? 'Solmar is yours — sunrise ceremony done'
+      : `${Math.min(G.missions.index, 16)}/16 missions`;
+  }
+}
+
+export function hudV8Summary(G) {
+  return 'HUD v2 ticker: forecast / highway / story, rotating every 4 seconds.';
+}

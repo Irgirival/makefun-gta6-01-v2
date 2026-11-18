@@ -270,3 +270,91 @@ export function playerV7Summary(G) {
   if (!v7) return 'No rolls yet — sprint and tap jump to roll.';
   return `${v7.rolls} dodge rolls · ${v7.slides} slides · second wind ${v7.secondWind > 0 ? 'LIVE' : 'ready'}.`;
 }
+
+// ---- v8: parkour — the vault, the wall-run and the landing roll --------------
+// The v7 player could dodge-roll, slide and second-wind; v8 teaches her
+// the city. A vault clears a low obstacle without breaking stride, a
+// wall-run carries her along a building face for a few metres, and a
+// landing roll turns a hard fall into a sprint. The parkour chain is the
+// score: vault, then wall-run, then roll, without touching the ground
+// in between — three moves, one flow, and the city pays the flow bonus.
+
+export function createParkourV8(G) {
+  if (G.parkourV8) return G.parkourV8;
+  G.parkourV8 = {
+    vaults: 0,
+    wallRuns: 0,
+    rolls: 0,
+    chains: 0,
+    chain: [],
+    flowBonusPaid: 0,
+  };
+  return G.parkourV8;
+}
+
+export function recordVaultV8(G) {
+  const pk = G.parkourV8;
+  if (!pk) return;
+  pk.vaults += 1;
+  pk.chain.push('vault');
+  checkParkourChainV8(G);
+}
+
+export function recordWallRunV8(G) {
+  const pk = G.parkourV8;
+  if (!pk) return;
+  pk.wallRuns += 1;
+  pk.chain.push('wall');
+  checkParkourChainV8(G);
+}
+
+export function recordLandingRollV8(G) {
+  const pk = G.parkourV8;
+  if (!pk) return;
+  pk.rolls += 1;
+  pk.chain.push('roll');
+  checkParkourChainV8(G);
+}
+
+function checkParkourChainV8(G) {
+  const pk = G.parkourV8;
+  const last3 = pk.chain.slice(-3).join(',');
+  if (last3 === 'vault,wall,roll') {
+    pk.chains += 1;
+    pk.flowBonusPaid += 200;
+    G.cash += 200;
+    G.hud.toast(`PARKOUR FLOW — vault, wall-run, landing roll. One motion. +$200. (${pk.chains} chains)`);
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+    pk.chain = [];
+  }
+  if (pk.chain.length > 6) pk.chain.shift();
+}
+
+export function updateParkourV8(G, dt) {
+  const pk = G.parkourV8;
+  if (!pk) return;
+  // A vault happens when Mara jumps while sprinting into a low wall;
+  // the game reads the jump and the speed, and the vault is the story
+  // it tells about them. A landing roll follows any long fall.
+  const p = G.player;
+  if (!p) return;
+  const speed = Math.hypot(p.vel ? p.vel.x : 0, p.vel ? p.vel.z : 0);
+  if (p.grounded === false && speed > 9 && !pk._airborne) {
+    pk._airborne = true;
+    pk._airTime = 0;
+  }
+  if (pk._airborne) {
+    pk._airTime += dt;
+    if (p.grounded) {
+      pk._airborne = false;
+      if (pk._airTime > 0.9) recordLandingRollV8(G);
+      else if (speed > 9) recordVaultV8(G);
+    }
+  }
+}
+
+export function parkourV8Summary(G) {
+  const pk = G.parkourV8;
+  if (!pk) return 'Parkour not running yet.';
+  return `${pk.vaults} vaults · ${pk.wallRuns} wall-runs · ${pk.rolls} landing rolls · ${pk.chains} flow chains · $${pk.flowBonusPaid} in flow bonuses.`;
+}

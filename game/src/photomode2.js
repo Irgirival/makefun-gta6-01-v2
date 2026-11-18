@@ -159,3 +159,71 @@ export function photoWalkSummary(G) {
   const next = PHOTO_WALK_STOPS[walk.stopIndex];
   return `Photo walk ${walk.stopIndex}/5 — next: ${next ? next.name : 'done'}.`;
 }
+
+// ---- v8: the photo walk's second route and the blue-hour bonus ----------------
+// The v7 photo walk had five stops; v8 adds a second route — the harbor
+// at blue hour, four stops from the lighthouse to the marina — and the
+// blue-hour bonus: any snapshot taken in the hour after sunset pays
+// double, because the light is the best in the city and the shortest.
+// The two routes share one camera roll, so the walk is a collection now.
+
+export const PHOTO_WALK_2_STOPS = [
+  { id: 'lighthouse', name: 'The Lighthouse', x: -205, z: 565 },
+  { id: 'boardwalk', name: 'Boardwalk Lights', x: -160, z: 505 },
+  { id: 'marina', name: 'Marina at Dusk', x: -115, z: 555 },
+  { id: 'harbor-buoy', name: 'Harbor Buoy', x: 352, z: 40 },
+];
+
+export function createPhotoWalk2(G) {
+  if (G.photoWalk2) return G.photoWalk2;
+  G.photoWalk2 = {
+    stopIndex: 0,
+    done: false,
+    snaps: 0,
+    blueHourBonus: 0,
+  };
+  return G.photoWalk2;
+}
+
+export function isBlueHourV8(G) {
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  return hour === 19; // the hour after sunset
+}
+
+export function recordPhotoWalk2Snap(G) {
+  const w2 = G.photoWalk2;
+  if (!w2 || w2.done) return false;
+  const stop = PHOTO_WALK_2_STOPS[w2.stopIndex];
+  if (!stop) return false;
+  const p = G.player.pos;
+  if (Math.hypot(p.x - stop.x, p.z - stop.z) > 14) {
+    G.hud.toast(`Photo walk 2: get closer to ${stop.name} to frame it.`);
+    return false;
+  }
+  w2.stopIndex += 1;
+  w2.snaps += 1;
+  let pay = 150;
+  if (isBlueHourV8(G)) {
+    pay = 300;
+    w2.blueHourBonus += 150;
+    G.hud.toast(`BLUE HOUR — ${stop.name} in the best light in the city. +$${pay}.`);
+  } else {
+    G.hud.toast(`Photo walk 2: ${stop.name} framed. +$${pay}. (${w2.stopIndex}/${PHOTO_WALK_2_STOPS.length})`);
+  }
+  G.cash += pay;
+  if (w2.stopIndex >= PHOTO_WALK_2_STOPS.length) {
+    w2.done = true;
+    G.cash += 600;
+    G.hud.toast('PHOTO WALK 2 COMPLETE — the harbor at blue hour, all four stops. +$600.');
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+  return true;
+}
+
+export function photoWalk2Summary(G) {
+  const w2 = G.photoWalk2;
+  if (!w2) return 'Photo walk 2 not started yet.';
+  return w2.done
+    ? `Complete — all four harbor stops · blue-hour bonus $${w2.blueHourBonus}`
+    : `${w2.stopIndex}/${PHOTO_WALK_2_STOPS.length} stops · next: ${PHOTO_WALK_2_STOPS[w2.stopIndex].name} · blue hour ${isBlueHourV8(G) ? 'NOW' : 'at 19:00'}.`;
+}

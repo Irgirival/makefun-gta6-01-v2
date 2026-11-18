@@ -476,3 +476,66 @@ export function safehouseV7Summary(G) {
   if (!s7) return 'The stash wall is bare.';
   return `${s7.medkits} medkits · ${s7.vests} vests · bed Lv${s7.bedLevel} · ${s7.stashVisits} stash visits.`;
 }
+
+// ---- v8: safehouse v2 — the vault, the armory wall and the trophy shelf -------
+// The v7 safehouse had a medkit shelf, an armor rack and a bed; v8
+// builds the back room. The vault stores a cut of every mission reward
+// (5%, automatically, and it compounds), the armory wall racks every
+// weapon Mara owns with its ammo count, and the trophy shelf holds one
+// trophy per championship — race league, season 2, season 3, regatta,
+// Grand Prix. A full shelf is the career, in miniature, on a wall.
+
+export function createSafehouseV8(G) {
+  if (G.safehouseV8) return G.safehouseV8;
+  G.safehouseV8 = {
+    vault: 0,
+    vaultDeposits: 0,
+    trophies: [],
+    armory: {},
+    visits: 0,
+  };
+  return G.safehouseV8;
+}
+
+// The vault takes its 5% cut of a mission reward, automatically, and
+// remembers every deposit. Withdrawals are for the finale only.
+export function depositVaultV8(G, reward) {
+  const s8 = G.safehouseV8;
+  if (!s8) return 0;
+  const cut = Math.floor(reward * 0.05);
+  s8.vault += cut;
+  s8.vaultDeposits += 1;
+  return cut;
+}
+
+export function withdrawVaultV8(G) {
+  const s8 = G.safehouseV8;
+  if (!s8 || s8.vault <= 0) return 0;
+  const amount = s8.vault;
+  s8.vault = 0;
+  G.cash += amount;
+  G.hud.toast(`Safehouse vault opened — $${amount} in mission cuts, all yours.`);
+  return amount;
+}
+
+export function awardTrophyV8(G, name) {
+  const s8 = G.safehouseV8;
+  if (!s8 || s8.trophies.includes(name)) return false;
+  s8.trophies.push(name);
+  G.hud.toast(`TROPHY — ${name} takes its place on the safehouse shelf.`);
+  if (G.audio && G.audio.cheer) G.audio.cheer();
+  return true;
+}
+
+export function rackWeaponV8(G, weaponId, ammo) {
+  const s8 = G.safehouseV8;
+  if (!s8) return;
+  s8.armory[weaponId] = ammo;
+}
+
+export function safehouseV8Summary(G) {
+  const s8 = G.safehouseV8;
+  if (!s8) return 'Safehouse v2 not built yet.';
+  const arms = Object.entries(s8.armory).map(([w, a]) => `${w} (${a})`).join(', ') || 'no weapons racked';
+  return `vault $${s8.vault} · ${s8.vaultDeposits} deposits · trophies: ${s8.trophies.join(', ') || 'none yet'} · armory: ${arms}.`;
+}

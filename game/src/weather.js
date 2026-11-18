@@ -317,3 +317,64 @@ export function weatherV7Summary(G) {
   if (!w7) return 'The sky is quiet.';
   return `${w7.fronts} fog banks · hail ${w7.hail ? 'FALLING NOW' : 'not falling'}.`;
 }
+
+// ---- v8: the weather diary and the grip report ---------------------------------
+// The v7 weather had fog banks and hail; v8 keeps a diary. Every day's
+// weather — the mode, the front, the strikes — is written down, and the
+// diary's best page is the driest week and the wettest day, so Mara can
+// plan a race around the sky. The grip report is the diary's practical
+// side: the current grip number, what is cutting it, and the next hour's
+// forecast, in one line for the dashboard.
+
+export function createWeatherDiary(G) {
+  if (G.weatherDiary) return G.weatherDiary;
+  G.weatherDiary = {
+    days: {},
+    wettestDay: null,
+    wettestRain: 0,
+    driestStreak: 0,
+    _dryRun: 0,
+  };
+  return G.weatherDiary;
+}
+
+export function updateWeatherDiary(G, dt) {
+  const diary = G.weatherDiary;
+  const w = G.weather;
+  if (!diary || !w) return;
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  const rainy = w.mode === 'light' || w.mode === 'heavy';
+  const entry = diary.days[day] || { mode: w.mode, rain: 0, fronts: 0 };
+  entry.mode = w.mode;
+  if (rainy) entry.rain += dt;
+  const w8 = G.weatherV8;
+  if (w8) entry.fronts = w8.frontPassed;
+  diary.days[day] = entry;
+  if (entry.rain > diary.wettestRain) {
+    diary.wettestRain = entry.rain;
+    diary.wettestDay = day;
+  }
+  if (!rainy) {
+    diary._dryRun += dt;
+    diary.driestStreak = Math.max(diary.driestStreak, diary._dryRun / 86400);
+  } else {
+    diary._dryRun = 0;
+  }
+}
+
+export function gripReportV8(G) {
+  const w = G.weather;
+  if (!w) return 'No weather to report.';
+  const grip = w.grip || 1;
+  const cause = w.mode === 'heavy' ? 'heavy rain' : w.mode === 'light' ? 'light rain' : w.mode === 'snow' ? 'snow' : w.mode === 'haze' ? 'haze' : 'dry asphalt';
+  const w8 = G.weatherV8;
+  const next = w8 ? `Next: ${w8.forecast}` : '';
+  return `Grip ${(grip * 100).toFixed(0)}% — ${cause}. ${next}`;
+}
+
+export function weatherDiarySummary(G) {
+  const diary = G.weatherDiary;
+  if (!diary) return 'Weather diary not kept yet.';
+  const days = Object.keys(diary.days).length;
+  return `${days} days logged · wettest day ${diary.wettestDay === null ? '—' : 'day ' + diary.wettestDay + ' (' + Math.round(diary.wettestRain / 60) + ' min of rain)'} · driest streak ${diary.driestStreak.toFixed(1)} days.`;
+}

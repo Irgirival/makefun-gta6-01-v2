@@ -167,3 +167,68 @@ export function updateStorm(G, dt) {
     }
   }
 }
+
+// ---- v8: the storm chaser and the hail insurance -------------------------------
+// The v7 storm brought fronts, fog and bolts; v8 adds the chaser — a
+// weather van that drives toward the front and parks under it, so Mara
+// can find the storm by following the van — and hail insurance, because
+// the v7 hail damaged Mara and her car alike: pay the premium once, and
+// hail never damages the car again. The chaser's log is the storm record:
+// fronts chased, bolts counted, and the closest Mara ever stood to one.
+
+export function createStormChaser(G) {
+  if (G.stormChaser) return G.stormChaser;
+  G.stormChaser = {
+    frontsChased: 0,
+    boltsCounted: 0,
+    closestBolt: null,
+    insurance: false,
+    premiumPaid: 0,
+  };
+  return G.stormChaser;
+}
+
+export function buyHailInsuranceV8(G) {
+  const sc = G.stormChaser;
+  if (!sc) return false;
+  if (sc.insurance) {
+    G.hud.toast('Hail insurance is already paid — the car is covered.');
+    return false;
+  }
+  const price = 600;
+  if (G.cash < price) {
+    G.hud.toast(`Hail insurance is $${price} — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  G.cash -= price;
+  sc.insurance = true;
+  sc.premiumPaid = price;
+  G.hud.toast('Hail insurance paid — the car is covered, whatever the sky drops.');
+  return true;
+}
+
+export function updateStormChaser(G, dt) {
+  const sc = G.stormChaser;
+  const w8 = G.weatherV8;
+  if (!sc || !w8) return;
+  // The chaser counts a front when one starts, and a bolt when the
+  // strike counter moves — the log is just the weather, remembered.
+  if (w8.frontActive && !sc._chasing) {
+    sc._chasing = true;
+    sc.frontsChased += 1;
+    G.hud.toast('Storm chaser van is rolling toward the front — follow it to find the storm.');
+  }
+  if (!w8.frontActive) sc._chasing = false;
+  if (w8.strikes !== sc._strikesSeen) {
+    const d = Math.hypot(G.player.pos.x - (w8.lastStrikeX || 0), G.player.pos.z - (w8.lastStrikeZ || 0));
+    sc.boltsCounted += w8.strikes - (sc._strikesSeen || 0);
+    sc._strikesSeen = w8.strikes;
+    if (sc.closestBolt === null || d < sc.closestBolt) sc.closestBolt = d;
+  }
+}
+
+export function stormChaserSummary(G) {
+  const sc = G.stormChaser;
+  if (!sc) return 'Storm chaser not rolling yet.';
+  return `${sc.frontsChased} fronts chased · ${sc.boltsCounted} bolts counted · closest ${sc.closestBolt === null ? '—' : sc.closestBolt.toFixed(0) + 'm'} · hail insurance: ${sc.insurance ? 'PAID' : 'not yet'}.`;
+}

@@ -116,6 +116,10 @@ export function createSave(G) {
           } : null,
           missions4: G.missions4 ? { replays: G.missions4.replays || 0 } : null,
         };
+        // v8: the finale arc, the paint shop and dyno, the highway
+        // record, the weather fronts, the achievements, season 3, the
+        // regatta league and the safehouse vault — the save's third drawer.
+        data.v8 = v8SaveData(G);
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       } catch (err) {
         // Storage may be unavailable (private mode, headless): the game
@@ -132,4 +136,71 @@ export function createSave(G) {
   G.save = save;
   G.saveData = save.load();
   return save;
+}
+
+// ---- v8: the save's third drawer ------------------------------------------------
+// The v7 save kept deliveries, season 2, the K9 record and the mission
+// replays in data.v7; v8 adds data.v8 — the finale arc, the paint shop
+// and dyno, the highway record, the weather fronts, the radio news,
+// the routines, the achievements and the safehouse vault. The drawer is
+// read back in main.js, next to v7's, so a career keeps its medals.
+
+export function v8SaveData(G) {
+  return {
+    missions5: G.missions5 ? {
+      finaleDone: G.missions5.finaleDone,
+      conSwaps: G.missions5.conSwaps,
+      dawnRuns: G.missions5.dawnRuns,
+      bestDawnSeconds: G.missions5.bestDawnSeconds,
+      ceremonyPaid: G.missions5.ceremonyPaid,
+    } : null,
+    garageV8: G.garageV8 ? {
+      baseId: G.garageV8.baseId,
+      flakeId: G.garageV8.flakeId,
+      finishId: G.garageV8.finishId,
+      twoTone: G.garageV8.twoTone,
+      paintsBought: G.garageV8.paintsBought,
+      paintSpent: G.garageV8.paintSpent,
+      dynoBestHp: G.garageV8.dyno.bestHp,
+      dynoBestTop: G.garageV8.dyno.bestTop,
+      dynoBestAccel: G.garageV8.dyno.bestAccel,
+      dynoPulls: G.garageV8.dyno.pulls,
+    } : null,
+    trafficV8: G.trafficV8 ? {
+      jamsTotal: G.trafficV8.jamsTotal,
+      chainsTotal: G.trafficV8.chainsTotal,
+      towsTotal: G.trafficV8.towsTotal,
+      highwayTrips: Math.floor(G.trafficV8.highwayTrips),
+    } : null,
+    weatherV8: G.weatherV8 ? {
+      frontPassed: G.weatherV8.frontPassed,
+      strikes: G.weatherV8.strikes,
+      gusts: G.weatherV8.gusts,
+    } : null,
+    achievements: G.achievements ? [...G.achievements.unlocked] : [],
+    achievementEarned: G.achievements ? G.achievements.earned : 0,
+    season3: G.season3 ? {
+      points: G.season3.points, rounds: G.season3.rounds,
+      wins: G.season3.wins, champion: G.season3.champion,
+      midnightWins: G.season3.midnightWins,
+    } : null,
+    regattaLeague: G.regattaLeague ? {
+      points: G.regattaLeague.points, wins: G.regattaLeague.wins,
+      champion: G.regattaLeague.champion,
+    } : null,
+    safehouseV8: G.safehouseV8 ? {
+      vault: G.safehouseV8.vault,
+      vaultDeposits: G.safehouseV8.vaultDeposits,
+      trophies: [...G.safehouseV8.trophies],
+    } : null,
+  };
+}
+
+export function v8SaveSummary(G) {
+  const d = v8SaveData(G);
+  const parts = [];
+  if (d.missions5) parts.push(`finale ${d.missions5.finaleDone ? 'done' : 'not yet'}`);
+  if (d.achievements) parts.push(`${d.achievements.length} achievements`);
+  if (d.season3) parts.push(`season 3 ${d.season3.wins} wins`);
+  return parts.join(' · ') || 'nothing to save yet';
 }

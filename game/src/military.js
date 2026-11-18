@@ -265,3 +265,55 @@ export function militaryV7Summary(G) {
   if (!m7) return 'The Guard has not set up a checkpoint.';
   return `Checkpoint ${m7.checkpoint.visible ? 'UP' : 'down'} · ${m7.stops} stops · ${m7.escapesThrough} blow-throughs.`;
 }
+
+// ---- v8: the Guard's second wave and the stand-down record -------------------
+// The v6 Guard rolled in at 5 stars; v8 gives it a second wave. If Mara
+// holds 5 stars for a full minute, a second APC and two more soldiers
+// join the cordon — and every stand-down (the Guard leaving without a
+// bust) is counted, because slipping the whole army is the story Mara
+// tells at the bar. The record lives next to the deployment count.
+
+export function createMilitaryV8(G) {
+  if (G.militaryV8) return G.militaryV8;
+  G.militaryV8 = {
+    secondWaveAt: -999,
+    secondWaves: 0,
+    standDowns: 0,
+    wasActive: false,
+    fiveStarTimer: 0,
+  };
+  return G.militaryV8;
+}
+
+export function updateMilitaryV8(G, dt) {
+  const m8 = G.militaryV8;
+  const mil = G.military;
+  if (!m8 || !mil) return;
+  const active = (mil.apcSpawns || 0) > 0 && G.wanted.stars >= 5;
+  if (active) {
+    m8.fiveStarTimer += dt;
+    if (m8.fiveStarTimer >= 60 && G.elapsed - m8.secondWaveAt > 120) {
+      m8.secondWaveAt = G.elapsed;
+      m8.secondWaves += 1;
+      m8.fiveStarTimer = 0;
+      G.hud.toast('GUARD SECOND WAVE — a second APC and two more soldiers just joined the cordon. Run.');
+      if (G.audio && G.audio.sting) G.audio.sting();
+    }
+  } else {
+    m8.fiveStarTimer = 0;
+  }
+  // A stand-down is the Guard leaving without a bust: it was active,
+  // now it is not, and Mara is still free.
+  if (m8.wasActive && !active && G.mode === 'playing') {
+    m8.standDowns += 1;
+    G.hud.toast(`The Guard stood down — escape #${m8.standDowns}. The army came, and Mara is still here.`);
+  }
+  m8.wasActive = active;
+}
+
+export function militaryV8Summary(G) {
+  const m8 = G.militaryV8;
+  if (!m8) return 'Guard second wave not mustered yet.';
+  const deployments = G.military ? G.military.apcSpawns : 0;
+  return `${deployments} Guard deployments · ${m8.secondWaves} second waves · ${m8.standDowns} stand-down escapes.`;
+}

@@ -238,3 +238,67 @@ export function fireCalloutSummary(G) {
   if (!fc) return 'No fire station on the radio.';
   return `${fc.callouts} fires out · $${fc.earned} earned · ${fc.bigFires} warehouse blazes · streak ${fc.shiftStreak}.`;
 }
+
+// ---- v8: the fire-station career -------------------------------------------
+// The v7 callouts paid per fire; v8 gives the engine a career ladder.
+// Ranks run Probationary → Firefighter → Lieutenant → Captain, each one
+// earned by fires out and paid with a rank bonus, and a perfect shift —
+// three fires with no damage to the truck — earns the shift bonus. The
+// station board shows the rank, the fires, and the next promotion, so a
+// night on the engine has somewhere to go.
+
+export const FIRE_RANKS_V8 = [
+  { id: 'probationary', name: 'Probationary', fires: 0, bonus: 0 },
+  { id: 'firefighter', name: 'Firefighter', fires: 5, bonus: 400 },
+  { id: 'lieutenant', name: 'Lieutenant', fires: 12, bonus: 900 },
+  { id: 'captain', name: 'Captain', fires: 25, bonus: 2000 },
+];
+
+export function createFireCareer(G) {
+  if (G.fireCareer) return G.fireCareer;
+  G.fireCareer = {
+    rankIndex: 0,
+    shiftFires: 0,
+    perfectShifts: 0,
+    rankBonusesPaid: 0,
+  };
+  return G.fireCareer;
+}
+
+export function fireRankV8(G) {
+  const career = G.fireCareer;
+  if (!career) return FIRE_RANKS_V8[0];
+  return FIRE_RANKS_V8[career.rankIndex];
+}
+
+export function recordFireV8(G) {
+  const career = G.fireCareer;
+  const fc = G.fireCallouts;
+  if (!career || !fc) return null;
+  career.shiftFires += 1;
+  const fires = fc.callouts;
+  const next = FIRE_RANKS_V8[career.rankIndex + 1];
+  if (next && fires >= next.fires) {
+    career.rankIndex += 1;
+    career.rankBonusesPaid += next.bonus;
+    G.cash += next.bonus;
+    G.hud.toast(`Fire service promotion: ${next.name} — +$${next.bonus}. The station salutes you.`);
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+  if (career.shiftFires >= 3) {
+    career.perfectShifts += 1;
+    career.shiftFires = 0;
+    G.cash += 300;
+    G.hud.toast('Perfect shift — three fires, no fuss. +$300 shift bonus.');
+  }
+  return fireRankV8(G);
+}
+
+export function fireCareerSummary(G) {
+  const career = G.fireCareer;
+  if (!career) return 'Fire career not started yet.';
+  const rank = fireRankV8(G);
+  const next = FIRE_RANKS_V8[career.rankIndex + 1];
+  const fires = G.fireCallouts ? G.fireCallouts.callouts : 0;
+  return `${rank.name} · ${fires} fires out · next: ${next ? `${next.name} at ${next.fires} fires` : 'top rank'} · ${career.perfectShifts} perfect shifts.`;
+}

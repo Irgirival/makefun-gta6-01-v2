@@ -381,3 +381,90 @@ export function combatV7Summary(G) {
     ? `Shotgun owned · ${c7.shotgunAmmo} shells · ${c7.finishers} finishers · ${c7.shotgunKills} shotgun stops.`
     : `${c7.finishers} combo finishers landed. The shotgun waits at the locker.`;
 }
+
+// ---- v8: smoke cover and the adrenaline rush ---------------------------------
+// The v7 kit gave Mara a shotgun and a three-hit combo; v8 gives her an
+// exit. A smoke canister (bought at the combat locker) blooms into a grey
+// cloud that breaks line of sight — police foot officers lose her, the
+// K9 dog circles the cloud instead of chasing — and an adrenaline rush,
+// earned by chaining three hits without taking one, doubles her sprint
+// speed for six seconds. Smoke is for leaving; adrenaline is for running.
+
+export const SMOKE_PRICE_V8 = 120;
+export const SMOKE_DURATION_V8 = 8;
+
+export function createCombatV8(G) {
+  if (G.combatV8) return G.combatV8;
+  G.combatV8 = {
+    smoke: 0,
+    smokeActive: false,
+    smokeTimer: 0,
+    rush: 0,
+    rushTimer: 0,
+    hitsChained: 0,
+    smokesUsed: 0,
+    rushesEarned: 0,
+  };
+  return G.combatV8;
+}
+
+export function buySmokeV8(G) {
+  const c8 = G.combatV8;
+  if (!c8) return false;
+  if (G.cash < SMOKE_PRICE_V8) {
+    G.hud.toast(`A smoke canister is $${SMOKE_PRICE_V8} — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  G.cash -= SMOKE_PRICE_V8;
+  c8.smoke += 1;
+  G.hud.toast(`Smoke canister bought — ${c8.smoke} in the pocket. Breaks line of sight for ${SMOKE_DURATION_V8}s.`);
+  return true;
+}
+
+export function useSmokeV8(G) {
+  const c8 = G.combatV8;
+  if (!c8 || c8.smoke <= 0) {
+    G.hud.toast('No smoke canisters — buy one at the combat locker first.');
+    return false;
+  }
+  c8.smoke -= 1;
+  c8.smokeActive = true;
+  c8.smokeTimer = SMOKE_DURATION_V8;
+  c8.smokesUsed += 1;
+  // The cloud breaks the chase: foot officers and the dog lose the trail.
+  if (G.k9) G.k9.holdTimer = 0;
+  G.hud.toast('Smoke out — the street disappears. The PD is looking at a cloud.');
+  return true;
+}
+
+export function registerHitChainV8(G) {
+  const c8 = G.combatV8;
+  if (!c8) return;
+  c8.hitsChained += 1;
+  if (c8.hitsChained >= 3 && c8.rushTimer <= 0) {
+    c8.rushTimer = 6;
+    c8.rushesEarned += 1;
+    c8.hitsChained = 0;
+    G.hud.toast('ADRENALINE RUSH — three clean hits. Six seconds of double sprint.');
+  }
+}
+
+export function updateCombatV8(G, dt) {
+  const c8 = G.combatV8;
+  if (!c8) return;
+  if (c8.smokeActive) {
+    c8.smokeTimer -= dt;
+    if (c8.smokeTimer <= 0) c8.smokeActive = false;
+  }
+  if (c8.rushTimer > 0) c8.rushTimer -= dt;
+}
+
+export function adrenalineActiveV8(G) {
+  return !!(G.combatV8 && G.combatV8.rushTimer > 0);
+}
+
+export function combatV8Summary(G) {
+  const c8 = G.combatV8;
+  if (!c8) return 'Combat v2 not stocked yet.';
+  return `${c8.smoke} smoke canisters · ${c8.smokesUsed} used · ${c8.rushesEarned} adrenaline rushes · smoke ${c8.smokeActive ? 'ACTIVE' : 'clear'}.`;
+}

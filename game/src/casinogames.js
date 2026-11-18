@@ -494,3 +494,66 @@ export function casinoV7Summary(G) {
   if (!cg) return 'The casino floor is dark.';
   return `${cg.slotsSpins || 0} slot pulls · $${cg.slotsWon || 0} slot wins · ${cg.slotsJackpots || 0} jackpots · ${cg.baccaratHands || 0} baccarat hands.`;
 }
+
+// ---- v8: craps at the Verde -------------------------------------------------
+// The v7 floor had roulette, blackjack, slots and baccarat; v8 rolls the
+// dice. Craps is the pass-line game: roll 7 or 11 on the come-out and the
+// line wins, 2, 3 or 12 craps out, anything else sets the point and the
+// shooter keeps rolling until the point repeats (win) or a 7 lands
+// (lose). The table remembers the streak — three straight passes and the
+// whole floor cheers — and the gold card from the lounge lifts the win.
+
+export function playCrapsV8(G, bet = 50) {
+  const games = G.casinogames;
+  if (!games) return null;
+  if (G.cash < bet) {
+    G.hud.toast(`Craps needs $${bet} to play — you have $${Math.floor(G.cash)}.`);
+    return null;
+  }
+  const roll = () => Math.floor(G.rng() * 6) + 1 + Math.floor(G.rng() * 6) + 1;
+  const comeOut = roll();
+  let result;
+  let payout = 0;
+  if (comeOut === 7 || comeOut === 11) {
+    result = 'win';
+    payout = bet * 2;
+  } else if (comeOut === 2 || comeOut === 3 || comeOut === 12) {
+    result = 'lose';
+  } else {
+    // The point is set: keep rolling until it repeats or a 7 ends it.
+    const point = comeOut;
+    let guard = 0;
+    let r = 0;
+    while (guard++ < 40) {
+      r = roll();
+      if (r === point) { result = 'win'; payout = bet * 2; break; }
+      if (r === 7) { result = 'lose'; break; }
+    }
+    if (!result) { result = 'lose'; }
+  }
+  G.cash -= bet;
+  if (result === 'win') {
+    // The lounge gold card lifts the win 10% — computed here, not
+    // imported, so the table floor never depends on the lounge module.
+    const final = (G.loungeV8 && G.loungeV8.goldCard) ? Math.round(payout * 1.1) : payout;
+    G.cash += final;
+    games.crapsWins = (games.crapsWins || 0) + 1;
+    games.crapsStreak = (games.crapsStreak || 0) + 1;
+    G.hud.toast(`Craps: ${comeOut} on the come-out — the line wins $${final - bet}. Streak: ${games.crapsStreak}.`);
+    if (games.crapsStreak >= 3) {
+      G.hud.toast('Three straight passes — the whole craps table is cheering for Mara.');
+      if (G.audio && G.audio.cheer) G.audio.cheer();
+    }
+  } else {
+    games.crapsLosses = (games.crapsLosses || 0) + 1;
+    games.crapsStreak = 0;
+    G.hud.toast(`Craps: ${comeOut} — the line craps out. -$${bet}.`);
+  }
+  return { comeOut, result, payout };
+}
+
+export function crapsV8Summary(G) {
+  const games = G.casinogames;
+  if (!games) return 'Craps table not open yet.';
+  return `${games.crapsWins || 0} craps wins · ${games.crapsLosses || 0} losses · current streak ${games.crapsStreak || 0}.`;
+}

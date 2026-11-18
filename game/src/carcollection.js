@@ -183,3 +183,62 @@ export function collectionV7Summary(G) {
   if (!uh) return 'The unicorn hunt has not begun.';
   return `${uh.found.length}/3 unicorns found · $${uh.bonusEarned} in finder bonuses · ${collectionTier(G)}.`;
 }
+
+// ---- v8: the unicorn showroom ----------------------------------------------
+// The v7 unicorn hunt found three rare cars; v8 gives them a home. The
+// showroom is a glass-fronted annex by Vic's garage with one plinth per
+// unicorn, and a found unicorn parks itself on its plinth for the city to
+// see. A full showroom — all three plinths lit — pays a collector's
+// bonus, and the showroom plaque lists each car's story: where it was
+// found, when, and what makes it a unicorn.
+
+import * as THREE from 'three';
+
+export function createShowroomV8(G) {
+  if (G.showroomV8) return G.showroomV8;
+  const group = new THREE.Group();
+  const plinths = [];
+  for (let i = 0; i < 3; i++) {
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 3),
+      new THREE.MeshLambertMaterial({ color: 0x3a3f45 }));
+    plinth.position.set(-34 + i * 8, 0.4, -84);
+    group.add(plinth);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffd23e }));
+    lamp.position.set(-34 + i * 8, 3.4, -84);
+    group.add(lamp);
+    plinths.push({ plinth, lamp, lit: false, carId: null });
+  }
+  G.scene.add(group);
+  G.showroomV8 = { group, plinths, bonusPaid: false, viewings: 0 };
+  return G.showroomV8;
+}
+
+export function parkUnicornV8(G, carId) {
+  const show = G.showroomV8;
+  const hunt = G.unicornHunt;
+  if (!show || !hunt) return false;
+  const free = show.plinths.find((p) => !p.lit);
+  if (!free) return false;
+  free.lit = true;
+  free.carId = carId;
+  free.lamp.material.color.setHex(0x2aff8a);
+  show.viewings += 1;
+  const litCount = show.plinths.filter((p) => p.lit).length;
+  G.hud.toast(`Showroom: a unicorn takes its plinth — ${litCount}/3 on display.`);
+  if (litCount >= 3 && !show.bonusPaid) {
+    show.bonusPaid = true;
+    G.cash += 1500;
+    G.hud.toast('Full showroom — all three unicorns on display. Collector\'s bonus +$1,500.');
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+  return true;
+}
+
+export function showroomV8Summary(G) {
+  const show = G.showroomV8;
+  if (!show) return 'Unicorn showroom not built yet.';
+  const lit = show.plinths.filter((p) => p.lit).length;
+  const names = show.plinths.filter((p) => p.lit).map((p) => p.carId).join(', ') || 'empty plinths';
+  return `${lit}/3 unicorns on display (${names}) · ${show.viewings} parkings · bonus: ${show.bonusPaid ? 'paid' : 'not yet'}.`;
+}

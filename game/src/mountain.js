@@ -277,3 +277,81 @@ export function mountainV7Summary(G) {
   if (!m7) return 'The mountain is quiet.';
   return `${m7.skiRuns} ski runs · ${m7.rescues} rescues · $${m7.rescueEarned} rescue pay.`;
 }
+
+// ---- v8: the mountain rescue team and the avalanche watch ---------------------
+// The v7 mountain had ski flags and an avalanche; v8 staffs it. The
+// rescue team is three volunteers at the summit hut who answer a call
+// whenever a skier (or Mara) goes down on the slopes, and the avalanche
+// watch posts the day's risk — low, moderate or high — on the radio.
+// A rescue completed in under a minute pays the team's gratitude, and
+// three rescues earn Mara the mountain's honorary badge.
+
+export const AVALANCHE_RISK_V8 = ['low', 'moderate', 'high'];
+
+export function createMountainRescue(G) {
+  if (G.mountainRescue) return G.mountainRescue;
+  G.mountainRescue = {
+    risk: 'low',
+    riskDay: -1,
+    rescues: 0,
+    badge: false,
+    activeCall: null,
+    callTimer: 0,
+  };
+  return G.mountainRescue;
+}
+
+export function avalancheRiskTodayV8(G) {
+  const mr = G.mountainRescue;
+  if (!mr) return 'low';
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  if (day !== mr.riskDay) {
+    mr.riskDay = day;
+    // The risk follows the weather: snow and heavy rain raise it.
+    const snowy = G.weather && G.weather.mode === 'snow';
+    const rainy = G.weather && G.weather.mode === 'heavy';
+    mr.risk = snowy ? 'high' : (rainy ? 'moderate' : 'low');
+  }
+  return mr.risk;
+}
+
+export function startRescueCallV8(G) {
+  const mr = G.mountainRescue;
+  if (!mr) return false;
+  if (mr.activeCall) return false;
+  mr.activeCall = { x: -250 + (G.rng() - 0.5) * 40, z: 520 + (G.rng() - 0.5) * 40 };
+  mr.callTimer = 60;
+  G.hud.toast('RESCUE CALL — a skier is down on the slopes. Reach them in 60 seconds.');
+  return true;
+}
+
+export function updateMountainRescue(G, dt) {
+  const mr = G.mountainRescue;
+  if (!mr) return;
+  avalancheRiskTodayV8(G);
+  if (!mr.activeCall) return;
+  mr.callTimer -= dt;
+  const p = G.player.pos;
+  if (Math.hypot(p.x - mr.activeCall.x, p.z - mr.activeCall.z) < 8) {
+    mr.rescues += 1;
+    mr.activeCall = null;
+    G.cash += 250;
+    G.hud.toast(`Rescue complete — the skier is safe. +$250. (${mr.rescues} rescues)`);
+    if (mr.rescues >= 3 && !mr.badge) {
+      mr.badge = true;
+      G.cash += 500;
+      G.hud.toast('MOUNTAIN BADGE — honorary rescue team member. The summit hut salutes you. +$500.');
+    }
+    return;
+  }
+  if (mr.callTimer <= 0) {
+    mr.activeCall = null;
+    G.hud.toast('Rescue call missed — the team handled it, but the mountain noticed.');
+  }
+}
+
+export function mountainRescueSummary(G) {
+  const mr = G.mountainRescue;
+  if (!mr) return 'Mountain rescue not staffed yet.';
+  return `avalanche risk: ${mr.risk} · ${mr.rescues} rescues · badge: ${mr.badge ? 'YES' : 'not yet'} · call ${mr.activeCall ? 'ACTIVE' : 'none'}.`;
+}

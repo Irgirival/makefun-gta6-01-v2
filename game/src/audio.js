@@ -323,3 +323,47 @@ export function playBellV7(G) {
 export function playCheerV7(G) {
   v7Noise(G, 0.9, 2400, 0.16);
 }
+
+// ---- v8: thunder, dyno roar, crowd swell and the medal fanfare -------------
+// The v7 kit gave the city its cash register, crash, honk, bark, bell,
+// sting and cheer. v8 adds the sounds the new systems need: a low thunder
+// roll for the lightning fronts, a dyno roar that climbs with the pull,
+// a crowd swell for the regatta league and the sunrise ceremony, and a
+// short fanfare arpeggio for achievements — all built on the same two
+// helpers (v7Tone, v7Noise) so nothing new is invented here.
+
+export function playThunderV8(G) {
+  v7Noise(G, 1.8, 90, 0.5);
+  v7Tone(G, 55, 1.4, 'sine', 0.4, 38);
+}
+
+export function playDynoV8(G) {
+  v7Tone(G, 90, 1.2, 'sawtooth', 0.16, 320);
+  v7Noise(G, 1.0, 500, 0.12);
+}
+
+export function playCrowdV8(G) {
+  v7Noise(G, 1.6, 900, 0.2);
+  v7Tone(G, 520, 0.5, 'triangle', 0.12, 660);
+  v7Tone(G, 660, 0.5, 'triangle', 0.1, 780);
+}
+
+export function playFanfareV8(G) {
+  const notes = [523, 659, 784, 1046];
+  for (let i = 0; i < notes.length; i++) {
+    setTimeout(() => v7Tone(G, notes[i], 0.35, 'triangle', 0.22), i * 110);
+  }
+}
+
+export function playRainV8(G) {
+  v7Noise(G, 2.4, 2400, 0.08);
+}
+
+export function playFrontHornV8(G) {
+  v7Tone(G, 196, 0.9, 'square', 0.1, 147);
+  v7Tone(G, 147, 0.9, 'square', 0.1, 98);
+}
+
+export function audioV8Summary(G) {
+  return 'v8 sounds: thunder, dyno roar, crowd swell, medal fanfare, rain wash, front horn.';
+}

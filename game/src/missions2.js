@@ -433,3 +433,72 @@ export function recordStuntJump(G, rampName, distance) {
   }
   return bonus;
 }
+
+// ---- v8: the courier's perfect week and the stunt hall of fame ---------------
+// The v7 courier rush paid per drop; v8 keeps a week. Seven days of
+// courier runs, each day's best streak on the board, and a perfect week —
+// a streak of 5 or more on three different days — pays the dispatcher's
+// bonus. The stunt season gets a hall of fame too: the longest jump ever,
+// the ramp it came from, and the day it happened, so the plaza can argue
+// about it forever.
+
+export function createCourierWeek(G) {
+  if (G.courierWeek) return G.courierWeek;
+  G.courierWeek = {
+    days: {},
+    perfectDays: 0,
+    bonusPaid: false,
+  };
+  return G.courierWeek;
+}
+
+export function recordCourierDayV8(G, streak) {
+  const week = G.courierWeek;
+  if (!week) return;
+  const day = Math.floor(G.elapsed / 86400) + 1;
+  const prev = week.days[day] || 0;
+  week.days[day] = Math.max(prev, streak);
+  const perfect = Object.values(week.days).filter((s) => s >= 5).length;
+  week.perfectDays = perfect;
+  if (perfect >= 3 && !week.bonusPaid) {
+    week.bonusPaid = true;
+    G.cash += 1200;
+    G.hud.toast('PERFECT WEEK — three days with a 5+ courier streak. The dispatcher pays $1,200.');
+    if (G.audio && G.audio.cheer) G.audio.cheer();
+  }
+}
+
+export function createStuntHallOfFame(G) {
+  if (G.stuntHall) return G.stuntHall;
+  G.stuntHall = {
+    longest: 0,
+    ramp: null,
+    day: null,
+    jumps: 0,
+    totalAir: 0,
+  };
+  return G.stuntHall;
+}
+
+export function recordStuntJumpV8(G, rampName, distance, airSeconds) {
+  const hall = G.stuntHall;
+  if (!hall) return false;
+  hall.jumps += 1;
+  hall.totalAir += airSeconds;
+  if (distance > hall.longest) {
+    hall.longest = distance;
+    hall.ramp = rampName;
+    hall.day = Math.floor(G.elapsed / 86400) + 1;
+    G.hud.toast(`HALL OF FAME — longest jump ever: ${distance.toFixed(1)}m off ${rampName}. The plaza will argue about this for weeks.`);
+    return true;
+  }
+  return false;
+}
+
+export function missions2V8Summary(G) {
+  const week = G.courierWeek;
+  const hall = G.stuntHall;
+  const weekLine = week ? `${week.perfectDays} perfect days · bonus ${week.bonusPaid ? 'paid' : 'not yet'}` : 'no courier week yet';
+  const hallLine = hall ? `longest jump ${hall.longest.toFixed(1)}m (${hall.ramp || '—'}) · ${hall.jumps} jumps` : 'no jumps yet';
+  return `Courier week: ${weekLine} · Stunt hall: ${hallLine}.`;
+}

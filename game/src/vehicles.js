@@ -501,3 +501,75 @@ export function vehicleV7Summary(G) {
   const total = G.vehicles.length;
   return `${total} cars on the road · ${worn} smoking · food truck and Mk II taxi parked and waiting.`;
 }
+
+// ---- v8: the valet and the armored car ----------------------------------------
+// The v7 vehicles wore down and got repaired; v8 gives the city a valet
+// and a moving target. The valet stands at the casino door and parks
+// whatever Mara arrives in — a parked-by-valet car comes back washed,
+// with a little of its wear repaired for free — and the armored car runs
+// a route between the bank and the harbor twice a day, a slow, heavy,
+// tempting box on wheels that the whole city watches and nobody touches.
+// Almost nobody.
+
+export const ARMORED_ROUTE_V8 = [
+  { x: 120, z: 60 },
+  { x: 300, z: -20 },
+  { x: 300, z: 60 },
+  { x: 120, z: 60 },
+];
+
+export function createValetV8(G) {
+  if (G.valetV8) return G.valetV8;
+  G.valetV8 = {
+    parks: 0,
+    washes: 0,
+    armoredRuns: 0,
+    armoredIndex: 0,
+    armoredPos: { ...ARMORED_ROUTE_V8[0] },
+  };
+  return G.valetV8;
+}
+
+// The valet parks Mara's car at the casino: it comes back washed, with
+// 20 wear repaired on the house, and the valet remembers the favour.
+export function valetParkV8(G) {
+  const v8 = G.valetV8;
+  if (!v8) return false;
+  const car = G.driving;
+  if (!car) {
+    G.hud.toast('The valet only parks cars — arrive in one and he will take it from here.');
+    return false;
+  }
+  v8.parks += 1;
+  v8.washes += 1;
+  if (car.wear !== undefined) car.wear = Math.max(0, car.wear - 20);
+  G.hud.toast(`Valet: parked and washed. The ${car.spec.name} comes back cleaner — and 20 wear lighter.`);
+  return true;
+}
+
+export function updateArmoredCarV8(G, dt) {
+  const v8 = G.valetV8;
+  if (!v8) return;
+  // The armored car runs its route twice a day, slow and heavy, and the
+  // city watches it go. A full loop is a run on the log.
+  const target = ARMORED_ROUTE_V8[v8.armoredIndex];
+  const dx = target.x - v8.armoredPos.x;
+  const dz = target.z - v8.armoredPos.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 4) {
+    v8.armoredIndex = (v8.armoredIndex + 1) % ARMORED_ROUTE_V8.length;
+    if (v8.armoredIndex === 0) {
+      v8.armoredRuns += 1;
+      G.hud.toast('The armored car finished its route — bank to harbor and back, without a scratch.');
+    }
+  } else {
+    v8.armoredPos.x += (dx / d) * 10 * dt;
+    v8.armoredPos.z += (dz / d) * 10 * dt;
+  }
+}
+
+export function vehiclesV8Summary(G) {
+  const v8 = G.valetV8;
+  if (!v8) return 'Valet not on duty yet.';
+  return `${v8.parks} valet parks · ${v8.washes} washes · armored car ${v8.armoredRuns} full routes.`;
+}

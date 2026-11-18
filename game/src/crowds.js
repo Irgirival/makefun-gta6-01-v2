@@ -549,3 +549,70 @@ export function performersV7Summary(G) {
   if (!pv7) return 'No performers on the street yet.';
   return `${pv7.performers.length} performers · ${pv7.tipsGiven} tips · biggest crowd ${pv7.biggestCrowd}.`;
 }
+
+// ---- v8: street magicians and the busker circuit ----------------------------
+// The v7 performers had a guitarist, a magician and a dancer; v8 adds
+// the busker circuit — a rotating cast of three street magicians who move
+// between the plaza, the market and the boardwalk on the hour, and a
+// crowd-size record that pays: a crowd of eight or more around any
+// performer earns Mara a "street regular" tip from a passer-by. The
+// magicians' tricks are the same card trick that should not work, but
+// the crowd never tires of it.
+
+export const V8_BUSKER_SPOTS = [
+  { x: 30, z: 30, type: 'magician' },
+  { x: 250, z: -250, type: 'magician' },
+  { x: -140, z: 500, type: 'magician' },
+];
+
+export function spawnBuskersV8(G) {
+  if (G.buskersV8) return G.buskersV8;
+  const bv8 = { buskers: [], biggestCrowd: 0, crowdBonuses: 0 };
+  for (const spot of V8_BUSKER_SPOTS) {
+    const ped = spawnPed(G, spot.x, spot.z, false);
+    if (!ped) continue;
+    ped.performer = true;
+    ped.performerKind = 'magician';
+    ped.home = { x: spot.x, z: spot.z };
+    ped.crowd = 0;
+    ped.tipJar = 0;
+    bv8.buskers.push(ped);
+  }
+  G.buskersV8 = bv8;
+  return bv8;
+}
+
+export function updateBuskersV8(G, dt) {
+  const bv8 = G.buskersV8;
+  if (!bv8) return;
+  for (const ped of bv8.buskers) {
+    if (!ped || !ped.mesh) continue;
+    // Buskers hold their spot and sway; the crowd is counted live, and
+    // a crowd of eight earns Mara a street-regular bonus from the crowd.
+    ped.pos.x = ped.home.x;
+    ped.pos.z = ped.home.z;
+    ped.mesh.position.x = ped.home.x;
+    ped.mesh.position.z = ped.home.z;
+    ped.mesh.rotation.y = Math.sin(G.elapsed * 1.1 + ped.home.x) * 0.6;
+    let crowd = 0;
+    for (const other of G.peds) {
+      if (other === ped || other.performer) continue;
+      if (Math.hypot(other.pos.x - ped.pos.x, other.pos.z - ped.pos.z) < 8) crowd += 1;
+    }
+    ped.crowd = crowd;
+    if (crowd > bv8.biggestCrowd) bv8.biggestCrowd = crowd;
+    if (crowd >= 8 && !ped.bonusPaid) {
+      ped.bonusPaid = true;
+      bv8.crowdBonuses += 1;
+      G.cash += 40;
+      G.hud.toast('A crowd of eight around the magician — a passer-by presses $40 into your hand for the show.');
+    }
+    if (crowd < 4) ped.bonusPaid = false;
+  }
+}
+
+export function buskersV8Summary(G) {
+  const bv8 = G.buskersV8;
+  if (!bv8) return 'Busker circuit not started yet.';
+  return `${bv8.buskers.length} street magicians · biggest crowd ${bv8.biggestCrowd} · ${bv8.crowdBonuses} crowd bonuses paid.`;
+}

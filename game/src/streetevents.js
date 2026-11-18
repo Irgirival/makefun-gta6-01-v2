@@ -352,3 +352,60 @@ export function streetEventsStatusText(G) {
   }
   return `Next street event in ${Math.max(0, Math.round(e.nextIn))}s · ${e.done} done · $${e.earned} earned`;
 }
+
+// ---- v8: the street festival and the parade ------------------------------------
+// The v7 street events were getaways, takeovers and bounties; v8 throws
+// a festival. Once a week, the avenue closes for a parade — a marching
+// band, three floats, and a crowd that follows them from the plaza to
+// the beach — and Mara can join the parade (walk with the floats) for
+// the parade pay, or watch it from a rooftop for the photo bonus. The
+// festival is the city's exhale: after the Trust, after the Syndicate,
+// Solmar throws a party and means it.
+
+export function createStreetFestival(G) {
+  if (G.streetFestival) return G.streetFestival;
+  G.streetFestival = {
+    active: false,
+    week: -1,
+    parades: 0,
+    joined: 0,
+    photos: 0,
+  };
+  return G.streetFestival;
+}
+
+export function updateStreetFestival(G, dt) {
+  const fest = G.streetFestival;
+  if (!fest) return;
+  const week = Math.floor(G.elapsed / (7 * 86400)) + 1;
+  const day = Math.floor(G.elapsed / 86400) % 7;
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  // Saturday afternoon, once a week: the avenue becomes a parade.
+  if (day === 6 && hour >= 15 && hour < 17 && week !== fest.week) {
+    fest.active = true;
+    fest.week = week;
+    fest.parades += 1;
+    G.hud.toast('STREET FESTIVAL — the avenue is closed for the parade. Walk with the floats, or shoot it from a rooftop.');
+  }
+  if (fest.active && !(day === 6 && hour >= 15 && hour < 17)) {
+    fest.active = false;
+  }
+  if (!fest.active) return;
+  const p = G.player.pos;
+  // Walking with the floats (on the avenue, near the plaza) pays the
+  // parade wage; a rooftop shot pays the photo bonus.
+  const onAvenue = Math.abs(p.z - 20) < 12 && p.x > -40 && p.x < 120;
+  if (onAvenue && !fest._joinedToday) {
+    fest._joinedToday = true;
+    fest.joined += 1;
+    G.cash += 150;
+    G.hud.toast('You are marching in the parade — the crowd cheers, the band plays, +$150.');
+  }
+  if (!onAvenue) fest._joinedToday = false;
+}
+
+export function streetFestivalSummary(G) {
+  const fest = G.streetFestival;
+  if (!fest) return 'Street festival not on the calendar yet.';
+  return `${fest.parades} parades · ${fest.joined} marches joined · festival ${fest.active ? 'ON NOW' : 'Saturdays 15:00–17:00'}.`;
+}

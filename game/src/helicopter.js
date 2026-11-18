@@ -368,3 +368,58 @@ export function heliV7Summary(G) {
   if (!h7) return 'No air unit on record.';
   return `${Math.floor(h7.totalAirTime)}s under the air unit · ${h7.beamBreaks} beam breaks · longest hold ${h7.beamOnMara.toFixed(1)}s.`;
 }
+
+// ---- v8: the traffic helicopter and the K9/heat record ------------------------
+// The v7 heli was the police air unit; v8 adds the traffic helicopter —
+// a news chopper that orbits the highway jam and reads the queue back to
+// the radio — and the two records the achievements need: the most stars
+// Mara has ever held, and how many times she has slipped the K9 dog.
+// Both are watched, not hooked: the update below only reads state the
+// police systems already keep, so it can never break a chase.
+
+export function createTrafficHeliV8(G) {
+  if (G.trafficHeliV8) return G.trafficHeliV8;
+  G.trafficHeliV8 = {
+    reports: 0,
+    lastReportAt: 0,
+    orbits: 0,
+  };
+  return G.trafficHeliV8;
+}
+
+export function updateTrafficHeliV8(G, dt) {
+  const t8 = G.trafficHeliV8;
+  if (!t8) return;
+  // The heat record: the most stars Mara has ever held, ever.
+  if (G.wanted) {
+    G.wanted.maxStarsSeen = Math.max(G.wanted.maxStarsSeen || 0, G.wanted.stars);
+  }
+  // The K9 escape record: the dog was active, and now it is not, and
+  // the heat is clear — Mara slipped it.
+  const k9 = G.k9;
+  if (k9) {
+    if (k9.active) k9._v8WasActive = true;
+    if (k9._v8WasActive && !k9.active && G.wanted.stars === 0) {
+      k9._v8WasActive = false;
+      k9.escapes = (k9.escapes || 0) + 1;
+      G.hud.toast(`Slipped the K9 unit — escape #${k9.escapes}. The dog is going to hear about this.`);
+    }
+  }
+  // The traffic chopper reports the jam to the radio, at most once a
+  // minute, and only while a jam is actually on the highway.
+  const jam = G.trafficV8 && G.trafficV8.jams.length > 0;
+  if (jam && G.elapsed - t8.lastReportAt > 60) {
+    t8.lastReportAt = G.elapsed;
+    t8.reports += 1;
+    t8.orbits += 1;
+    G.hud.toast(`🚁 Traffic chopper: the highway jam is ${G.trafficV8.jams.length} deep — avoid the north artery.`);
+  }
+}
+
+export function trafficHeliV8Summary(G) {
+  const t8 = G.trafficHeliV8;
+  if (!t8) return 'Traffic chopper not in the air yet.';
+  const stars = G.wanted ? (G.wanted.maxStarsSeen || 0) : 0;
+  const escapes = G.k9 ? (G.k9.escapes || 0) : 0;
+  return `${t8.reports} jam reports · ${t8.orbits} orbits · most stars ever: ${stars} · K9 escapes: ${escapes}.`;
+}

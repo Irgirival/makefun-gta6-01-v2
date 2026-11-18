@@ -59,6 +59,7 @@ downtown of towers — with nothing but a borrowed jacket and a score to settle.
 - **HUD + minimap** — health/armor, cash, wanted stars, clock, mission tracker, speedometer and a live canvas minimap.
 - **Sound** — fully synthesized WebAudio: engine hum, sirens, gunshots, footsteps and a synthwave city loop. No audio files.
 - **Save** — progress (cash, missions, packages, racing ladder, league season, garage tuning, radio station, bounties, jet-ski best time) saves automatically to localStorage.
+- **v8 — Missions 15–16, the finale** — **"The Long Con"** cons the Meridian Trust's vault ($12,000) and **"Solmar Sunrise"** drives the evidence to the courthouse at dawn ($15,000), closing sixteen missions with a sunrise ceremony at the plaza fountain — plus race **season 3** and the Grand Prix, the regatta league, a paint shop and dyno, a highway with chaining jams, weather fronts with lightning and rainbows, a story-reactive radio news desk, pedestrian daily routines, a 30-medal achievement shelf and a third scorecard page.
 
 ## Play it
 

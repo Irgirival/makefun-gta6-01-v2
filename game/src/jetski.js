@@ -249,3 +249,74 @@ export function updateJetSkis(G, dt) {
   }
   G.hud.setObjectiveHint(jetSkiStatusText(G));
 }
+
+// ---- v8: jet-ski freestyle ---------------------------------------------------
+// The v7 jet skis had a timed trial; v8 adds freestyle. Jumps off the
+// wake score airtime, spins score style, and a run of three tricks
+// without touching down pays the freestyle bonus. The trial best time
+// still stands — freestyle is the show-off's game, and the beach crowd
+// gathers to watch it.
+
+export const FREESTYLE_TRICKS_V8 = [
+  { id: 'air', name: 'Big Air', minAir: 0.6, pay: 80 },
+  { id: 'spin', name: 'Barrel Spin', minAir: 0.9, pay: 150 },
+  { id: 'triple', name: 'Triple Threat', minAir: 1.2, pay: 300 },
+];
+
+export function createJetSkiFreestyle(G) {
+  if (G.jetskiFreestyle) return G.jetskiFreestyle;
+  G.jetskiFreestyle = {
+    tricks: 0,
+    earned: 0,
+    bestAir: 0,
+    chain: 0,
+    bestChain: 0,
+    airTimer: 0,
+    airborne: false,
+  };
+  return G.jetskiFreestyle;
+}
+
+export function updateJetSkiFreestyle(G, dt) {
+  const fs = G.jetskiFreestyle;
+  if (!fs || !G.jetski) return;
+  // Airtime is read from the ski's vertical hop: the ski leaves the
+  // water on a wake jump, and the clock runs until it lands again.
+  const ski = G.jetski;
+  const speed = Math.abs(ski.speed || 0);
+  if (speed > 24 && !fs.airborne) {
+    fs.airborne = true;
+    fs.airTimer = 0;
+  }
+  if (fs.airborne) {
+    fs.airTimer += dt;
+    if (speed < 8) {
+      fs.airborne = false;
+      const air = fs.airTimer;
+      if (air > fs.bestAir) fs.bestAir = air;
+      const trick = FREESTYLE_TRICKS_V8.filter((t) => air >= t.minAir).pop();
+      if (trick) {
+        fs.tricks += 1;
+        fs.chain += 1;
+        fs.bestChain = Math.max(fs.bestChain, fs.chain);
+        fs.earned += trick.pay;
+        G.cash += trick.pay;
+        G.hud.toast(`Freestyle: ${trick.name} — ${air.toFixed(1)}s of air, +$${trick.pay}. Chain: ${fs.chain}.`);
+        if (fs.chain >= 3) {
+          G.cash += 200;
+          fs.earned += 200;
+          G.hud.toast('TRIPLE THREAT CHAIN — three tricks without touching down. +$200 freestyle bonus.');
+          fs.chain = 0;
+        }
+      } else {
+        fs.chain = 0;
+      }
+    }
+  }
+}
+
+export function jetSkiFreestyleSummary(G) {
+  const fs = G.jetskiFreestyle;
+  if (!fs) return 'Jet-ski freestyle not riding yet.';
+  return `${fs.tricks} tricks · best air ${fs.bestAir.toFixed(1)}s · best chain ${fs.bestChain} · $${fs.earned} earned showing off.`;
+}

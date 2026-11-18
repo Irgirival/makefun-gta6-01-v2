@@ -396,3 +396,52 @@ export function garageV7Summary(G) {
   if (!g7) return 'Vic\'s second shelf is closed.';
   return `Turbo Lv${g7.turboLevel}${g7.tires ? ' · bulletproof tires' : ''}${g7.hydraulics ? ' · hydraulics' : ''} · ${g7.repairs} repairs.`;
 }
+
+// ---- v8: the garage loyalty card ---------------------------------------------
+// Vic's garage has sold Mara paint, engines, armor, neon, suspension,
+// nitro, turbos, tires and hydraulics; v8 remembers it. The loyalty
+// card stamps every service, and every fifth service is free — the
+// discount applies to the next purchase automatically. The card also
+// tracks the lifetime spend, so the pause screen can show exactly how
+// much of Mara's fortune went into her cars (spoiler: a lot).
+
+export function createGarageLoyalty(G) {
+  if (G.garageLoyalty) return G.garageLoyalty;
+  G.garageLoyalty = {
+    stamps: 0,
+    freeServices: 0,
+    lifetimeSpent: 0,
+    services: 0,
+  };
+  return G.garageLoyalty;
+}
+
+export function recordGarageServiceV8(G, price) {
+  const card = G.garageLoyalty;
+  if (!card) return 0;
+  card.services += 1;
+  card.stamps += 1;
+  card.lifetimeSpent += price;
+  if (card.stamps >= 5) {
+    card.stamps = 0;
+    card.freeServices += 1;
+    G.hud.toast('Loyalty card: five stamps — your next garage service is FREE.');
+  }
+  return card.stamps;
+}
+
+// A free service is spent at the till: call this before charging, and
+// the price comes back as zero while the card remembers the favour.
+export function useFreeServiceV8(G, price) {
+  const card = G.garageLoyalty;
+  if (!card || card.freeServices <= 0) return price;
+  card.freeServices -= 1;
+  G.hud.toast(`Loyalty card: this $${price} service is on the house.`);
+  return 0;
+}
+
+export function garageLoyaltySummary(G) {
+  const card = G.garageLoyalty;
+  if (!card) return 'Loyalty card not issued yet.';
+  return `${card.services} services · ${card.stamps}/5 stamps to the next free one · ${card.freeServices} free services banked · $${card.lifetimeSpent} spent at Vic's, ever.`;
+}

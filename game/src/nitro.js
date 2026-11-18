@@ -251,3 +251,76 @@ export function nitroV7Summary(G) {
   if (!n7) return 'No nitro lab in the garage.';
   return `${n7.overboosts} overboosts · ${n7.purges} purges · ${n7.refills} refills.`;
 }
+
+// ---- v8: the nitro economy — canisters, the black market and the burn -------
+// The v7 nitro had a tank and a purge; v8 gives it an economy. Canisters
+// are bought at the garage, spent on the road, and refilled at the
+// black-market dealer behind the night market — who sells them cheaper
+// after midnight, and dearer when the PD is watching. A full burn —
+// emptying a whole canister in one race — pays the "full send" bonus,
+// and the burn counter is the street's measure of a driver.
+
+export function createNitroEconomy(G) {
+  if (G.nitroEconomy) return G.nitroEconomy;
+  G.nitroEconomy = {
+    canisters: 0,
+    bought: 0,
+    spent: 0,
+    fullBurns: 0,
+    blackMarketDeals: 0,
+  };
+  return G.nitroEconomy;
+}
+
+export function nitroCanisterPriceV8(G) {
+  // The dealer is cheaper after midnight, dearer when the heat is on.
+  const hour = Math.floor((G.clockMinutes % (24 * 60)) / 60);
+  let price = 180;
+  if (hour >= 0 && hour < 5) price = 120;
+  if (G.wanted.stars >= 3) price = 260;
+  return price;
+}
+
+export function buyNitroCanisterV8(G) {
+  const ne = G.nitroEconomy;
+  if (!ne) return false;
+  const price = nitroCanisterPriceV8(G);
+  if (G.cash < price) {
+    G.hud.toast(`A nitro canister is $${price} — you have $${Math.floor(G.cash)}.`);
+    return false;
+  }
+  G.cash -= price;
+  ne.canisters += 1;
+  ne.bought += 1;
+  if (price === 120) {
+    ne.blackMarketDeals += 1;
+    G.hud.toast(`Black market: canister for $${price} — the dealer winks. After midnight, always cheaper.`);
+  } else {
+    G.hud.toast(`Nitro canister bought — $${price}. ${ne.canisters} in the boot.`);
+  }
+  return true;
+}
+
+export function useNitroCanisterV8(G) {
+  const ne = G.nitroEconomy;
+  if (!ne || ne.canisters <= 0) return false;
+  ne.canisters -= 1;
+  ne.spent += 1;
+  if (G.nitro) G.nitro.meter = Math.min(100, (G.nitro.meter || 0) + 100);
+  G.hud.toast('Canister cracked — the bottle is full again. Full send.');
+  return true;
+}
+
+export function recordFullBurnV8(G) {
+  const ne = G.nitroEconomy;
+  if (!ne) return;
+  ne.fullBurns += 1;
+  G.cash += 150;
+  G.hud.toast(`FULL SEND — a whole canister in one race. +$150. (${ne.fullBurns} full burns)`);
+}
+
+export function nitroEconomySummary(G) {
+  const ne = G.nitroEconomy;
+  if (!ne) return 'Nitro economy not running yet.';
+  return `${ne.canisters} canisters held · ${ne.bought} bought · ${ne.spent} spent · ${ne.fullBurns} full burns · ${ne.blackMarketDeals} midnight deals.`;
+}

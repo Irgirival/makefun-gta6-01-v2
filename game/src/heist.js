@@ -225,3 +225,85 @@ export function updateHeist(G, dt) {
   G.hud.setObjectiveHint(
     `Vault crack ${Math.round(p * 100)}% — hold the drill on the vault${near ? '' : ' (get closer!)'}`);
 }
+
+// ---- v8: the second vault crew -----------------------------------------------
+// The Verde Heist (Missions 8–9) cracked one vault; v8 sends a second
+// crew after the Meridian Trust's reserve vault — a smaller, quieter job
+// that only opens after Mission 15, with its own crack timer, its own
+// getaway and its own split. The crew is three: Mara on the wheel, Lena
+// on the crack, Vic on the phones. The take is $8,000, the heat is
+// immediate, and the vault only opens once — the Trust learns.
+
+export function registerHeistV8(G) {
+  if (G.heistV8) return G.heistV8;
+  G.heistV8 = {
+    unlocked: false,
+    attempts: 0,
+    cracked: false,
+    take: 0,
+    crackTimer: 0,
+    crackTotal: 45,
+    crewReady: false,
+  };
+  return G.heistV8;
+}
+
+export function unlockSecondVaultV8(G) {
+  const h8 = G.heistV8;
+  if (!h8) return false;
+  if (G.missions.index >= 15 && !h8.unlocked) {
+    h8.unlocked = true;
+    G.hud.toast('Second vault: the Trust\'s reserve vault is on the board — Lena has the floor plans.');
+    return true;
+  }
+  return h8.unlocked;
+}
+
+export function startSecondVaultV8(G) {
+  const h8 = G.heistV8;
+  if (!h8) return false;
+  if (!h8.unlocked) {
+    G.hud.toast('The second vault is still locked — finish Mission 15 first.');
+    return false;
+  }
+  if (h8.cracked) {
+    G.hud.toast('The reserve vault is already cracked — the Trust changed the locks.');
+    return false;
+  }
+  h8.attempts += 1;
+  h8.crackTimer = h8.crackTotal;
+  h8.crewReady = true;
+  G.hud.toast('Second vault: Lena is on the crack — hold the room for 45 seconds.');
+  return true;
+}
+
+export function updateHeistV8(G, dt) {
+  const h8 = G.heistV8;
+  if (!h8) return;
+  if (!h8.unlocked) unlockSecondVaultV8(G);
+  if (!h8.crewReady || h8.cracked) return;
+  h8.crackTimer -= dt;
+  const p = G.player.pos;
+  const dx = p.x - 140;
+  const dz = p.z - 100;
+  if (dx * dx + dz * dz > 20 * 20) {
+    h8.crewReady = false;
+    G.hud.toast('Second vault: you left the vault room — the crack is blown. Try again.');
+    return;
+  }
+  if (h8.crackTimer <= 0) {
+    h8.cracked = true;
+    h8.crewReady = false;
+    h8.take = 8000;
+    G.cash += 8000;
+    G.hud.toast('SECOND VAULT CRACKED — $8,000. Lena is already at the car. Run.');
+    if (G.wanted) G.wanted.addHeat(40, 'vault');
+    if (G.audio && G.audio.sting) G.audio.sting();
+  }
+}
+
+export function heistV8Summary(G) {
+  const h8 = G.heistV8;
+  if (!h8) return 'Second vault not on the board yet.';
+  return `unlocked: ${h8.unlocked ? 'yes' : 'finish Mission 15'} · attempts ${h8.attempts} · cracked: ${h8.cracked ? 'YES (+$8,000)' : 'not yet'}.`;
+}

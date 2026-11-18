@@ -6,6 +6,11 @@
 // 13-14, Solmar Express parcel runs, race season 2, the K9 unit, PIT
 // maneuvers, the Bay Regatta, fire callouts, the unicorn hunt, fog banks
 // and hail, the night market's second row, and the photo walk.
+// v8 adds Missions 15-16 (the Meridian Trust con and the sunrise
+// finale), race season 3 and the Grand Prix, the regatta league, the
+// paint shop and dyno, the highway and its chaining jams, weather fronts
+// with lightning, the radio news desk, pedestrian routines, the
+// achievement shelf, the safehouse vault and the third scorecard page.
 
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
@@ -116,6 +121,62 @@ import { createOldTownSafehouse, updateOldTownSafehouse } from './safehouse.js';
 import { nearestCharter, boardCharter, updateCharter } from './airport.js';
 import { updateNewsHeli } from './helicopter.js';
 import { applyShotOldTown } from './shots.js';
+// v8 systems: the finale arc, weather fronts, the paint shop and dyno,
+// the highway, pedestrian routines, the story-reactive radio and the
+// achievement shelf — each created last, like every version before.
+import { registerMissions15And16, updateMissions5 } from './missions5.js';
+import { createWeatherV8, updateWeatherV8, weatherForecastV8 } from './weather2.js';
+import { createGarageV8, updateGarageV8, startDynoPull } from './garage2.js';
+import { createTrafficV8, updateTrafficV8, startJamV8 } from './traffic2.js';
+import { createPedRoutines, updatePedRoutines, greetRoutinePed } from './pedestrians2.js';
+import { createRadioV8, updateRadioV8, newsBulletinV8, radioRequestV8 } from './radio2.js';
+import { createAchievements, updateAchievements, renderV8Stats } from './achievements.js';
+// v8 revisions: every older system grew a v8 block of its own.
+import { createCharterV8, updateCharterV8 } from './airport.js';
+import { playThunderV8, playFanfareV8, playCrowdV8, playDynoV8 } from './audio.js';
+import { createRegattaLeague, recordRegattaWinV8 } from './boats.js';
+import { createFireCareer, recordFireV8 } from './busfire.js';
+import { createShowroomV8, parkUnicornV8 } from './carcollection.js';
+import { createLoungeV8 } from './casino.js';
+import { buildV8District, updateV8District } from './city.js';
+import { createCombatV8, updateCombatV8 } from './combat.js';
+import { spawnBuskersV8, updateBuskersV8 } from './crowds.js';
+import { createSkyV8, updateSkyV8 } from './daynight.js';
+import { expressTierProgressV8 } from './deliveryjobs.js';
+import { registerFinaleV8, updateFinaleV8 } from './finale.js';
+import { createHeliToursV8, updateHeliToursV8 } from './flyheli.js';
+import { createGarageLoyalty } from './garage.js';
+import { registerHeistV8, updateHeistV8 } from './heist.js';
+import { createTrafficHeliV8, updateTrafficHeliV8 } from './helicopter.js';
+import { updateHudV8 } from './hud.js';
+import { createFerryV8, updateFerryV8 } from './islaverde.js';
+import { createJetSkiFreestyle, updateJetSkiFreestyle } from './jetski.js';
+import { createMilitaryV8, updateMilitaryV8 } from './military.js';
+import { drawMinimapV8 } from './minimap.js';
+import { createCourierWeek, createStuntHallOfFame } from './missions2.js';
+import { createTimeTrials, updateTimeTrials } from './missions3.js';
+import { createAftermathV8, updateAftermathV8 } from './missions4.js';
+import { createWheelieSchool, updateWheelieSchool } from './motorcycle.js';
+import { createMountainRescue, updateMountainRescue } from './mountain.js';
+import { createNitroEconomy } from './nitro.js';
+import { createGhostWalk, updateGhostWalk } from './oldtown.js';
+import { createFlashMob, updateFlashMob } from './pedestrians.js';
+import { createPhotoModeV8 } from './photomode.js';
+import { createPhotoWalk2 } from './photomode2.js';
+import { createParkourV8, updateParkourV8 } from './player.js';
+import { createPokerLeaderboard } from './poker.js';
+import { createHeatMap, updateHeatMapV8 } from './police.js';
+import { createGrandPrix } from './raceleague.js';
+import { createRaceSeason3 } from './races.js';
+import { createSafehouseV8, depositVaultV8 } from './safehouse.js';
+import { applyShotFinale, applyShotSunrise } from './shots.js';
+import { createStormChaser, updateStormChaser } from './storm.js';
+import { createStreetFestival, updateStreetFestival } from './streetevents.js';
+import { createTowTruckV8, updateTowTruckV8 } from './traffic.js';
+import { createValetV8, updateArmoredCarV8 } from './vehicles.js';
+import { createMostWanted, updateMostWanted } from './vigilante.js';
+import { createVipBlacklist } from './vipjob.js';
+import { createWeatherDiary, updateWeatherDiary } from './weather.js';
 
 // Debug hooks the verification scripts use (and nothing else): the page
 // records every error so a headless run can prove zero console errors.
@@ -287,6 +348,69 @@ createWeatherV7(G);
 createVipJobV7(G);
 createVigilanteV7(G);
 spawnV7Vehicles(G);
+// v8 systems, created last so the v1–v7 placements above keep their seeds.
+registerMissions15And16(G);
+createWeatherV8(G);
+createGarageV8(G);
+createTrafficV8(G);
+createPedRoutines(G);
+createRadioV8(G);
+createAchievements(G);
+createCharterV8(G);
+createRegattaLeague(G);
+createFireCareer(G);
+createShowroomV8(G);
+createLoungeV8(G);
+buildV8District(G);
+createCombatV8(G);
+spawnBuskersV8(G);
+createSkyV8(G);
+registerFinaleV8(G);
+createHeliToursV8(G);
+createGarageLoyalty(G);
+registerHeistV8(G);
+createTrafficHeliV8(G);
+createFerryV8(G);
+createJetSkiFreestyle(G);
+createMilitaryV8(G);
+createCourierWeek(G);
+createStuntHallOfFame(G);
+createTimeTrials(G);
+createAftermathV8(G);
+createWheelieSchool(G);
+createMountainRescue(G);
+createNitroEconomy(G);
+createGhostWalk(G);
+createFlashMob(G);
+createPhotoModeV8(G);
+createPhotoWalk2(G);
+createParkourV8(G);
+createPokerLeaderboard(G);
+createHeatMap(G);
+createGrandPrix(G);
+createRaceSeason3(G);
+createSafehouseV8(G);
+createStormChaser(G);
+createStreetFestival(G);
+createTowTruckV8(G);
+createValetV8(G);
+createMostWanted(G);
+createVipBlacklist(G);
+createWeatherDiary(G);
+// v8: the new synthesized sounds the new systems call by name.
+G.audio.thunder = () => playThunderV8(G);
+G.audio.fanfare = () => playFanfareV8(G);
+G.audio.crowd = () => playCrowdV8(G);
+G.audio.dyno = () => playDynoV8(G);
+// v8: the systems the tests drive directly, on the game context.
+G.v8 = {
+  forecast: () => weatherForecastV8(G),
+  bulletin: (force) => newsBulletinV8(G, force),
+  request: () => radioRequestV8(G),
+  dyno: () => startDynoPull(G),
+  jam: (x, z, cause) => startJamV8(G, x, z, cause),
+  greet: () => greetRoutinePed(G),
+};
 // v7: walking groups — three groups of friends strolling the plaza and
 // the beach road, so the streets feel lived-in from the first frame.
 spawnPedGroup(G, 20, 40, 3);
@@ -411,6 +535,77 @@ if (G.saveData) {
       G.missions4.replays = G.saveData.v7.missions4.replays ?? 0;
     }
   }
+  // v8: restore the finale arc, the paint shop and dyno, the highway
+  // record, the weather fronts, the achievements, season 3, the regatta
+  // league and the safehouse vault with the rest of the save.
+  if (G.saveData.v8) {
+    const v8 = G.saveData.v8;
+    if (v8.missions5 && G.missions5) {
+      Object.assign(G.missions5, {
+        finaleDone: v8.missions5.finaleDone ?? false,
+        conSwaps: v8.missions5.conSwaps ?? 0,
+        dawnRuns: v8.missions5.dawnRuns ?? 0,
+        bestDawnSeconds: v8.missions5.bestDawnSeconds ?? null,
+        ceremonyPaid: v8.missions5.ceremonyPaid ?? false,
+      });
+    }
+    if (v8.garageV8 && G.garageV8) {
+      Object.assign(G.garageV8, {
+        baseId: v8.garageV8.baseId ?? 'midnight',
+        flakeId: v8.garageV8.flakeId ?? 'none',
+        finishId: v8.garageV8.finishId ?? 'gloss',
+        twoTone: v8.garageV8.twoTone ?? false,
+        paintsBought: v8.garageV8.paintsBought ?? 0,
+        paintSpent: v8.garageV8.paintSpent ?? 0,
+      });
+      Object.assign(G.garageV8.dyno, {
+        bestHp: v8.garageV8.dynoBestHp ?? 0,
+        bestTop: v8.garageV8.dynoBestTop ?? 0,
+        bestAccel: v8.garageV8.dynoBestAccel ?? null,
+        pulls: v8.garageV8.dynoPulls ?? 0,
+      });
+    }
+    if (v8.trafficV8 && G.trafficV8) {
+      Object.assign(G.trafficV8, {
+        jamsTotal: v8.trafficV8.jamsTotal ?? 0,
+        chainsTotal: v8.trafficV8.chainsTotal ?? 0,
+        towsTotal: v8.trafficV8.towsTotal ?? 0,
+        highwayTrips: v8.trafficV8.highwayTrips ?? 0,
+      });
+    }
+    if (v8.weatherV8 && G.weatherV8) {
+      Object.assign(G.weatherV8, {
+        frontPassed: v8.weatherV8.frontPassed ?? 0,
+        strikes: v8.weatherV8.strikes ?? 0,
+        gusts: v8.weatherV8.gusts ?? 0,
+      });
+    }
+    if (v8.achievements && G.achievements) {
+      G.achievements.unlocked = [...v8.achievements];
+      G.achievements.earned = v8.achievementEarned ?? 0;
+    }
+    if (v8.season3 && G.season3) {
+      Object.assign(G.season3, {
+        points: v8.season3.points ?? 0,
+        rounds: v8.season3.rounds ?? 0,
+        wins: v8.season3.wins ?? 0,
+        champion: v8.season3.champion ?? false,
+        midnightWins: v8.season3.midnightWins ?? 0,
+      });
+    }
+    if (v8.regattaLeague && G.regattaLeague) {
+      Object.assign(G.regattaLeague, {
+        points: v8.regattaLeague.points ?? 0,
+        wins: v8.regattaLeague.wins ?? 0,
+        champion: v8.regattaLeague.champion ?? false,
+      });
+    }
+    if (v8.safehouseV8 && G.safehouseV8) {
+      G.safehouseV8.vault = v8.safehouseV8.vault ?? 0;
+      G.safehouseV8.vaultDeposits = v8.safehouseV8.vaultDeposits ?? 0;
+      G.safehouseV8.trophies = [...(v8.safehouseV8.trophies || [])];
+    }
+  }
   if (G.saveData.pos) {
     G.player.pos.set(G.saveData.pos.x, 0, G.saveData.pos.z);
     G.player.group.position.copy(G.player.pos);
@@ -488,6 +683,17 @@ function startGame(fresh) {
     if (G.season2) { G.season2.points = 0; G.season2.rounds = 0; G.season2.wins = 0; G.season2.champion = false; }
     if (G.k9) { G.k9.captures = 0; G.k9.pitHits = 0; G.k9.pitAttempts = 0; }
     if (G.missions4) G.missions4.replays = 0;
+    // v8: a fresh start clears the new career too — the finale, the
+    // paint shop, the highway record, the fronts, the shelf, season 3,
+    // the regatta league and the safehouse vault.
+    if (G.missions5) { G.missions5.finaleDone = false; G.missions5.conSwaps = 0; G.missions5.dawnRuns = 0; G.missions5.bestDawnSeconds = null; G.missions5.ceremonyPaid = false; }
+    if (G.garageV8) { G.garageV8.paintsBought = 0; G.garageV8.paintSpent = 0; G.garageV8.twoTone = false; G.garageV8.dyno.pulls = 0; G.garageV8.dyno.bestHp = 0; G.garageV8.dyno.bestTop = 0; G.garageV8.dyno.bestAccel = null; }
+    if (G.trafficV8) { G.trafficV8.jamsTotal = 0; G.trafficV8.chainsTotal = 0; G.trafficV8.towsTotal = 0; G.trafficV8.highwayTrips = 0; }
+    if (G.weatherV8) { G.weatherV8.frontPassed = 0; G.weatherV8.strikes = 0; G.weatherV8.gusts = 0; }
+    if (G.achievements) { G.achievements.unlocked = []; G.achievements.earned = 0; }
+    if (G.season3) { G.season3.points = 0; G.season3.rounds = 0; G.season3.wins = 0; G.season3.champion = false; G.season3.midnightWins = 0; }
+    if (G.regattaLeague) { G.regattaLeague.points = 0; G.regattaLeague.wins = 0; G.regattaLeague.roundsSailed = 0; G.regattaLeague.champion = false; }
+    if (G.safehouseV8) { G.safehouseV8.vault = 0; G.safehouseV8.vaultDeposits = 0; G.safehouseV8.trophies = []; }
   }
   titleEl.classList.add('hidden');
   pauseEl.classList.add('hidden');
@@ -659,6 +865,69 @@ function stepWorld(dt) {
   updatePedReactionsV7(G, dt);
   updateWeatherV7(G, dt);
   updateVehicleWear(G, dt);
+  // v8 systems ride the same fixed step as the rest of the living city.
+  updateMissions5(G, dt);
+  updateWeatherV8(G, dt);
+  updateGarageV8(G, dt);
+  updateTrafficV8(G, dt);
+  updatePedRoutines(G, dt);
+  updateRadioV8(G, dt);
+  updateAchievements(G, dt);
+  updateCharterV8(G, dt);
+  updateV8District(G, dt);
+  updateCombatV8(G, dt);
+  updateBuskersV8(G, dt);
+  updateSkyV8(G, dt);
+  updateFinaleV8(G, dt);
+  updateHeliToursV8(G, dt);
+  updateHeistV8(G, dt);
+  updateTrafficHeliV8(G, dt);
+  updateFerryV8(G, dt);
+  updateJetSkiFreestyle(G, dt);
+  updateMilitaryV8(G, dt);
+  updateTimeTrials(G, dt);
+  updateAftermathV8(G, dt);
+  updateWheelieSchool(G, dt);
+  updateMountainRescue(G, dt);
+  updateGhostWalk(G, dt);
+  updateFlashMob(G, dt);
+  updateParkourV8(G, dt);
+  updateHeatMapV8(G, dt);
+  updateStormChaser(G, dt);
+  updateStreetFestival(G, dt);
+  updateTowTruckV8(G, dt);
+  updateArmoredCarV8(G, dt);
+  updateMostWanted(G, dt);
+  updateWeatherDiary(G, dt);
+  // v8: observers — systems that watch other systems' counters move, so
+  // no older system needs a hook into a newer one. A finished mission
+  // pays its 5% vault cut; a regatta win enters the league table; a fire
+  // out moves the fire career; a unicorn found takes its showroom plinth.
+  if (G._v8Prev === undefined) {
+    G._v8Prev = { missionIndex: G.missions.index, regattaWins: 0, fireCallouts: 0, unicorns: 0 };
+  }
+  if (G.missions.index > G._v8Prev.missionIndex) {
+    // Loop, so a jump of more than one index (a replay, a debug start)
+    // still credits every mission it passed, not just the first.
+    while (G._v8Prev.missionIndex < G.missions.index) {
+      const done = MISSIONS[G._v8Prev.missionIndex];
+      if (done) depositVaultV8(G, done.reward);
+      G._v8Prev.missionIndex += 1;
+    }
+  }
+  if (G.regatta && G.regatta.wins > G._v8Prev.regattaWins) {
+    recordRegattaWinV8(G, G.regatta.bestTime || 0);
+    G._v8Prev.regattaWins = G.regatta.wins;
+  }
+  if (G.fireCallouts && G.fireCallouts.callouts > G._v8Prev.fireCallouts) {
+    recordFireV8(G);
+    G._v8Prev.fireCallouts = G.fireCallouts.callouts;
+  }
+  if (G.unicornHunt && G.unicornHunt.found.length > G._v8Prev.unicorns) {
+    const found = G.unicornHunt.found[G.unicornHunt.found.length - 1];
+    parkUnicornV8(G, found && found.id ? found.id : 'unicorn');
+    G._v8Prev.unicorns = G.unicornHunt.found.length;
+  }
 }
 
 function frame() {
@@ -714,6 +983,7 @@ function frame() {
         pauseEl.classList.remove('hidden');
         updateStats(G); // the career scorecard is fresh every time you pause
         renderV7Stats(G); // v7: the second page of the scorecard
+        renderV8Stats(G); // v8: the third page — the achievement shelf
         document.exitPointerLock?.();
       }
     }
@@ -723,8 +993,9 @@ function frame() {
     }
     // v7: the delivery job board — 7 shows the Solmar Express summary
     // and the dispatcher's trust rank.
+    // v8: the board also shows the Express tier and the boss run.
     if (G.input.pressed('delivery') && G.delivery) {
-      G.hud.toast(`${deliverySummary(G)} — Rank: ${deliveryRank(G)}.`);
+      G.hud.toast(`${deliverySummary(G)} — Rank: ${deliveryRank(G)}. ${expressTierProgressV8(G)}`);
     }
 
     if (G.boating) {
@@ -789,8 +1060,10 @@ function frame() {
 
     if (G.shot) poseShotCamera(G);
     G.hud.update(G, dt);
+    updateHudV8(G, dt); // v8: the ticker under the weather label
     G.minimap.draw(G);
     drawMinimapV7(G); // v7: job blips and the damage compass
+    drawMinimapV8(G); // v8: the gold route line to the mission marker
 
     // Camera kick from firing.
     if (G.cameraKick > 0) {
@@ -829,6 +1102,10 @@ if (shotName === 'oldtown') {
   applyShotOldTown(G);
 } else if (shotName === 'season') {
   applyShotSeason(G);
+} else if (shotName === 'finale') {
+  applyShotFinale(G);
+} else if (shotName === 'sunrise') {
+  applyShotSunrise(G);
 } else if (shotName && SHOT_NAMES.includes(shotName)) {
   applyShot(G, shotName);
 } else {
